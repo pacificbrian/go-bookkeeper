@@ -19,5 +19,8 @@ func Init() *echo.Echo {
 	e.Use(middleware.RequestID()) // log request info with id
 	e.Static("/", "public")
 
+	views := NewTemplate()
+	e.Renderer = views
+
 	return e
 }
