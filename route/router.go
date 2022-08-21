@@ -9,8 +9,24 @@ package route
 import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/mayowa/echo-pongo2"
 	"go-bookkeeper/controllers"
 )
+
+func UseTemplates(e *echo.Echo) echo.Renderer {
+	views := NewTemplate()
+	//views.Add("index.html", "public/views/base.html")
+
+	return views
+}
+
+func UsePongo2(e *echo.Echo) echo.Renderer {
+	r, err := echopongo2.NewRenderer("public/views/")
+	if err != nil {
+		r = nil
+	}
+	return r
+}
 
 func Init() *echo.Echo {
 	e := echo.New()
@@ -19,10 +35,7 @@ func Init() *echo.Echo {
 	e.Use(middleware.Recover())   // auto recover from any panic
 	e.Use(middleware.RequestID()) // log request info with id
 	e.Static("/", "public")
-
-	views := NewTemplate()
-	//views.Add("index.html", "public/views/accounts/index.html")
-	e.Renderer = views
+	e.Renderer = UsePongo2(e)
 
 	e.GET("/accounts", controllers.ListAccounts)   // Index/List
 	e.POST("/accounts", controllers.CreateAccount) // Create
