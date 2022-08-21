@@ -3,8 +3,10 @@ module go-bookkeeper
 go 1.18
 
 require (
+	github.com/davecgh/go-spew v1.1.1
 	github.com/ilyakaznacheev/cleanenv v1.3.0
 	github.com/labstack/echo/v4 v4.7.2
+	github.com/shopspring/decimal v1.3.1
 	gorm.io/driver/mysql v1.3.4
 	gorm.io/driver/sqlite v1.3.6
 	gorm.io/gorm v1.23.8

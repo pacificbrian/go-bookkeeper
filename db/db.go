@@ -21,6 +21,8 @@ func Init() {
 	if err != nil {
 		log.Panic(err)
 	}
+
+	autoMigrate(db)
 }
 
 func DbManager() *gorm.DB {
