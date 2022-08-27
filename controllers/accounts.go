@@ -36,6 +36,8 @@ func ListAccounts(c echo.Context) error {
 	if get_json {
 		return c.JSON(http.StatusOK, entries)
 	} else {
+		// Test if performance diff w/ map vs pongo2.context
+		//data := pongo2.Context{ "accounts":entries }
 		data := map[string]any{ "accounts":entries }
 		return c.Render(http.StatusOK, "accounts/index.html", data)
 	}

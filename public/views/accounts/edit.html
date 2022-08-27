@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="edit">
+<h2>Edit Account</h2>
+
+<form method="POST" action="/accounts/{{ account.ID }}">
+{% include "accounts/account_form.html" -%}
+</form>
+
+</div>
+
+<ul id="footmenu">
+<li><a href=/accounts/{{ account.ID }}>Back to Account</a></li>
+<li><a href=/accounts>Back to Accounts</a></li>
+<li><a href=/accounts/{{ account.ID }} method="delete">Delete Account</a></li>
+</ul>
+
+{% endblock -%}

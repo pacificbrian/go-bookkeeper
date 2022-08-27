@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="new">
+<h2>New Account</h2>
+
+<form method="POST" action="/accounts">
+{% include "accounts/account_form.html" -%}
+</form>
+
+</div>
+
+<ul id="footmenu">
+<li><a href=/accounts>Back to Accounts</a></li>
+</ul>
+
+{% endblock -%}

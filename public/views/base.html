@@ -15,7 +15,20 @@
   </ul>
 </div>
 
+{% macro form_select_type(types, name, default_id=nil) -%}
+<select name="{{name}}">
+{% for t in types -%}
+{% if t.ID == default_id -%}
+<option selected="selected" value="{{t.ID}}">{{t.Name}}</option>
+{% else -%}
+<option value="{{t.ID}}">{{t.Name}}</option>
+{% endif -%}
+{% endfor -%}
+</select>
+{% endmacro -%}
+
 <div id="content">
+{% block content %}{% endblock %}
 </div>
 </body>
 </html>

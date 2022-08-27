@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block content -%}
+
+{% macro account_details(a) -%}
+<tr>
+<td></td>
+<td><a href=/accounts/{{a.ID}}>{{ a.Name }}</a></td>
+<td>{{ a.Balance }}</td>
+<td>
+</td>
+<td>
+</td>
+</tr>
+{% endmacro -%}
+
+<div class="listing">
+<h2>Account Listing</h2>
+
+<table>
+{% for a in accounts -%}
+{{ account_details(a) }}
+{% endfor -%}
+</table>
+</div>
+
+<ul id="footmenu">
+<li><a href=/accounts/new>New Account</a></li>
+<li><a href=/payees>All Payees</a></li>
+<li><a href=/charts?days=0>Year to Date Chart</a></li>
+</ul>
+
+{% endblock -%}

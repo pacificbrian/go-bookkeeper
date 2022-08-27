@@ -1,0 +1,31 @@
+<fieldset>
+<table>
+<td>
+<label>Account Type</label>
+{{ form_select_type(account_types, "account.account_type_id", account.account_type_id) }}
+</td>
+<td>
+<label>Currency</label>
+{{ form_select_type(currency_types, "account.currency_type_id", account.currency_type_id) }}
+</td>
+<td>
+<label>Taxable</label>
+<input type="checkbox" name="account.Taxable" checked="true"/>
+</td>
+</table>
+</fieldset>
+<fieldset>
+<label>Account Name</label>
+<input type="text" name="account.Name" />
+</fieldset>
+<fieldset>
+<label>Account Number</label>
+<input type="text" name="account.Number"/>
+</fieldset>
+<fieldset class="last">
+<label>Routing Number</label>
+<input type="text" name="account.Routing"/>
+</fieldset>
+<fieldset class="submit">
+<input type="submit" value="{{ button_text }}"/>
+</fieldset>
