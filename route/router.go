@@ -49,5 +49,9 @@ func Init() *echo.Echo {
 	e.POST("/accounts/:id", controllers.UpdateAccount) // Update
 	e.DELETE("/accounts/:id", controllers.DeleteAccount)
 
+	e.POST("/accounts/:id/cash_flows", controllers.CreateCashFlow)
+	e.GET("/cash_flows/:id/edit", controllers.EditCashFlow)
+	e.POST("/cash_flows/:id", controllers.UpdateCashFlow)
+
 	return e
 }

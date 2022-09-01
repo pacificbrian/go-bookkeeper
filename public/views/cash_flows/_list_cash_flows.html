@@ -1,0 +1,38 @@
+<div class="dynamic">
+<table class="ledger resizable editable">
+<thead>
+<tr>
+<th id="date">Date</th>
+<th id="transnum">#</th>
+<th id="payee_name">Payee</th>
+<th id="category_id">Category</th>
+<th id="amount">Amount</th>
+<th id="balance" class="noedit">Balance</th>
+<th class="noedit"></th>
+<th class="noedit"></th>
+</tr>
+</thead>
+<tbody>
+{% for c in cash_flows -%}
+{% if (forloop.Counter0 % 2) == 0 -%}
+<tr id="{{ c.ID }}">
+{% else -%}
+<tr id="{{ c.ID }}" class="even">
+{% endif -%}
+<td>{{ c.Date.Format("2006-01-02") }}</td>
+<td>{{ c.Transnum }}</td>
+{% if c.Transfer -%}
+<td> Transfer </td>
+{% else -%}
+<td> Payee Name </td>
+{% endif -%}
+<td> Category Name </td>
+<td class="currency">{{ c.Amount }}</td>
+<td class="currency"> 0 </td>
+<td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
+<td><a href=/cash_flows/{{ c.ID }} method="delete">Delete</a></dd>
+</tr>
+{% endfor -%}
+</tbody>
+</table>
+</div>

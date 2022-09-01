@@ -22,6 +22,9 @@ type Account struct {
 	Routing int `form:"account.Routing"`
 	Balance decimal.Decimal
 	Taxable bool `form:"account.Taxable"`
+	CashFlows []CashFlow
+	//Categories []Category
+	//Payees []Payee
 }
 
 func ListAccounts(db *gorm.DB) []Account {

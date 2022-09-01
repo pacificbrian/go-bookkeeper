@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="show">
+<h2>{{ account.Name }}</h2>
+
+<table>
+<tr>
+<td>Type:
+<td>{{ account.AccountType.Name }}
+</tr>
+<tr>
+<td>Balance:
+<td>{{ account.Balance }}
+</tr>
+</table>
+
+<div id="cash_flows">
+{% include "cash_flows/_list_cash_flows.html" -%}
+</div>
+
+<div id="total">
+{% include "accounts/_total.html" -%}
+</div>
+
+<form method="POST" action="/accounts/{{account.ID}}/cash_flows">
+<table>
+<tr>
+<td><br> {{ form_select_type(cash_flow_types, "cash_flow_type_id") }} </td>
+<tr>
+<td><br> Date </td>
+<td>Check/Number:<br> <input type="text" name="transnum"/></td>
+<tr>
+<td>Payee:<br> <input type="text" name="payee_name"/></td>
+<td>Amount:<br> <input type="text" name="amount"/></td>
+<tr>
+<td>Category:<br> {{ form_select_type(categories, "category_id") }} </td>
+<td>Memo:<br> <input type="text" name="memo"/></td>
+</table>
+<p>
+<input type="submit" value="{{ button_text }}"/>
+</p>
+</form>
+
+</div>
+
+<ul id="footmenu">
+<li><a href=/accounts>Back to Accounts</a></li>
+<li><a href=/accounts/{{account.ID}}/edit>Edit Account</a></li>
+<li><a href=/accounts/{{account.ID}}/payees>Account Payees</a></li>
+<li><a href=/accounts/{{account.ID}}/import>Import CashFlow</a></li>
+<li><a href=/accounts/{{account.ID}}/r_cash_flows>Schedule CashFlow</a></li>
+<li><a href=/accounts/{{account.ID}}/charts?days=0>Year to Date Chart</a></li>
+</ul>
+{% endblock -%}

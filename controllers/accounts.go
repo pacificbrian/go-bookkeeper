@@ -75,16 +75,21 @@ func GetAccount(c echo.Context) error {
 	db := gormdb.DbManager()
 	get_json := false
 
+	// should be in Model
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
-	db.First(&entry)
-
+	db.Preload("AccountType").First(&entry)
 	spew.Dump(entry)
 
 	if get_json {
 		return c.JSON(http.StatusOK, entry)
 	} else {
-		data := map[string]any{ "account":entry }
+		cash_flows := new(model.CashFlow).List(db, entry)
+		data := map[string]any{ "account":entry,
+					"button_text": "Add",
+					"cash_flows":cash_flows,
+					"cash_flow_types": new(model.CashFlowType).List(db),
+					"categories": new(model.CategoryType).List(db) }
 		return c.Render(http.StatusOK, "accounts/show.html", data)
 	}
 }
