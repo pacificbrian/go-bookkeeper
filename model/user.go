@@ -15,4 +15,6 @@ type User struct {
 	Login string
 	Email string
 	Password string `gorm:"->:false;<-"`
+	Categories []Category
+	Payees []Payee
 }

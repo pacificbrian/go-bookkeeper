@@ -13,6 +13,8 @@ import (
 
 type Account struct {
 	gorm.Model
+	UserID uint `gorm:"not null"`
+	User User
 	AccountTypeID uint `form:"account.account_type_id"`
 	AccountType AccountType
 	CurrencyTypeID uint `form:"account.currency_type_id"`
@@ -23,8 +25,6 @@ type Account struct {
 	Balance decimal.Decimal
 	Taxable bool `form:"account.Taxable"`
 	CashFlows []CashFlow
-	//Categories []Category
-	//Payees []Payee
 }
 
 func (Account) Currency(value decimal.Decimal) string {
