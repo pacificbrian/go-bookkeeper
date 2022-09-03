@@ -65,7 +65,7 @@ func DeleteAccount(c echo.Context) error {
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
 	spew.Dump(entry)
-	db.Delete(entry)
+	entry.Delete(db)
 
 	return c.NoContent(http.StatusAccepted)
 }
@@ -134,6 +134,7 @@ func EditAccount(c echo.Context) error {
 	db.First(&entry)
 
 	data := map[string]any{ "account": entry,
+				"is_edit": true,
 				"button_text": "Update Account",
 				"account_types": new(model.AccountType).List(db),
 				"currency_types": new(model.CurrencyType).List(db) }

@@ -10,8 +10,14 @@
 </td>
 <td>
 <label>Taxable</label>
-<input type="checkbox" name="account.Taxable" checked="true"/>
+<input type="checkbox" name="account.Taxable" checked="{{account.Taxable}}"/>
 </td>
+{% if is_edit -%}
+<td>
+<label>Hidden</label>
+<input type="checkbox" name="account.Hidden" checked="{{account.Hidden}}"/>
+</td>
+{% endif -%}
 </table>
 </fieldset>
 <fieldset>

@@ -24,6 +24,7 @@ type Account struct {
 	Routing int `form:"account.Routing"`
 	Balance decimal.Decimal
 	Taxable bool `form:"account.Taxable"`
+	Hidden bool `form:"account.Hidden"`
 	CashFlows []CashFlow
 }
 
@@ -34,6 +35,18 @@ func (Account) Currency(value decimal.Decimal) string {
 func ListAccounts(db *gorm.DB) []Account {
 	entries := []Account{}
 	db.Find(&entries)
-
 	return entries
+}
+
+func (*Account) List(db *gorm.DB) []Account {
+	return ListAccounts(db)
+}
+
+func (a *Account) Delete(db *gorm.DB) {
+	if a.Hidden {
+		db.Delete(a)
+	} else {
+		a.Hidden = true
+		db.Save(a)
+	}
 }
