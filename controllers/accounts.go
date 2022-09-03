@@ -15,6 +15,7 @@ import (
 	"github.com/davecgh/go-spew/spew"
 	gormdb "go-bookkeeper/db"
 	"go-bookkeeper/model"
+	"go-bookkeeper/helpers"
 )
 
 // For http.Status, see:
@@ -94,7 +95,11 @@ func GetAccount(c echo.Context) error {
 			balance = balance.Add(c.Amount)
 		}
 
+		dh := new(helpers.DateHelper)
+		dh.Init()
+
 		data := map[string]any{ "account":entry,
+					"date_helper": dh,
 					"button_text": "Add",
 					"cash_flows":cash_flows,
 					"cash_flow_types": new(model.CashFlowType).List(db),

@@ -9,6 +9,7 @@ package controllers
 import (
 	"fmt"
 	"log"
+	"time"
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
@@ -27,6 +28,10 @@ func CreateCashFlow(c echo.Context) error {
 
 	entry := new(model.CashFlow)
 	entry.AccountID = uint(id)
+	date := c.FormValue("date_month") + "/" +
+		c.FormValue("date_day") + "/" +
+		c.FormValue("date_year")
+	entry.Date,_ = time.Parse("1/2/2006", date)
 	c.Bind(entry)
 	spew.Dump(entry)
 
