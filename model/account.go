@@ -27,6 +27,10 @@ type Account struct {
 	//Payees []Payee
 }
 
+func (Account) Currency(value decimal.Decimal) string {
+	return "$" + value.StringFixedBank(2)
+}
+
 func ListAccounts(db *gorm.DB) []Account {
 	entries := []Account{}
 	db.Find(&entries)

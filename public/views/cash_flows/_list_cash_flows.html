@@ -27,8 +27,8 @@
 <td> Payee Name </td>
 {% endif -%}
 <td> Category Name </td>
-<td class="currency">{{ c.Amount }}</td>
-<td class="currency"> 0 </td>
+<td class="currency">{{ c.Currency(c.Amount) }}</td>
+<td class="currency">{{ c.Currency(c.Balance) }}</td>
 <td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
 <td><a href=/cash_flows/{{ c.ID }} method="delete">Delete</a></dd>
 </tr>

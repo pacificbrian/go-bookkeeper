@@ -18,10 +18,15 @@ type CashFlow struct {
 	Account Account
 	Date time.Time `form:"date"`
 	Amount decimal.Decimal `form:"amount"`
+	Balance decimal.Decimal `gorm:"-:all"`
 	Split bool
 	Transfer bool
 	Transnum string `form:"transnum"`
 	Memo string `form:"memo"`
+}
+
+func (CashFlow) Currency(value decimal.Decimal) string {
+	return  "$" + value.StringFixedBank(2)
 }
 
 func (*CashFlow) List(db *gorm.DB, account *Account) []CashFlow {

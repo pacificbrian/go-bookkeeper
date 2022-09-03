@@ -84,7 +84,16 @@ func GetAccount(c echo.Context) error {
 	if get_json {
 		return c.JSON(http.StatusOK, entry)
 	} else {
+		// order by date
 		cash_flows := new(model.CashFlow).List(db, entry)
+		// update Balances (move to model with above)
+		balance := entry.Balance
+		for i := 0; i < len(cash_flows); i++ {
+			c := &cash_flows[i]
+			c.Balance = balance
+			balance = balance.Add(c.Amount)
+		}
+
 		data := map[string]any{ "account":entry,
 					"button_text": "Add",
 					"cash_flows":cash_flows,
