@@ -14,7 +14,7 @@ import (
 
 var db *gorm.DB
 
-func Init() {
+func init() {
 	var err error
 
 	db, err = sqlite.OpenSqlite()

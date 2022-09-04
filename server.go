@@ -7,12 +7,10 @@
 package main
 
 import (
-	"go-bookkeeper/db"
 	"go-bookkeeper/route"
 )
 
 func main() {
-	db.Init()
 	e := route.Init()
 	e.Logger.Fatal(e.Start(":3000"))
 }
