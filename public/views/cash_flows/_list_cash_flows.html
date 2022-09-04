@@ -24,7 +24,7 @@
 {% if c.Transfer -%}
 <td> Transfer </td>
 {% else -%}
-<td> Payee Name </td>
+<td>{{ c.PayeeName }}</td>
 {% endif -%}
 <td> Category Name </td>
 <td class="currency">{{ c.Currency(c.Amount) }}</td>

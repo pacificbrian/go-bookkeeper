@@ -60,7 +60,7 @@ func UpdateCashFlow(c echo.Context) error {
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
-	entry = entry.Get(db)
+	entry = entry.Get(db, false)
 	if entry == nil {
 		return c.NoContent(http.StatusUnauthorized)
 	}
@@ -78,7 +78,7 @@ func EditCashFlow(c echo.Context) error {
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
-	entry = entry.Get(db)
+	entry = entry.Get(db, true)
 
 	dh := new(helpers.DateHelper)
 	dh.Init()

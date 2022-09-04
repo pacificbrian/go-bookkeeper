@@ -7,6 +7,7 @@
 package model
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"gorm.io/gorm"
 )
 
@@ -22,7 +23,48 @@ type Payee struct {
 }
 
 func (*Payee) List(db *gorm.DB) []Payee {
+	u := GetCurrentUser()
 	entries := []Payee{}
-	db.Find(&entries)
+	if u == nil {
+		return entries
+	}
+
+	// Find Payees for CurrentUser()
+	db.Where(&Payee{UserID: u.ID}).Find(&entries)
 	return entries
+}
+
+func payeeGetByName(db *gorm.DB, name string) *Payee {
+	u := GetCurrentUser()
+	if u == nil {
+		return nil
+	}
+
+	payee := new(Payee)
+	payee.Name = name
+	payee.UserID = u.ID
+	// need Where because these are not primary keys
+	db.Where(&payee).First(&payee)
+
+	if payee.ID == 0 {
+		db.Create(payee)
+		spew.Dump(payee)
+	}
+
+	return payee
+}
+
+func (p *Payee) HaveAccessPermission() bool {
+	u := GetCurrentUser()
+	return !(u == nil || u.ID != p.UserID)
+}
+
+// Edit, Delete, Update use Get
+func (p *Payee) Get(db *gorm.DB) *Payee {
+	db.Preload("User").First(&p)
+	// Verify we have access to Payee
+	if !p.HaveAccessPermission() {
+		return nil
+	}
+	return p
 }

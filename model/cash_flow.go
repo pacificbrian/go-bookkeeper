@@ -42,11 +42,31 @@ func (CashFlow) ParentID() any {
 	return nil
 }
 
+func (c *CashFlow) Preload(db *gorm.DB) {
+	if c.Transfer {
+		c.PayeeName = "Transfer"
+	} else {
+		c.Payee.ID = c.PayeeID
+		db.First(&c.Payee)
+		c.PayeeName = c.Payee.Name
+	}
+}
+
 // Account access already verified by caller
 func (*CashFlow) List(db *gorm.DB, account *Account) []CashFlow {
 	entries := []CashFlow{}
 	if account.Verified {
 		db.Find(&entries, &CashFlow{AccountID: account.ID})
+		// need to sort by Date
+
+		// update Balances
+		balance := account.Balance
+		for i := 0; i < len(entries); i++ {
+			c := &entries[i]
+			c.Balance = balance
+			balance = balance.Sub(c.Amount)
+			c.Preload(db)
+		}
 	}
 	return entries
 }
@@ -63,6 +83,10 @@ func (c *CashFlow) Create(db *gorm.DB) {
 	account := c.Account.Get(db, false)
 	if account != nil {
 		c.TaxYear = c.Date.Year()
+		if c.PayeeName != "" {
+			p := payeeGetByName(db, c.PayeeName)
+			c.PayeeID = p.ID
+		}
 		spew.Dump(c)
 		db.Create(c)
 	}
@@ -70,18 +94,21 @@ func (c *CashFlow) Create(db *gorm.DB) {
 
 // Edit, Delete, Update use Get
 // c.Account needs to be preloaded
-func (c *CashFlow) Get(db *gorm.DB) *CashFlow {
+func (c *CashFlow) Get(db *gorm.DB, preload bool) *CashFlow {
 	db.Preload("Account").First(&c)
 	// Verify we have access to CashFlow
 	if !c.HaveAccessPermission() {
 		return nil
+	}
+	if preload {
+		c.Preload(db)
 	}
 	return c
 }
 
 func (c *CashFlow) Delete(db *gorm.DB) {
 	// Verify we have access to CashFlow
-	c = c.Get(db)
+	c = c.Get(db, false)
 	if c != nil {
 		spew.Dump(c)
 		db.Delete(c)

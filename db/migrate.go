@@ -15,6 +15,7 @@ func autoMigrate(db *gorm.DB) {
 	db.AutoMigrate(&model.AccountType{})
 	db.AutoMigrate(&model.CategoryType{})
 	db.AutoMigrate(&model.CashFlowType{})
+	db.AutoMigrate(&model.Payee{})
 	//db.AutoMigrate(&model.CurrencyType{})
 	//db.AutoMigrate(&model.User{})
 	//db.Debug().AutoMigrate(&model.Account{})
