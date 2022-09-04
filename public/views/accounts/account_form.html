@@ -22,15 +22,19 @@
 </fieldset>
 <fieldset>
 <label>Account Name</label>
-<input type="text" name="account.Name" />
+<input type="text" name="account.Name" value="{{account.Name}}"/>
 </fieldset>
 <fieldset>
 <label>Account Number</label>
-<input type="text" name="account.Number"/>
+<input type="text" name="account.Number" value="{{account.Number}}"/>
 </fieldset>
 <fieldset class="last">
 <label>Routing Number</label>
+{% if is_edit -%}
+<input type="text" name="account.Routing" value="{{account.Routing}}"/>
+{% else -%}
 <input type="text" name="account.Routing"/>
+{% endif -%}
 </fieldset>
 <fieldset class="submit">
 <input type="submit" value="{{ button_text }}"/>
