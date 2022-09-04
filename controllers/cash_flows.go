@@ -13,7 +13,6 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
-	"github.com/davecgh/go-spew/spew"
 	gormdb "go-bookkeeper/db"
 	"go-bookkeeper/model"
 )
@@ -33,9 +32,7 @@ func CreateCashFlow(c echo.Context) error {
 		c.FormValue("date_year")
 	entry.Date,_ = time.Parse("1/2/2006", date)
 	c.Bind(entry)
-	spew.Dump(entry)
-
-	db.Create(entry)
+	entry.Create(db)
 
 	// http.StatusCreated
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
@@ -48,8 +45,9 @@ func DeleteCashFlow(c echo.Context) error {
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
-	spew.Dump(entry)
-	db.Delete(entry)
+	entry.Delete(db)
+	// set status based on if Delete failed
+	// return c.NoContent(http.StatusUnauthorized)
 
 	return c.NoContent(http.StatusAccepted)
 }
@@ -61,14 +59,14 @@ func UpdateCashFlow(c echo.Context) error {
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
-	db.First(&entry)
-	// verify entry id was valid
+	entry = entry.Get(db)
+	if entry == nil {
+		return c.NoContent(http.StatusUnauthorized)
+	}
 
 	c.Bind(entry)
-	spew.Dump(entry)
-	//db.Save(entry)
-
-	a_id := entry.Account.ID
+	entry.Update(db)
+	a_id := entry.AccountID
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", a_id))
 }
 
@@ -79,7 +77,7 @@ func EditCashFlow(c echo.Context) error {
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
-	db.First(&entry)
+	entry = entry.Get(db)
 
 	data := map[string]any{ "cash_flow": entry,
 				"button_text": "Update" }

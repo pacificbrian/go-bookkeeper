@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
-	"github.com/davecgh/go-spew/spew"
 	gormdb "go-bookkeeper/db"
 	"go-bookkeeper/model"
 	"go-bookkeeper/helpers"
@@ -32,7 +31,6 @@ func ListAccounts(c echo.Context) error {
 	get_json := false
 
 	entries := model.ListAccounts(db)
-	//spew.Dump(entries)
 
 	if get_json {
 		return c.JSON(http.StatusOK, entries)
@@ -50,9 +48,8 @@ func CreateAccount(c echo.Context) error {
 
 	entry := new(model.Account)
 	c.Bind(entry)
-	spew.Dump(entry)
-
-	db.Create(entry)
+	entry.Create(db)
+	// set status based on if Create failed
 
 	return c.Redirect(http.StatusSeeOther, "/accounts")
 }
@@ -64,8 +61,9 @@ func DeleteAccount(c echo.Context) error {
 
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
-	spew.Dump(entry)
 	entry.Delete(db)
+	// set status based on if Delete failed
+	// return c.NoContent(http.StatusUnauthorized)
 
 	return c.NoContent(http.StatusAccepted)
 }
@@ -79,20 +77,24 @@ func GetAccount(c echo.Context) error {
 	// should be in Model
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
-	db.Preload("AccountType").First(&entry)
-	spew.Dump(entry)
+	entry = entry.Get(db, true)
+	// set status based on if Get failed
 
 	if get_json {
 		return c.JSON(http.StatusOK, entry)
 	} else {
-		// order by date
-		cash_flows := new(model.CashFlow).List(db, entry)
-		// update Balances (move to model with above)
-		balance := entry.Balance
-		for i := 0; i < len(cash_flows); i++ {
-			c := &cash_flows[i]
-			c.Balance = balance
-			balance = balance.Add(c.Amount)
+		var cash_flows []model.CashFlow
+
+		if entry != nil {
+			// order by date
+			cash_flows = new(model.CashFlow).List(db, entry)
+			// update Balances (move to model with above)
+			balance := entry.Balance
+			for i := 0; i < len(cash_flows); i++ {
+				c := &cash_flows[i]
+				c.Balance = balance
+				balance = balance.Add(c.Amount)
+			}
 		}
 
 		dh := new(helpers.DateHelper)
@@ -110,17 +112,18 @@ func GetAccount(c echo.Context) error {
 
 func UpdateAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
+	log.Printf("UPDATE ACCOUNT(%d)", id)
 	db := gormdb.DbManager()
 
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
-	db.First(&entry)
-	// verify entry id was valid
+	entry = entry.Get(db, false)
+	if entry == nil {
+		return c.NoContent(http.StatusUnauthorized)
+	}
 
 	c.Bind(entry)
-	spew.Dump(entry)
-	//db.Save(entry)
-
+	entry.Update(db)
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
 }
 
@@ -131,7 +134,8 @@ func EditAccount(c echo.Context) error {
 
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
-	db.First(&entry)
+	entry = entry.Get(db, false)
+	// handle no access (entry == nil)
 
 	data := map[string]any{ "account": entry,
 				"is_edit": true,
