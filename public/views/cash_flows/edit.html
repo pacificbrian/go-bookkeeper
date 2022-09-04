@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="edit">
+<h2>Edit Transaction</h2>
+
+<table>
+<tr>
+<td>Account Name:
+<tr>
+<td><strong>{{ cash_flow.Account.Name }}</strong>
+</table>
+
+<form method="POST" action="/cash_flows/{{cash_flow.ID}}">
+<table>
+<tr>
+<td><br> {{ form_select_type(cash_flow_types, "cash_flow_type_id", cash_flow.CashFlowTypeID) }} </td>
+<tr>
+<td>Tax Year<br>
+<input type="text" name="tax_year" value="{{cash_flow.TaxYear}}"/>
+</td>
+<tr>
+<td><br> {{ form_date_select(date_helper) }} </td>
+<td>Check/Number:<br>
+<input type="text" name="transnum" value="{{cash_flow.Transnum}}"/>
+</td>
+<tr>
+<td>Payee:<br>
+<input type="text" name="payee_name" value="{{cash_flow.PayeeName}}"/>
+</td>
+<td>Amount:<br>
+<input type="text" name="amount" value="{{cash_flow.Amount}}"/>
+</td>
+<tr>
+<td>Category:<br> {{ form_select_type(categories, "category_id", cash_flow.CategoryID) }} </td>
+<td>Memo:<br>
+<input type="text" name="memo" value="{{cash_flow.Memo}}"/>
+</td>
+</table>
+<p>
+<input type="submit" value="Update"/>
+</p>
+</form>
+
+<form method="POST" action="/cash_flows">
+<table>
+<tr>
+<td><br> {{ form_select_type(cash_flow_types, "cash_flow_type_id") }} </td>
+<tr>
+<td>Payee:<br>
+<input type="text" name="payee_name" value="{{cash_flow.PayeeName}}"/>
+</td>
+<td>Amount:<br> <input type="text" name="amount"/> </td>
+<tr>
+<td>Category:<br> {{ form_select_type(categories, "category_id") }} </td>
+<td>Memo:<br> <input type="text" name="memo"/> </td>
+</td>
+</table>
+<input type="hidden" name="split_from" value="{{cash_flow.ID}}"/>
+<input type="hidden" name="split" value="true"/>
+<p>
+<input type="submit" value="Add Split"/>
+</p>
+</form>
+
+</div>
+
+<ul id="footmenu">
+<li><a href=/accounts/{{cash_flow.AccountID}}>Back To Account</a></li>
+{% if not cash_flow.Transfer -%}
+<li><a href=/payees/{{cash_flow.PayeeID}}>Back to Payee</a></li>
+{% endif -%}
+{% if cash_flow.ParentID -%}
+<li><a href=/cash_flows/{{ cash_flow.ParentID }}/edit>Edit Parent CashFlow</a></li>
+{% endif -%}
+<li><a href=/cash_flows/{{ cash_flow.ID }} method="delete">Delete CashFlow</a></li>
+</ul>
+
+{% endblock -%}

@@ -19,9 +19,11 @@ type CashFlow struct {
 	AccountID uint `gorm:"not null"`
 	Account Account
 	Date time.Time
+	TaxYear int `form:"tax_year"`
 	Amount decimal.Decimal `form:"amount" gorm:"not null"`
 	Balance decimal.Decimal `gorm:"-:all"`
-	Split bool
+	SplitFrom uint `form:"split_from"`
+	Split bool `form:"split"`
 	Transfer bool
 	Transnum string `form:"transnum"`
 	Memo string `form:"memo"`
@@ -34,6 +36,10 @@ type CashFlow struct {
 
 func (CashFlow) Currency(value decimal.Decimal) string {
 	return  "$" + value.StringFixedBank(2)
+}
+
+func (CashFlow) ParentID() any {
+	return nil
 }
 
 // Account access already verified by caller
@@ -56,6 +62,7 @@ func (c *CashFlow) Create(db *gorm.DB) {
 	c.Account.ID = c.AccountID
 	account := c.Account.Get(db, false)
 	if account != nil {
+		c.TaxYear = c.Date.Year()
 		spew.Dump(c)
 		db.Create(c)
 	}

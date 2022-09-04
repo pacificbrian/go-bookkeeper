@@ -15,6 +15,7 @@ import (
 	"github.com/labstack/echo/v4"
 	gormdb "go-bookkeeper/db"
 	"go-bookkeeper/model"
+	"go-bookkeeper/helpers"
 )
 
 // For http.Status, see:
@@ -79,7 +80,12 @@ func EditCashFlow(c echo.Context) error {
 	entry.Model.ID = uint(id)
 	entry = entry.Get(db)
 
+	dh := new(helpers.DateHelper)
+	dh.Init()
+
 	data := map[string]any{ "cash_flow": entry,
-				"button_text": "Update" }
+				"date_helper": dh,
+				"cash_flow_types": new(model.CashFlowType).List(db),
+				"categories": new(model.CategoryType).List(db) }
 	return c.Render(http.StatusOK, "cash_flows/edit.html", data)
 }
