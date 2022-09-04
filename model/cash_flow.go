@@ -32,6 +32,7 @@ type CashFlow struct {
 	PayeeName string `form:"payee_name" gorm:"-:all"`
 	CategoryID uint `form:"category_id"`
 	Category Category
+	CategoryName string `gorm:"-:all"`
 }
 
 func (CashFlow) Currency(value decimal.Decimal) string {
@@ -45,10 +46,17 @@ func (CashFlow) ParentID() any {
 func (c *CashFlow) Preload(db *gorm.DB) {
 	if c.Transfer {
 		c.PayeeName = "Transfer"
+		c.CategoryName = "Transfer"
 	} else {
 		c.Payee.ID = c.PayeeID
 		db.First(&c.Payee)
 		c.PayeeName = c.Payee.Name
+
+		if c.CategoryID > 0 {
+			c.Category.ID = c.CategoryID
+			db.First(&c.Category)
+			c.CategoryName = c.Category.Name
+		}
 	}
 }
 

@@ -21,12 +21,8 @@
 {% endif -%}
 <td>{{ c.Date.Format("2006-01-02") }}</td>
 <td>{{ c.Transnum }}</td>
-{% if c.Transfer -%}
-<td> Transfer </td>
-{% else -%}
 <td>{{ c.PayeeName }}</td>
-{% endif -%}
-<td> Category Name </td>
+<td>{{ c.CategoryName }}</td>
 <td class="currency">{{ c.Currency(c.Amount) }}</td>
 <td class="currency">{{ c.Currency(c.Balance) }}</td>
 <td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
