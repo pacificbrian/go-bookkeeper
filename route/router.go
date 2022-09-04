@@ -43,7 +43,6 @@ func Init() *echo.Echo {
 	e.GET("/accounts", controllers.ListAccounts)   // Index/List
 	e.POST("/accounts", controllers.CreateAccount) // Create
 	e.GET("/accounts/new", controllers.NewAccount)
-
 	e.GET("/accounts/:id/edit", controllers.EditAccount)
 	e.GET("/accounts/:id", controllers.GetAccount) // Show
 	e.POST("/accounts/:id", controllers.UpdateAccount) // Update
@@ -52,6 +51,12 @@ func Init() *echo.Echo {
 	e.POST("/accounts/:id/cash_flows", controllers.CreateCashFlow)
 	e.GET("/cash_flows/:id/edit", controllers.EditCashFlow)
 	e.POST("/cash_flows/:id", controllers.UpdateCashFlow)
+
+	e.GET("/payees", controllers.ListPayees)
+	e.POST("/payees", controllers.CreatePayee)
+	//e.GET("/payees/:id/edit", controllers.EditPayee)
+	//e.GET("/payees/:id", controllers.GetPayee)
+	e.POST("/payees/:id", controllers.UpdatePayee)
 
 	return e
 }

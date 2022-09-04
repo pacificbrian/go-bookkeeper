@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="show">
+<h2>Payees</h2>
+
+<table>
+{% for p in payees -%}
+<tr>
+{% if account -%}
+<td><a href=/accounts/{{ account.ID }}/payees/{{ p.Name }}>{{ p.Name }}</a></td>
+{% else -%}
+<td><a href=/payees/{{ p.ID }}>{{ p.Name }}</a></td>
+{% endif -%}
+<td>{{ p.Category.Name }}</td>
+<td>{{ p.use_count(account) }}</td>
+{% if p.use_count(account) == 0 -%}
+<td><a href=/payees/{{ p.ID }} method="delete">Delete</a></td>
+{% else -%}
+<td></td>
+{% endif -%}
+</tr>
+{% endfor -%}
+</table>
+
+<form method="POST" action="/payees">
+<fieldset>
+<label>Payee Name</label>
+<input type="text" name="payee.Name"/>
+</fieldset>
+<fieldset>
+<label>Payee Address</label>
+<input type="text" name="payee.Address"/>
+</fieldset>
+<fieldset class="last">
+<label>Default Category</label>
+{{ form_select_type(categories, "payee.category_id") }}
+</fieldset>
+<fieldset class="submit">
+<input type="submit" value="Add Payee"/>
+</fieldset>
+</form>
+</div>
+
+{% if account -%}
+<ul id="footmenu">
+<li><a href=/accounts/{{ account.ID }}>Back to Account</a></li>
+</ul>
+{% endif -%}
+
+{% endblock -%}

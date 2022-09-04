@@ -54,6 +54,16 @@ func payeeGetByName(db *gorm.DB, name string) *Payee {
 	return payee
 }
 
+func (p *Payee) Create(db *gorm.DB) {
+	u := GetCurrentUser()
+	if u != nil {
+		// Payee.User is set to CurrentUser()
+		p.UserID = u.ID
+		spew.Dump(p)
+		db.Create(p)
+	}
+}
+
 func (p *Payee) HaveAccessPermission() bool {
 	u := GetCurrentUser()
 	return !(u == nil || u.ID != p.UserID)
@@ -66,5 +76,21 @@ func (p *Payee) Get(db *gorm.DB) *Payee {
 	if !p.HaveAccessPermission() {
 		return nil
 	}
+	return p
+}
+
+func (p *Payee) Delete(db *gorm.DB) {
+	// Verify we have access to Payee
+	p = p.Get(db)
+	if p != nil {
+		spew.Dump(p)
+		db.Delete(p)
+	}
+}
+
+// Payee access already verified with Get
+func (p *Payee) Update(db *gorm.DB) *Payee {
+	spew.Dump(p)
+	db.Save(p)
 	return p
 }
