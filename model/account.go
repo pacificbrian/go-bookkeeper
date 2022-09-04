@@ -42,6 +42,12 @@ func (*Account) List(db *gorm.DB) []Account {
 	return ListAccounts(db)
 }
 
+func (a *Account) Init() *Account {
+	a.Taxable = true
+	// a.UserID unset (not needed for New)
+	return a
+}
+
 func (a *Account) Delete(db *gorm.DB) {
 	if a.Hidden {
 		db.Delete(a)

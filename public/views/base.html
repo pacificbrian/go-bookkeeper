@@ -27,7 +27,15 @@
 </select>
 {% endmacro -%}
 
-{% macro date_select(helper) %}
+{% macro form_checkbox(name, checked) -%}
+{% if checked -%}
+<input type="checkbox" name="{{name}}" value="1" checked="checked"/>
+{% else -%}
+<input type="checkbox" name="{{name}}" value="0"/>
+{% endif -%}
+{% endmacro -%}
+
+{% macro form_date_select(helper) %}
 <select name="date_year">
 {% for y in helper.Years -%}
 {% if forloop.Counter == helper.YearIndex -%}

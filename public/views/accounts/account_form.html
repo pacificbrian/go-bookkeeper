@@ -10,12 +10,12 @@
 </td>
 <td>
 <label>Taxable</label>
-<input type="checkbox" name="account.Taxable" checked="{{account.Taxable}}"/>
+{{ form_checkbox("account.Taxable", account.Taxable) }}
 </td>
 {% if is_edit -%}
 <td>
 <label>Hidden</label>
-<input type="checkbox" name="account.Hidden" checked="{{account.Hidden}}"/>
+{{ form_checkbox("account.Hidden", account.Hidden) }}
 </td>
 {% endif -%}
 </table>

@@ -145,7 +145,7 @@ func NewAccount(c echo.Context) error {
 	log.Println("NEW ACCOUNT")
 	db := gormdb.DbManager()
 
-	data := map[string]any{ "account": new(model.Account),
+	data := map[string]any{ "account": new(model.Account).Init(),
 				"button_text": "Create Account",
 				"account_types": new(model.AccountType).List(db),
 				"currency_types": new(model.CurrencyType).List(db) }
