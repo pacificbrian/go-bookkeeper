@@ -54,11 +54,11 @@ func DeletePayee(c echo.Context) error {
 
 	entry := new(model.Payee)
 	entry.ID = uint(id)
-	entry.Delete(db)
-	// set status based on if Delete failed
-	// return c.NoContent(http.StatusUnauthorized)
-
-	return c.NoContent(http.StatusAccepted)
+	if entry.Delete(db) != nil {
+		return c.NoContent(http.StatusUnauthorized)
+	} else {
+		return c.NoContent(http.StatusAccepted)
+	}
 }
 
 func UpdatePayee(c echo.Context) error {

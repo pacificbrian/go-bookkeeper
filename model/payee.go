@@ -7,6 +7,7 @@
 package model
 
 import (
+	"errors"
 	"github.com/davecgh/go-spew/spew"
 	"gorm.io/gorm"
 )
@@ -54,14 +55,16 @@ func payeeGetByName(db *gorm.DB, name string) *Payee {
 	return payee
 }
 
-func (p *Payee) Create(db *gorm.DB) {
+func (p *Payee) Create(db *gorm.DB) error {
 	u := GetCurrentUser()
 	if u != nil {
 		// Payee.User is set to CurrentUser()
 		p.UserID = u.ID
 		spew.Dump(p)
-		db.Create(p)
+		result := db.Create(p)
+		return result.Error
 	}
+	return errors.New("Permission Denied")
 }
 
 func (p *Payee) HaveAccessPermission() bool {
@@ -79,18 +82,20 @@ func (p *Payee) Get(db *gorm.DB) *Payee {
 	return p
 }
 
-func (p *Payee) Delete(db *gorm.DB) {
+func (p *Payee) Delete(db *gorm.DB) error {
 	// Verify we have access to Payee
 	p = p.Get(db)
 	if p != nil {
 		spew.Dump(p)
 		db.Delete(p)
+		return nil
 	}
+	return errors.New("Permission Denied")
 }
 
 // Payee access already verified with Get
-func (p *Payee) Update(db *gorm.DB) *Payee {
+func (p *Payee) Update(db *gorm.DB) error {
 	spew.Dump(p)
-	db.Save(p)
-	return p
+	result := db.Save(p)
+	return result.Error
 }

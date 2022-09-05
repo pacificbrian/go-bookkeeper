@@ -7,6 +7,7 @@
 package model
 
 import (
+	"errors"
 	"github.com/shopspring/decimal"
 	"github.com/davecgh/go-spew/spew"
 	"gorm.io/gorm"
@@ -56,14 +57,16 @@ func (a *Account) Init() *Account {
 	return a
 }
 
-func (a *Account) Create(db *gorm.DB) {
+func (a *Account) Create(db *gorm.DB) error {
 	u := GetCurrentUser()
 	if u != nil {
 		// Account.User is set to CurrentUser()
 		a.UserID = u.ID
 		spew.Dump(a)
-		db.Create(a)
+		result := db.Create(a)
+		return result.Error
 	}
+	return errors.New("Permission Denied")
 }
 
 func (a *Account) HaveAccessPermission() bool {
@@ -94,7 +97,7 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 	return a
 }
 
-func (a *Account) Delete(db *gorm.DB) {
+func (a *Account) Delete(db *gorm.DB) error {
 	// Verify we have access to Account
 	a = a.Get(db, false)
 	if a != nil {
@@ -106,13 +109,14 @@ func (a *Account) Delete(db *gorm.DB) {
 			db.Delete(a)
 		}
 		spew.Dump(a)
+		return nil
 	}
+	return errors.New("Permission Denied")
 }
 
 // Account access already verified with Get
-func (a *Account) Update(db *gorm.DB) *Account {
+func (a *Account) Update(db *gorm.DB) error {
 	spew.Dump(a)
-	db.Save(a)
-
-	return a
+	result := db.Save(a)
+	return result.Error
 }
