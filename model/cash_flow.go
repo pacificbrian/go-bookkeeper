@@ -7,6 +7,7 @@
 package model
 
 import (
+	"errors"
 	"time"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
@@ -21,6 +22,7 @@ type CashFlow struct {
 	Date time.Time
 	TaxYear int `form:"tax_year"`
 	Amount decimal.Decimal `form:"amount" gorm:"not null"`
+	oldAmount decimal.Decimal `gorm:"-:all"`
 	Balance decimal.Decimal `gorm:"-:all"`
 	SplitFrom uint `form:"split_from"`
 	Split bool `form:"split"`
@@ -64,8 +66,8 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 func (*CashFlow) List(db *gorm.DB, account *Account) []CashFlow {
 	entries := []CashFlow{}
 	if account.Verified {
-		db.Find(&entries, &CashFlow{AccountID: account.ID})
-		// need to sort by Date
+		// sort by Date
+		db.Order("date desc").Find(&entries, &CashFlow{AccountID: account.ID})
 
 		// update Balances
 		balance := account.Balance
@@ -85,7 +87,7 @@ func (c *CashFlow) HaveAccessPermission() bool {
 	return !(u == nil || u.ID != c.Account.UserID)
 }
 
-func (c *CashFlow) Create(db *gorm.DB) {
+func (c *CashFlow) Create(db *gorm.DB) error {
 	// Verify we have access to Account
 	c.Account.ID = c.AccountID
 	account := c.Account.Get(db, false)
@@ -96,8 +98,13 @@ func (c *CashFlow) Create(db *gorm.DB) {
 			c.PayeeID = p.ID
 		}
 		spew.Dump(c)
-		db.Create(c)
+		result := db.Create(c)
+		if result.Error == nil {
+			account.UpdateBalance(db, c)
+		}
+		return result.Error
 	}
+	return errors.New("Permission Denied")
 }
 
 // Edit, Delete, Update use Get
@@ -111,21 +118,35 @@ func (c *CashFlow) Get(db *gorm.DB, preload bool) *CashFlow {
 	if preload {
 		c.Preload(db)
 	}
+	c.oldAmount = c.Amount
 	return c
 }
 
-func (c *CashFlow) Delete(db *gorm.DB) {
+func (c *CashFlow) Delete(db *gorm.DB) error {
 	// Verify we have access to CashFlow
 	c = c.Get(db, false)
 	if c != nil {
 		spew.Dump(c)
 		db.Delete(c)
+
+		account := new(Account)
+		account.ID = c.AccountID
+		c.Amount = decimal.Zero
+		account.UpdateBalance(db, c)
+
+		return nil
 	}
+	return errors.New("Permission Denied")
 }
 
 // CashFlow access already verified with Get
-func (c *CashFlow) Update(db *gorm.DB) *CashFlow {
+func (c *CashFlow) Update(db *gorm.DB) error {
 	spew.Dump(c)
-	db.Save(c)
-	return c
+	result := db.Save(c)
+	if result.Error == nil {
+		account := new(Account)
+		account.ID = c.AccountID
+		account.UpdateBalance(db, c)
+	}
+	return result.Error
 }

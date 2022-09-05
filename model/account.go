@@ -57,6 +57,11 @@ func (a *Account) Init() *Account {
 	return a
 }
 
+func (a *Account) UpdateBalance(db *gorm.DB, c *CashFlow) {
+	a.Balance = (a.Balance.Sub(c.oldAmount)).Add(c.Amount)
+	db.Model(a).Update("Balance", a.Balance)
+}
+
 func (a *Account) Create(db *gorm.DB) error {
 	u := GetCurrentUser()
 	if u != nil {
