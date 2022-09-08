@@ -3,3 +3,6 @@
 *.sql*
 *.swp
 TODO
+*.lock
+node_modules/
+public/javascript/bundle.js
