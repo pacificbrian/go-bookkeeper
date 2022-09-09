@@ -13,15 +13,8 @@ import (
 	"go-bookkeeper/controllers"
 )
 
-func UseTemplates(e *echo.Echo) echo.Renderer {
-	views := NewTemplate()
-	//views.Add("index.html", "public/views/base.html")
-
-	return views
-}
-
 func UsePongo2(e *echo.Echo) echo.Renderer {
-	r, err := echopongo2.NewRenderer("public/views/")
+	r, err := echopongo2.NewRenderer("views/")
 	if err != nil {
 		r = nil
 	}
