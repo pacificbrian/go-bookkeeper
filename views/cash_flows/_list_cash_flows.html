@@ -21,7 +21,11 @@
 {% endif -%}
 <td>{{ c.Date.Format("2006-01-02") }}</td>
 <td>{{ c.Transnum }}</td>
+{% if c.Transfer -%}
+<td><a href=/accounts/{{ c.PayeeID }}>{{ c.PayeeName }}</a></td>
+{% else -%}
 <td>{{ c.PayeeName }}</td>
+{% endif -%}
 <td>{{ c.CategoryName }}</td>
 <td class="currency">
 <div data-cashflow-target="cashflowAmount" data-cashflow-id="{{ c.ID }}" data-action="click->cashflow#actionEditAmount">

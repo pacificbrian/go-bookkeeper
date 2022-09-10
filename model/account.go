@@ -51,6 +51,24 @@ func (*Account) List(db *gorm.DB) []Account {
 	return ListAccounts(db)
 }
 
+func accountGetByName(db *gorm.DB, name string) *Account {
+	u := GetCurrentUser()
+	if u == nil {
+		return nil
+	}
+
+	a := new(Account)
+	a.Name = name
+	a.UserID = u.ID
+	// need Where because these are not primary keys
+	db.Where(&a).First(&a)
+
+	if a.ID == 0 {
+		return nil
+	}
+	return a
+}
+
 func (a *Account) Init() *Account {
 	a.Taxable = true
 	// a.UserID unset (not needed for New)
