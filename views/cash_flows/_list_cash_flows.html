@@ -12,7 +12,7 @@
 <th class="noedit"></th>
 </tr>
 </thead>
-<tbody>
+<tbody data-controller="cashflow">
 {% for c in cash_flows -%}
 {% if (forloop.Counter0 % 2) == 0 -%}
 <tr id="{{ c.ID }}">
@@ -23,7 +23,12 @@
 <td>{{ c.Transnum }}</td>
 <td>{{ c.PayeeName }}</td>
 <td>{{ c.CategoryName }}</td>
-<td class="currency">{{ c.Currency(c.Amount) }}</td>
+<td class="currency">
+<div data-cashflow-target="cashflowAmount" data-cashflow-id="{{ c.ID }}" data-action="click->cashflow#actionEditAmount">
+{{ c.Currency(c.Amount) }}
+</div>
+<input hidden type="text" name="amount" value="{{c.Amount}}" data-cashflow-target="cashflowNewAmount" data-cashflow-id="{{ c.ID }}" data-action="keydown->cashflow#actionPutNewAmount"/>
+</td>
 <td class="currency">{{ c.Currency(c.Balance) }}</td>
 <td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
 <td><a href=/cash_flows/{{ c.ID }} method="delete">Delete</a></dd>

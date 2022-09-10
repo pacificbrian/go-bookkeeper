@@ -177,6 +177,10 @@ td.opts, td.number, td.date {
   text-align: center;
 }
 
+.ledger input {
+  max-width: 50px;
+}
+
 div.show, div.listing, div.new, div.edit, div.chart {
   float: left;
   margin-right: 50px;
