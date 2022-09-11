@@ -50,11 +50,6 @@ func (*Account) List(db *gorm.DB) []Account {
 	return ListAccounts(db)
 }
 
-func (a *Account) HaveAccessPermission() bool {
-	u := GetCurrentUser()
-	return !(u == nil || u.ID != a.UserID)
-}
-
 func (a *Account) Init() *Account {
 	a.Taxable = true
 	// a.UserID unset (not needed for New)
@@ -69,6 +64,13 @@ func (a *Account) Create(db *gorm.DB) {
 		spew.Dump(a)
 		db.Create(a)
 	}
+}
+
+func (a *Account) HaveAccessPermission() bool {
+	u := GetCurrentUser()
+	// store in a.Verified if this Account is trusted
+	a.Verified = !(u == nil || u.ID != a.UserID)
+	return a.Verified
 }
 
 // Show, Edit, Delete, Update use Get
@@ -86,8 +88,6 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 		return nil
 	}
 
-	// Set verified so this Account is trusted
-	a.Verified = true
 	if preload {
 		spew.Dump(a)
 	}
