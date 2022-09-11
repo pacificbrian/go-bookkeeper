@@ -86,6 +86,10 @@ func NewSplitCashFlow(db *gorm.DB, SplitFrom uint) (*CashFlow, int) {
 	return c, 0
 }
 
+func (c *CashFlow) HasSplits() bool {
+	return !c.Split && c.SplitFrom > 0
+}
+
 func (c *CashFlow) Preload(db *gorm.DB) {
 	if c.Transfer {
 		a := new(Account)
@@ -97,7 +101,9 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 		db.First(&c.Payee)
 		c.PayeeName = c.Payee.Name
 
-		if c.CategoryID > 0 {
+		if c.HasSplits() {
+			c.CategoryName = "Split"
+		} else if c.CategoryID > 0 {
 			c.Category.ID = c.CategoryID
 			db.First(&c.Category)
 			c.CategoryName = c.Category.Name
@@ -253,6 +259,11 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 			if c.Split {
 				log.Printf("[MODEL] CREATE CASHFLOW(%d) PARENT(%d)", c.ID, c.SplitFrom)
 				spew.Dump(c)
+
+				// increment split count in parent
+				parent := new(CashFlow)
+				parent.ID = c.SplitFrom
+				db.Model(parent).Update("split_from", gorm.Expr("split_from + ?", 1))
 			} else {
 				log.Printf("[MODEL] CREATE CASHFLOW(%d)", c.ID)
 				spew.Dump(c)
@@ -313,6 +324,11 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 func (c *CashFlow) delete(db *gorm.DB) {
 	if c.Split {
 		log.Printf("[MODEL] DELETE CASHFLOW(%d) PARENT(%d)", c.ID, c.SplitFrom)
+
+		// decrement split count in parent
+		parent := new(CashFlow)
+		parent.ID = c.SplitFrom
+		db.Model(parent).Update("split_from", gorm.Expr("split_from - ?", 1))
 	} else {
 		log.Printf("[MODEL] DELETE CASHFLOW(%d)", c.ID)
 		// delete SplitCashFlows first
