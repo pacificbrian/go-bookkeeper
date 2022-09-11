@@ -42,8 +42,8 @@
 </p>
 </form>
 
-{% if not cash_flow.Transfer -%}
-<form method="POST" action="/cash_flows">
+{% if cash_flow.CanSplit() -%}
+<form method="POST" action="/cash_flows/{{cash_flow.ID}}/split">
 <table>
 <tr>
 <td><br> {{ form_select_type(cash_flow_types, "cash_flow_type_id") }} </td>
@@ -57,8 +57,6 @@
 <td>Memo:<br> <input type="text" name="memo"/> </td>
 </td>
 </table>
-<input type="hidden" name="split_from" value="{{cash_flow.ID}}"/>
-<input type="hidden" name="split" value="true"/>
 <p>
 <input type="submit" value="Add Split"/>
 </p>
@@ -72,7 +70,7 @@
 {% if not cash_flow.Transfer -%}
 <li><a href=/payees/{{cash_flow.PayeeID}}>Back to Payee</a></li>
 {% endif -%}
-{% if cash_flow.ParentID -%}
+{% if cash_flow.ParentID > 0 -%}
 <li><a href=/cash_flows/{{ cash_flow.ParentID }}/edit>Edit Parent CashFlow</a></li>
 {% endif -%}
 <li><a href=/cash_flows/{{ cash_flow.ID }} method="delete">Delete CashFlow</a></li>

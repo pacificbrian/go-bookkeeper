@@ -9,6 +9,7 @@ package model
 import (
 	"errors"
 	"log"
+	"net/http"
 	"time"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
@@ -34,8 +35,8 @@ type CashFlow struct {
 	Amount decimal.Decimal `form:"amount" gorm:"not null"`
 	oldAmount decimal.Decimal `gorm:"-:all"`
 	Balance decimal.Decimal `gorm:"-:all"`
-	SplitFrom uint `form:"split_from"`
-	Split bool `form:"split"`
+	SplitFrom uint
+	Split bool
 	Transfer bool
 	Transnum string `form:"transnum"`
 	Memo string `form:"memo"`
@@ -46,14 +47,43 @@ type CashFlow struct {
 	oldPairID uint `gorm:"-:all"`
 	Category Category
 	CategoryName string `gorm:"-:all"`
+	Type string `gorm:"default:NULL"`
 }
 
 func (CashFlow) Currency(value decimal.Decimal) string {
 	return  "$" + value.StringFixedBank(2)
 }
 
-func (CashFlow) ParentID() any {
-	return nil
+func (c CashFlow) ParentID() uint {
+	if !c.Split {
+		return 0
+	}
+	return c.SplitFrom
+}
+
+func (c *CashFlow) CanSplit() bool {
+	return !(c.Transfer || c.Split)
+}
+
+// Used with CreateSplitCashFlow. Controller calls to get common CashFlow
+// fields first, and before Bind (which can/will override other fields).
+func NewSplitCashFlow(db *gorm.DB, SplitFrom uint) (*CashFlow, int) {
+	c := new(CashFlow)
+	c.ID = SplitFrom
+	c = c.Get(db, false)
+	if c == nil {
+		return nil, http.StatusUnauthorized
+	}
+	if !c.CanSplit() {
+		return nil, http.StatusBadRequest
+	}
+
+	c.Type = "Split"
+	c.Split = true
+	c.SplitFrom = SplitFrom
+	c.oldAmount = decimal.Zero
+	c.ID = 0
+	return c, 0
 }
 
 func (c *CashFlow) Preload(db *gorm.DB) {
@@ -80,7 +110,10 @@ func (*CashFlow) List(db *gorm.DB, account *Account) []CashFlow {
 	entries := []CashFlow{}
 	if account.Verified {
 		// sort by Date
-		db.Order("date desc").Find(&entries, &CashFlow{AccountID: account.ID})
+		// db.Order("date desc").Find(&entries, &CashFlow{AccountID: account.IDl})
+		// use map to support NULL string
+		query := map[string]interface{}{"account_id": account.ID, "type": nil}
+		db.Order("date desc").Find(&entries, query)
 
 		// update Balances
 		balance := account.Balance
@@ -193,7 +226,7 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 			oldPair.delete(db)
 		}
 
-		if c.PayeeName != "" {
+		if !c.Split && c.PayeeName != "" {
 			// creates Payee if none exists
 			p := payeeGetByName(db, c.PayeeName)
 			c.PayeeID = p.ID
@@ -217,12 +250,22 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 			err = result.Error
 		}
 		if err == nil {
-			log.Printf("[MODEL] CREATE CASHFLOW(%d)", c.ID)
-			spew.Dump(c)
-			account.UpdateBalance(db, c)
+			if c.Split {
+				log.Printf("[MODEL] CREATE CASHFLOW(%d) PARENT(%d)", c.ID, c.SplitFrom)
+				spew.Dump(c)
+			} else {
+				log.Printf("[MODEL] CREATE CASHFLOW(%d)", c.ID)
+				spew.Dump(c)
+				account.UpdateBalance(db, c)
+			}
 
-			// create pair CashFlow if have one (Transfers)
+			// Create pair CashFlow if have one (Transfers)
+			// Note, cannot be a Split
 			if pair != nil {
+				// mark when paired with a Split (Update restrictions)
+				if c.Split {
+					pair.SplitFrom = c.SplitFrom
+				}
 				// categoryID stores paired CashFlow.ID
 				pair.CategoryID = c.ID
 				db.Create(pair)
@@ -268,7 +311,13 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 }
 
 func (c *CashFlow) delete(db *gorm.DB) {
-	log.Printf("[MODEL] DELETE CASHFLOW(%d)", c.ID)
+	if c.Split {
+		log.Printf("[MODEL] DELETE CASHFLOW(%d) PARENT(%d)", c.ID, c.SplitFrom)
+	} else {
+		log.Printf("[MODEL] DELETE CASHFLOW(%d)", c.ID)
+		// delete SplitCashFlows first
+	}
+
 	db.Delete(c)
 
 	c.Account.ID = c.AccountID
@@ -282,6 +331,12 @@ func (c *CashFlow) Delete(db *gorm.DB) error {
 	c = c.Get(db, false)
 	if c != nil {
 		c.delete(db)
+
+		if c.Transfer {
+			pair := new(CashFlow)
+			pair.pairFrom(c)
+			pair.delete(db)
+		}
 	}
 	return errors.New("Permission Denied")
 }
@@ -294,12 +349,18 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 		err = result.Error
 	}
 	if err == nil {
-		log.Printf("[MODEL] UPDATE CASHFLOW(%d)", c.ID)
-		spew.Dump(c)
 		c.Account.ID = c.AccountID
-		c.Account.UpdateBalance(db, c)
+		if c.Split {
+			log.Printf("[MODEL] UPDATE CASHFLOW(%d) PARENT(%d)", c.ID, c.SplitFrom)
+			spew.Dump(c)
+		} else {
+			log.Printf("[MODEL] UPDATE CASHFLOW(%d)", c.ID)
+			spew.Dump(c)
+			c.Account.UpdateBalance(db, c)
+		}
 
-		// create or save pair CashFlow if have one (Transfers)
+		// Create or save pair CashFlow if have one (Transfers)
+		// Note, either side might be a Split
 		if pair != nil {
 			if pair.ID == 0 {
 				db.Create(pair)
@@ -311,19 +372,21 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 				log.Printf("[MODEL] UPDATE PAIR CASHFLOW(%d)", pair.ID)
 			}
 
-			// if pair.Account changed, need two updates
-			if pair.oldAccountID > 0 &&
-			   pair.oldAccountID != pair.AccountID {
-				newAccountUpdateAmount := pair.Amount
-				pair.Amount = decimal.Zero
-				pair.Account.ID = pair.oldAccountID
-				pair.Account.UpdateBalance(db, pair)
+			if !(pair.Split) {
+				// if pair.Account changed, need two updates
+				if pair.oldAccountID > 0 &&
+				   pair.oldAccountID != pair.AccountID {
+					newAccountUpdateAmount := pair.Amount
+					pair.Amount = decimal.Zero
+					pair.Account.ID = pair.oldAccountID
+					pair.Account.UpdateBalance(db, pair)
 
-				pair.oldAmount = decimal.Zero
-				pair.Amount = newAccountUpdateAmount
+					pair.oldAmount = decimal.Zero
+					pair.Amount = newAccountUpdateAmount
+				}
+				pair.Account.ID = pair.AccountID
+				pair.Account.UpdateBalance(db, pair)
 			}
-			pair.Account.ID = pair.AccountID
-			pair.Account.UpdateBalance(db, pair)
 		}
 	}
 	return err

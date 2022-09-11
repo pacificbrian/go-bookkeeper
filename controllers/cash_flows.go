@@ -39,6 +39,22 @@ func CreateCashFlow(c echo.Context) error {
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
 }
 
+func CreateSplitCashFlow(c echo.Context) error {
+	split_from, _ := strconv.Atoi(c.Param("id"))
+	log.Printf("CREATE SPLIT CASHFLOW (PARENT:%d)", split_from)
+	db := gormdb.DbManager()
+
+	entry, httpStatus := model.NewSplitCashFlow(db, uint(split_from))
+	if entry == nil {
+		return c.NoContent(httpStatus)
+	}
+
+	// from NewSplitCashFlow, we already have: AccountID, Date, Payee
+	c.Bind(entry)
+	entry.Create(db)
+	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/cash_flows/%d/edit", split_from))
+}
+
 func DeleteCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("DELETE CASHFLOW(%d)", id)
