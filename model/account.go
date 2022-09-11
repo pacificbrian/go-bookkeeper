@@ -8,6 +8,7 @@ package model
 
 import (
 	"errors"
+	"log"
 	"github.com/shopspring/decimal"
 	"github.com/davecgh/go-spew/spew"
 	"gorm.io/gorm"
@@ -76,8 +77,13 @@ func (a *Account) Init() *Account {
 }
 
 func (a *Account) UpdateBalance(db *gorm.DB, c *CashFlow) {
-	a.Balance = (a.Balance.Sub(c.oldAmount)).Add(c.Amount)
-	db.Model(a).Update("Balance", a.Balance)
+	newBalance := (a.Balance.Sub(c.oldAmount)).Add(c.Amount)
+	if !(a.Balance.Equal(newBalance)) {
+		log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): %f -> %f",
+			   a.ID, c.ID, a.Balance.InexactFloat64(), newBalance.InexactFloat64())
+		db.Model(a).Update("Balance", newBalance)
+		a.Balance = newBalance
+	}
 }
 
 func (a *Account) Create(db *gorm.DB) error {

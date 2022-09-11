@@ -8,6 +8,7 @@ package model
 
 import (
 	"errors"
+	"log"
 	"time"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
@@ -38,10 +39,11 @@ type CashFlow struct {
 	Transfer bool
 	Transnum string `form:"transnum"`
 	Memo string `form:"memo"`
-	PayeeID uint `gorm:"not null"`
+	PayeeID uint `gorm:"not null"` // also serves as Pair.AccountID (Transfers)
 	Payee Payee
 	PayeeName string `form:"payee_name" gorm:"-:all"`
-	CategoryID uint `form:"category_id"`
+	CategoryID uint `form:"category_id"` // also serves as Pair.ID (Transfers)
+	oldPairID uint `gorm:"-:all"`
 	Category Category
 	CategoryName string `gorm:"-:all"`
 }
@@ -88,6 +90,8 @@ func (*CashFlow) List(db *gorm.DB, account *Account) []CashFlow {
 			balance = balance.Sub(c.Amount)
 			c.Preload(db)
 		}
+
+		log.Printf("[MODEL] LIST CASHFLOWS ACCOUNT(%d:%d)", account.ID, len(entries))
 	}
 	return entries
 }
@@ -98,10 +102,25 @@ func (c *CashFlow) HaveAccessPermission() bool {
 	return !(u == nil || u.ID != c.Account.UserID)
 }
 
+func (c *CashFlow) determineCashFlowType() {
+	if c.Amount.IsPositive() {
+		c.CashFlowTypeID = Credit
+	} else {
+		c.CashFlowTypeID = Debit
+	}
+	if c.Transfer {
+		c.CashFlowTypeID += 2
+	}
+}
+
 func (c *CashFlow) applyCashFlowType() {
+	// Transfer not set during Bind, is updated here
 	switch c.CashFlowTypeID {
 	case Debit:
 		c.Amount = c.Amount.Neg()
+		c.Transfer = false
+	case Credit:
+		c.Transfer = false
 	case DebitTransfer:
 		c.Amount = c.Amount.Neg()
 		c.Transfer = true
@@ -119,10 +138,26 @@ func (c *CashFlow) cloneTransfer(src *CashFlow) {
 	c.oldAccountID = c.AccountID // used if Update
 	c.AccountID = src.PayeeID
 	c.PayeeID = src.AccountID
+	c.CategoryID = src.ID
 	c.oldAmount = c.Amount // used if Update
 	c.Amount = src.Amount.Neg()
 }
 
+// Using src CashFlow, construct the Pair (other side of a Transfer)
+// This is used during Update or Delete
+func (c *CashFlow) pairFrom(src *CashFlow) {
+	c.Transfer = true
+	c.ID = src.oldPairID
+	c.AccountID = src.PayeeID
+	c.Amount = src.oldAmount.Neg()
+}
+
+// prepare CashFlow to write to DB (used by both Create and Update)
+//   - update Amount and Transfer based on CashFlowType
+//   - create Payee if needed
+//   - lookup Account (error if not found/accessible)
+//   - return Pair cashflow (for other Account) if this is a Transfer
+//   - UPDATEs are allowed to change to/from Transfer type and change Peer Account
 func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 	var pair *CashFlow = nil // Transfer Pair
 
@@ -133,14 +168,30 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 			if a == nil {
 				return errors.New("Account.Name Invalid"), nil
 			}
-			// store pair account.ID in PayeeID (aka TransferAccountID)
-			c.PayeeID = a.ID
 
 			// create pair CashFlow
 			pair = new(CashFlow)
+			if c.oldPairID > 0 {
+				// #UPDATE: use existing pair CashFlow
+				c.CategoryID = c.oldPairID
+				pair.pairFrom(c)
+			}
+
+			// store pair account.ID in PayeeID (aka TransferAccountID)
+			c.PayeeID = a.ID
+
+			// fill in pair CashFlow with remaining details
 			pair.cloneTransfer(c)
+			// #UPDATE: if pair.AccountID changed, this is handled in caller
 		}
 	} else {
+		// #UPDATE: if Transfer type True->False, delete pair CashFlow
+		if c.oldPairID > 0 {
+			oldPair := new(CashFlow)
+			oldPair.pairFrom(c)
+			oldPair.delete(db)
+		}
+
 		if c.PayeeName != "" {
 			// creates Payee if none exists
 			p := payeeGetByName(db, c.PayeeName)
@@ -161,11 +212,12 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 
 		err, pair := c.prepareInsertCashFlow(db)
 		if err == nil {
-			spew.Dump(c)
 			result := db.Create(c)
 			err = result.Error
 		}
 		if err == nil {
+			log.Printf("[MODEL] CREATE CASHFLOW(%d)", c.ID)
+			spew.Dump(c)
 			account.UpdateBalance(db, c)
 
 			// create pair CashFlow if have one (Transfers)
@@ -175,6 +227,7 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 				db.Create(pair)
 				c.CategoryID = pair.ID
 				db.Model(c).Update("CategoryID", pair.ID)
+				log.Printf("[MODEL] CREATE PAIR CASHFLOW(%d)", pair.ID)
 
 				pair.Account.ID = pair.AccountID
 				pair.Account.UpdateBalance(db, pair)
@@ -196,37 +249,79 @@ func (c *CashFlow) Get(db *gorm.DB, preload bool) *CashFlow {
 	if preload {
 		c.Preload(db)
 	}
+
+	c.determineCashFlowType()
 	c.oldAmount = c.Amount
+	if c.Transfer {
+		// backup CategoryID as cleared by Bind
+		c.oldPairID = c.CategoryID // Peer Cashflow (Transfers)
+		c.CategoryID = 0
+	}
+
 	return c
+}
+
+func (c *CashFlow) delete(db *gorm.DB) {
+	log.Printf("[MODEL] DELETE CASHFLOW(%d)", c.ID)
+	db.Delete(c)
+
+	c.Account.ID = c.AccountID
+	c.oldAmount = c.Amount
+	c.Amount = decimal.Zero
+	// UpdateBalance will subtract c.oldAmount
+	c.Account.UpdateBalance(db, c)
 }
 
 func (c *CashFlow) Delete(db *gorm.DB) error {
 	// Verify we have access to CashFlow
 	c = c.Get(db, false)
 	if c != nil {
-		spew.Dump(c)
-		db.Delete(c)
-
-		account := new(Account)
-		account.ID = c.AccountID
-		c.Amount = decimal.Zero
-		account.UpdateBalance(db, c)
-
-		return nil
+		c.delete(db)
 	}
 	return errors.New("Permission Denied")
 }
 
 // CashFlow access already verified with Get
 func (c *CashFlow) Update(db *gorm.DB) error {
-	spew.Dump(c)
-	result := db.Save(c)
-	if result.Error == nil {
-		account := new(Account)
-		account.ID = c.AccountID
-		account.UpdateBalance(db, c)
+	err, pair := c.prepareInsertCashFlow(db)
+	if err == nil {
+		result := db.Save(c)
+		err = result.Error
 	}
-	return result.Error
+	if err == nil {
+		log.Printf("[MODEL] UPDATE CASHFLOW(%d)", c.ID)
+		spew.Dump(c)
+		c.Account.ID = c.AccountID
+		c.Account.UpdateBalance(db, c)
+
+		// create or save pair CashFlow if have one (Transfers)
+		if pair != nil {
+			if pair.ID == 0 {
+				db.Create(pair)
+				c.CategoryID = pair.ID
+				db.Model(c).Update("CategoryID", pair.ID)
+				log.Printf("[MODEL] CREATE PAIR CASHFLOW(%d)", pair.ID)
+			} else {
+				db.Save(pair)
+				log.Printf("[MODEL] UPDATE PAIR CASHFLOW(%d)", pair.ID)
+			}
+
+			// if pair.Account changed, need two updates
+			if pair.oldAccountID > 0 &&
+			   pair.oldAccountID != pair.AccountID {
+				newAccountUpdateAmount := pair.Amount
+				pair.Amount = decimal.Zero
+				pair.Account.ID = pair.oldAccountID
+				pair.Account.UpdateBalance(db, pair)
+
+				pair.oldAmount = decimal.Zero
+				pair.Amount = newAccountUpdateAmount
+			}
+			pair.Account.ID = pair.AccountID
+			pair.Account.UpdateBalance(db, pair)
+		}
+	}
+	return err
 }
 
 // Debug routines -
