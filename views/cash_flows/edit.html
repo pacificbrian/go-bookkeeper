@@ -11,6 +11,10 @@
 <td><strong>{{ cash_flow.Account.Name }}</strong>
 </table>
 
+<div id="cash_flows">
+{% include "cash_flows/_cash_flow.html" -%}
+</div>
+
 <form method="POST" action="/cash_flows/{{cash_flow.ID}}">
 <table>
 <tr>

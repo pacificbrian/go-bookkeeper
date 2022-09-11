@@ -92,15 +92,22 @@ func EditCashFlow(c echo.Context) error {
 	log.Printf("EDIT CASHFLOW(%d)", id)
 	db := gormdb.DbManager()
 
+	var cash_flows []model.CashFlow
+	var cash_flow_total string
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
 	entry = entry.Get(db, true)
+	if entry != nil {
+		cash_flows, cash_flow_total = entry.ListSplit(db)
+	}
 
 	dh := new(helpers.DateHelper)
 	dh.Init()
 
 	data := map[string]any{ "cash_flow": entry,
 				"date_helper": dh,
+				"cash_flows": cash_flows,
+				"total_amount": cash_flow_total,
 				"cash_flow_types": new(model.CashFlowType).List(db),
 				"categories": new(model.CategoryType).List(db) }
 	return c.Render(http.StatusOK, "cash_flows/edit.html", data)

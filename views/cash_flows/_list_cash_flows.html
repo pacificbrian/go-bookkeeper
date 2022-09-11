@@ -7,7 +7,9 @@
 <th id="payee_name">Payee</th>
 <th id="category_id">Category</th>
 <th id="amount">Amount</th>
+{% if !total_amount -%}
 <th id="balance" class="noedit">Balance</th>
+{% endif -%}
 <th class="noedit"></th>
 <th class="noedit"></th>
 </tr>
@@ -33,7 +35,9 @@
 </div>
 <input hidden type="text" name="amount" value="{{c.Amount}}" data-cashflow-target="cashflowNewAmount" data-cashflow-id="{{ c.ID }}" data-action="keydown->cashflow#actionPutNewAmount"/>
 </td>
+{% if !total_amount -%}
 <td class="currency">{{ c.Currency(c.Balance) }}</td>
+{% endif -%}
 <td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
 <td><a href=/cash_flows/{{ c.ID }} method="delete">Delete</a></dd>
 </tr>

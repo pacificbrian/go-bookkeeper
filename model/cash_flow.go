@@ -50,8 +50,12 @@ type CashFlow struct {
 	Type string `gorm:"default:NULL"`
 }
 
-func (CashFlow) Currency(value decimal.Decimal) string {
+func currency(value decimal.Decimal) string {
 	return  "$" + value.StringFixedBank(2)
+}
+
+func (CashFlow) Currency(value decimal.Decimal) string {
+	return currency(value)
 }
 
 func (c CashFlow) ParentID() uint {
@@ -86,8 +90,16 @@ func NewSplitCashFlow(db *gorm.DB, SplitFrom uint) (*CashFlow, int) {
 	return c, 0
 }
 
+func (c *CashFlow) SplitCount() uint {
+	var count uint = 0
+	if !c.Transfer && !c.Split && c.SplitFrom > 0 {
+		count = c.SplitFrom
+	}
+	return count
+}
+
 func (c *CashFlow) HasSplits() bool {
-	return !c.Split && c.SplitFrom > 0
+	return c.SplitCount() > 0
 }
 
 func (c *CashFlow) Preload(db *gorm.DB) {
@@ -135,10 +147,26 @@ func (*CashFlow) List(db *gorm.DB, account *Account) []CashFlow {
 	return entries
 }
 
+// Account access already verified by caller
+func (c *CashFlow) ListSplit(db *gorm.DB) ([]CashFlow, string) {
+	var total decimal.Decimal
+	entries := []CashFlow{}
+	if c.HasSplits() && c.Account.Verified {
+		db.Find(&entries, &CashFlow{AccountID: c.AccountID, SplitFrom: c.ID, Split: true})
+		for i := 0; i < len(entries); i++ {
+			split := &entries[i]
+			split.Preload(db)
+			total = total.Add(split.Amount)
+		}
+	}
+	return entries, currency(total)
+}
+
 // c.Account must be preloaded
 func (c *CashFlow) HaveAccessPermission() bool {
 	u := GetCurrentUser()
-	return !(u == nil || u.ID != c.Account.UserID)
+	c.Account.Verified = !(u == nil || u.ID != c.Account.UserID)
+	return c.Account.Verified
 }
 
 func (c *CashFlow) determineCashFlowType() {

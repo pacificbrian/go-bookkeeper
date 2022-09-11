@@ -96,7 +96,8 @@ func GetAccount(c echo.Context) error {
 		data := map[string]any{ "account":entry,
 					"date_helper": dh,
 					"button_text": "Add",
-					"cash_flows":cash_flows,
+					"cash_flows": cash_flows,
+					"total_amount": nil,
 					"cash_flow_types": new(model.CashFlowType).List(db),
 					"categories": new(model.CategoryType).List(db) }
 		return c.Render(http.StatusOK, "accounts/show.html", data)
