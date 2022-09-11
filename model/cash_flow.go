@@ -150,6 +150,7 @@ func (c *CashFlow) pairFrom(src *CashFlow) {
 	c.ID = src.oldPairID
 	c.AccountID = src.PayeeID
 	c.Amount = src.oldAmount.Neg()
+	c.oldAmount = c.Amount // used if Delete
 }
 
 // prepare CashFlow to write to DB (used by both Create and Update)
@@ -240,14 +241,11 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 
 // Edit, Delete, Update use Get
 // c.Account needs to be preloaded
-func (c *CashFlow) Get(db *gorm.DB, preload bool) *CashFlow {
+func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 	db.Preload("Account").First(&c)
 	// Verify we have access to CashFlow
 	if !c.HaveAccessPermission() {
 		return nil
-	}
-	if preload {
-		c.Preload(db)
 	}
 
 	c.determineCashFlowType()
@@ -258,6 +256,14 @@ func (c *CashFlow) Get(db *gorm.DB, preload bool) *CashFlow {
 		c.CategoryID = 0
 	}
 
+	if edit {
+		c.Preload(db)
+
+		// #Edit wants Amount to be always positive; safe to
+		// modify here because Delete doen't use, and Update overwrites
+		c.Amount = c.Amount.Abs()
+	}
+
 	return c
 }
 
@@ -266,7 +272,6 @@ func (c *CashFlow) delete(db *gorm.DB) {
 	db.Delete(c)
 
 	c.Account.ID = c.AccountID
-	c.oldAmount = c.Amount
 	c.Amount = decimal.Zero
 	// UpdateBalance will subtract c.oldAmount
 	c.Account.UpdateBalance(db, c)
