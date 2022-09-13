@@ -165,7 +165,7 @@ func (c *CashFlow) ListSplit(db *gorm.DB) ([]CashFlow, string) {
 // c.Account must be preloaded
 func (c *CashFlow) HaveAccessPermission() bool {
 	u := GetCurrentUser()
-	c.Account.Verified = !(u == nil || u.ID != c.Account.UserID)
+	c.Account.Verified = !(u == nil || c.Account.ID == 0 || u.ID != c.Account.UserID)
 	return c.Account.Verified
 }
 
@@ -229,7 +229,6 @@ func (c *CashFlow) pairFrom(src *CashFlow) {
 func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 	var pair *CashFlow = nil // Transfer Pair
 
-	c.applyCashFlowType()
 	if c.Transfer {
 		if c.PayeeName != "" {
 			a := accountGetByName(db, c.PayeeName)
@@ -270,55 +269,82 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 	return nil, pair
 }
 
-func (c *CashFlow) Create(db *gorm.DB) error {
-	// Verify we have access to Account
-	c.Account.ID = c.AccountID
-	account := c.Account.Get(db, false)
-	if account != nil {
-		// defaults for DB fields not set during Create (Edit only)
-		c.TaxYear = c.Date.Year()
-
-		err, pair := c.prepareInsertCashFlow(db)
-		if err == nil {
-			result := db.Create(c)
-			err = result.Error
-		}
-		if err == nil {
-			if c.Split {
-				log.Printf("[MODEL] CREATE CASHFLOW(%d) PARENT(%d)", c.ID, c.SplitFrom)
-				spew.Dump(c)
-
-				// increment split count in parent
-				parent := new(CashFlow)
-				parent.ID = c.SplitFrom
-				db.Model(parent).Update("split_from", gorm.Expr("split_from + ?", 1))
-			} else {
-				log.Printf("[MODEL] CREATE CASHFLOW(%d)", c.ID)
-				spew.Dump(c)
-				account.UpdateBalance(db, c)
-			}
-
-			// Create pair CashFlow if have one (Transfers)
-			// Note, cannot be a Split
-			if pair != nil {
-				// mark when paired with a Split (Update restrictions)
-				if c.Split {
-					pair.SplitFrom = c.SplitFrom
-				}
-				// categoryID stores paired CashFlow.ID
-				pair.CategoryID = c.ID
-				db.Create(pair)
-				c.CategoryID = pair.ID
-				db.Model(c).Update("CategoryID", pair.ID)
-				log.Printf("[MODEL] CREATE PAIR CASHFLOW(%d)", pair.ID)
-
-				pair.Account.ID = pair.AccountID
-				pair.Account.UpdateBalance(db, pair)
-			}
-		}
+// c.Account access must be verified
+func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
+	if !c.Account.Verified {
+		return errors.New("Permission Denied")
+	}
+	err, pair := c.prepareInsertCashFlow(db)
+	if err == nil {
+		result := db.Create(c)
+		err = result.Error
+	}
+	if err != nil {
 		return err
 	}
-	return errors.New("Permission Denied")
+	// insert successful, no errors after this point
+
+	if c.Split {
+		log.Printf("[MODEL] CREATE SPLIT CASHFLOW(%d) PARENT(%d)", c.ID, c.SplitFrom)
+		spew.Dump(c)
+
+		// increment split count in parent
+		parent := new(CashFlow)
+		parent.ID = c.SplitFrom
+		db.Model(parent).Update("split_from", gorm.Expr("split_from + ?", 1))
+	} else {
+		log.Printf("[MODEL] CREATE %s CASHFLOW(%d)", c.Type, c.ID)
+		spew.Dump(c)
+		c.Account.UpdateBalance(db, c)
+	}
+
+	// Create pair CashFlow if have one (Transfers)
+	// Note, impossible to be a Split
+	// Create should not be able to fail as cloned from primary CashFlow
+	if pair != nil {
+		// mark when paired with a Split (Update restrictions)
+		if c.Split {
+			pair.SplitFrom = c.SplitFrom
+		}
+		// categoryID stores paired CashFlow.ID
+		pair.CategoryID = c.ID
+		db.Create(pair)
+		c.CategoryID = pair.ID
+		db.Model(c).Update("CategoryID", pair.ID)
+		log.Printf("[MODEL] CREATE PAIR CASHFLOW(%d)", pair.ID)
+
+		pair.Account.ID = pair.AccountID
+		pair.Account.UpdateBalance(db, pair)
+	}
+
+	return err
+}
+
+func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
+	c := new(CashFlow)
+	//c.cloneScheduled(repeat)
+	err := c.insertCashFlow(db)
+	if err == nil {
+		// update ScheduledCashFlow
+	}
+	return err
+}
+
+func (c *CashFlow) Create(db *gorm.DB) error {
+	// Verify we have access to Account
+	if !c.Account.Verified {
+		c.Account.ID = c.AccountID
+		account := c.Account.Get(db, false)
+		if account == nil {
+			return errors.New("Permission Denied")
+		}
+	}
+
+	c.applyCashFlowType()
+	// defaults for DB fields not set during Create (are Edit only)
+	c.TaxYear = c.Date.Year()
+
+	return c.insertCashFlow(db)
 }
 
 // Edit, Delete, Update use Get
@@ -387,6 +413,7 @@ func (c *CashFlow) Delete(db *gorm.DB) error {
 
 // CashFlow access already verified with Get
 func (c *CashFlow) Update(db *gorm.DB) error {
+	c.applyCashFlowType()
 	err, pair := c.prepareInsertCashFlow(db)
 	if err == nil {
 		result := db.Save(c)
