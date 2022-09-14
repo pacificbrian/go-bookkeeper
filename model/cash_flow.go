@@ -139,6 +139,7 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 		if c.HasSplits() {
 			c.CategoryName = "Split"
 		} else if c.CategoryID > 0 {
+			// need userCache lookup
 			c.Category.ID = c.CategoryID
 			db.First(&c.Category)
 			c.CategoryName = c.Category.Name

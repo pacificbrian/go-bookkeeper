@@ -21,6 +21,7 @@ type Category struct {
 }
 
 func (*Category) List(db *gorm.DB) []Category {
+	// need userCache lookup
 	entries := []Category{}
 	db.Find(&entries)
 	return entries

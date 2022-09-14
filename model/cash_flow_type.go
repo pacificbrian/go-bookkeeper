@@ -16,6 +16,7 @@ type CashFlowType struct {
 }
 
 func (*CashFlowType) List(db *gorm.DB) []CashFlowType {
+	// need userCache lookup
 	entries := []CashFlowType{}
 	db.Find(&entries)
 

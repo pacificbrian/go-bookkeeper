@@ -42,6 +42,7 @@ func (r *RepeatInterval) Preload(db *gorm.DB) {
 		r.RepeatsLeftPtr = &r.RepeatsLeft
 	}
 
+	// need userCache lookup
 	r.RepeatIntervalType.ID = r.RepeatIntervalTypeID
 	db.First(&r.RepeatIntervalType)
 }
