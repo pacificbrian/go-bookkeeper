@@ -18,6 +18,14 @@ import (
 	"go-bookkeeper/helpers"
 )
 
+func getFormDate(c echo.Context) time.Time {
+	dateStr := c.FormValue("date_month") + "/" +
+		c.FormValue("date_day") + "/" +
+		c.FormValue("date_year")
+	date, _ := time.Parse("1/2/2006", dateStr)
+	return date
+}
+
 // For http.Status, see:
 // https://go.dev/src/net/http/status.go
 
@@ -27,15 +35,27 @@ func CreateCashFlow(c echo.Context) error {
 	db := gormdb.DbManager()
 
 	entry := new(model.CashFlow)
-	entry.AccountID = uint(id)
-	date := c.FormValue("date_month") + "/" +
-		c.FormValue("date_day") + "/" +
-		c.FormValue("date_year")
-	entry.Date,_ = time.Parse("1/2/2006", date)
 	c.Bind(entry)
+	entry.AccountID = uint(id)
+	entry.Date = getFormDate(c)
 	entry.Create(db)
 
 	// http.StatusCreated
+	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
+}
+
+func CreateScheduledCashFlow(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	log.Printf("CREATE SCHEDULED CASHFLOW (FROM:%d)", id)
+	db := gormdb.DbManager()
+
+	entry := new(model.CashFlow)
+	c.Bind(entry)
+	entry.AccountID = uint(id)
+	entry.Date = getFormDate(c)
+	entry.Type = "Repeat"
+	entry.Create(db)
+
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
 }
 
