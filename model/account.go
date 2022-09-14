@@ -9,6 +9,7 @@ package model
 import (
 	"errors"
 	"log"
+	"time"
 	"github.com/shopspring/decimal"
 	"github.com/davecgh/go-spew/spew"
 	"gorm.io/gorm"
@@ -50,6 +51,29 @@ func ListAccounts(db *gorm.DB) []Account {
 
 func (*Account) List(db *gorm.DB) []Account {
 	return ListAccounts(db)
+}
+
+func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlow {
+	entries := []CashFlow{}
+	if !account.Verified {
+		account.Get(db, false)
+	}
+	if account.Verified {
+		// &CashFlow{AccountID: account.ID, Type: "Repeat", Split: false})
+		query := map[string]interface{}{"account_id": account.ID, "type": "Repeat", "split": false}
+		if canRecordOnly {
+			db.Order("date asc").Where("date <= ?", time.Now()).Find(&entries, query)
+		} else {
+			db.Order("date asc").Find(&entries, query)
+			for i := 0; i < len(entries); i++ {
+				repeat := &entries[i]
+				// for #Show
+				repeat.Preload(db)
+			}
+		}
+		log.Printf("[MODEL] LIST SCHEDULED ACCOUNT(%d:%d)", account.ID, len(entries))
+	}
+	return entries
 }
 
 func accountGetByName(db *gorm.DB, name string) *Account {
@@ -122,6 +146,13 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 
 	if preload {
 		spew.Dump(a)
+
+		// test if any ScheduledCashFlows need to post
+		scheduled := a.ListScheduled(db, true)
+		for i := 0; i < len(scheduled); i++ {
+			repeat := &scheduled[i]
+			repeat.tryInsertRepeatCashFlow(db)
+		}
 	}
 	return a
 }

@@ -47,6 +47,8 @@ type CashFlow struct {
 	oldPairID uint `gorm:"-:all"`
 	Category Category
 	CategoryName string `gorm:"-:all"`
+	RepeatIntervalID uint
+	RepeatInterval RepeatInterval
 	Type string `gorm:"default:NULL"`
 }
 
@@ -102,6 +104,10 @@ func (c *CashFlow) HasSplits() bool {
 	return c.SplitCount() > 0
 }
 
+func (c *CashFlow) isScheduled() bool {
+	return c.Type == "Repeat"
+}
+
 func (c *CashFlow) Preload(db *gorm.DB) {
 	if c.Transfer {
 		a := new(Account)
@@ -120,6 +126,14 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 			db.First(&c.Category)
 			c.CategoryName = c.Category.Name
 		}
+	}
+
+	if c.isScheduled() {
+		c.RepeatInterval.ID = c.RepeatIntervalID
+		db.First(&c.RepeatInterval)
+		// need userCache lookup
+		c.RepeatInterval.RepeatIntervalType.ID = c.RepeatInterval.RepeatIntervalTypeID
+		db.First(&c.RepeatInterval.RepeatIntervalType)
 	}
 }
 
@@ -194,6 +208,18 @@ func (c *CashFlow) applyCashFlowType() {
 	case CreditTransfer:
 		c.Transfer = true
 	}
+}
+
+func (c *CashFlow) cloneScheduled(src *CashFlow) {
+	c.Transfer = src.Transfer
+	c.Date = src.Date
+	c.TaxYear = c.Date.Year()
+	c.Memo = src.Memo
+	c.Transnum = src.Transnum
+	c.AccountID = src.AccountID
+	c.PayeeID = src.PayeeID
+	c.CategoryID = src.CategoryID
+	c.Amount = src.Amount
 }
 
 func (c *CashFlow) cloneTransfer(src *CashFlow) {
@@ -322,10 +348,12 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 
 func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 	c := new(CashFlow)
-	//c.cloneScheduled(repeat)
+	c.cloneScheduled(repeat)
 	err := c.insertCashFlow(db)
 	if err == nil {
+		// handle Splits
 		// update ScheduledCashFlow
+		// repeat.Advance()
 	}
 	return err
 }
