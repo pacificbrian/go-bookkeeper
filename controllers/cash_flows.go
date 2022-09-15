@@ -132,3 +132,29 @@ func EditCashFlow(c echo.Context) error {
 				"categories": new(model.CategoryType).List(db) }
 	return c.Render(http.StatusOK, "cash_flows/edit.html", data)
 }
+
+func ListScheduledCashFlows(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	log.Printf("LIST SCHEDULED CASHFLOWS (ACCOUNT:%d)", id)
+	db := gormdb.DbManager()
+
+	var cash_flows []model.CashFlow
+	entry := new(model.CashFlow)
+	entry.AccountID = uint(id)
+	entry.Type = "Repeat"
+
+	entry.Account.ID = entry.AccountID
+	cash_flows = entry.Account.ListScheduled(db, false)
+
+	dh := new(helpers.DateHelper)
+	dh.Init()
+
+	data := map[string]any{ "cash_flow": entry,
+				"date_helper": dh,
+				"button_text": "Add Scheduled",
+				"cash_flows": cash_flows,
+				"cash_flow_types": new(model.CashFlowType).List(db),
+				"repeat_interval_types": new(model.RepeatIntervalType).List(db),
+				"categories": new(model.CategoryType).List(db) }
+	return c.Render(http.StatusOK, "cash_flows/index.html", data)
+}

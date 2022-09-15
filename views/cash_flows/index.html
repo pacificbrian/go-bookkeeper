@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="show">
+<h2>{{ cash_flow.Account.Name }} - Recurring Transactions</h2>
+
+<div id="cash_flows">
+{% include "cash_flows/_list_scheduled_cash_flows.html" -%}
+</div>
+
+<form method="POST" action="/accounts/{{cash_flow.AccountID}}/scheduled">
+{% include "cash_flows/_cash_flow_form.html" -%}
+</form>
+</div>
+
+<ul id="footmenu">
+<li><a href=/accounts/{{cash_flow.AccountID}}>Back To Account</a></li>
+</ul>
+
+{% endblock -%}

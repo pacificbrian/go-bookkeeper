@@ -71,6 +71,10 @@ func (c *CashFlow) CanSplit() bool {
 	return !(c.Transfer || c.Split)
 }
 
+func (c *CashFlow) IsScheduled() bool {
+	return c.Type == "Repeat"
+}
+
 // Used with CreateSplitCashFlow. Controller calls to get common CashFlow
 // fields first, and before Bind (which can/will override other fields).
 func NewSplitCashFlow(db *gorm.DB, SplitFrom uint) (*CashFlow, int) {
@@ -104,10 +108,6 @@ func (c *CashFlow) HasSplits() bool {
 	return c.SplitCount() > 0
 }
 
-func (c *CashFlow) isScheduled() bool {
-	return c.Type == "Repeat"
-}
-
 func (c *CashFlow) Preload(db *gorm.DB) {
 	if c.Transfer {
 		a := new(Account)
@@ -128,7 +128,7 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 		}
 	}
 
-	if c.isScheduled() {
+	if c.IsScheduled() {
 		c.RepeatInterval.ID = c.RepeatIntervalID
 		db.First(&c.RepeatInterval)
 		// need userCache lookup

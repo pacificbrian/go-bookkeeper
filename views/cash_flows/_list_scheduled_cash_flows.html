@@ -1,0 +1,46 @@
+<h3>Scheduled Transactions</h3>
+<table class="ledger">
+<thead>
+<tr>
+<th>Interval</th>
+<th>Repeats</th>
+<th id="date">Date</th>
+<th id="transnum">#</th>
+<th id="payee_name">Payee</th>
+<th id="category_id">Category</th>
+<th id="amount">Amount</th>
+<th class="noedit"></th>
+<th class="noedit"></th>
+<th class="noedit"></th>
+</tr>
+</thead>
+<tbody data-controller="cashflow">
+{% for c in cash_flows -%}
+{% if (forloop.Counter0 % 2) == 0 -%}
+<tr id="{{ c.ID }}">
+{% else -%}
+<tr id="{{ c.ID }}" class="even">
+{% endif -%}
+<td>{{ c.RepeatInterval.RepeatIntervalType.name }}</td>
+<td>{{ c.RepeatInterval.RepeatsLeft }}</td>
+<td>{{ c.Date.Format("2006-01-02") }}</td>
+<td>{{ c.Transnum }}</td>
+{% if c.Transfer -%}
+<td><a href=/accounts/{{ c.PayeeID }}>{{ c.PayeeName }}</a></td>
+{% else -%}
+<td>{{ c.PayeeName }}</td>
+{% endif -%}
+<td>{{ c.CategoryName }}</td>
+<td class="currency">
+<div data-cashflow-target="cashflowAmount" data-cashflow-id="{{ c.ID }}" data-action="click->cashflow#actionEditAmount">
+{{ c.Currency(c.Amount) }}
+</div>
+<input hidden type="text" name="amount" value="{{c.Amount}}" data-cashflow-target="cashflowNewAmount" data-cashflow-id="{{ c.ID }}" data-action="keydown->cashflow#actionPutNewAmount"/>
+</td>
+<td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
+<td><a rel="nofollow" href=/cash_flows/{{ c.ID }} data-method="delete">Delete</a></td>
+<td>Pay Now</td>
+</tr>
+{% endfor -%}
+</tbody>
+</table>

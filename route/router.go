@@ -42,7 +42,8 @@ func Init() *echo.Echo {
 	e.DELETE("/accounts/:id", controllers.DeleteAccount)
 
 	e.POST("/accounts/:id/cash_flows", controllers.CreateCashFlow)
-	e.POST("/cash_flows/:id/schedule", controllers.CreateScheduledCashFlow)
+	e.POST("/accounts/:id/scheduled", controllers.CreateScheduledCashFlow)
+	e.GET("/accounts/:id/scheduled", controllers.ListScheduledCashFlows)
 	e.POST("/cash_flows/:id/split", controllers.CreateSplitCashFlow)
 	e.GET("/cash_flows/:id/edit", controllers.EditCashFlow)
 	e.POST("/cash_flows/:id", controllers.UpdateCashFlow)
