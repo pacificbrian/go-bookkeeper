@@ -105,12 +105,21 @@ func (a *Account) UpdateBalance(db *gorm.DB, c *CashFlow) {
 		return
 	}
 
-	newBalance := (a.Balance.Sub(c.oldAmount)).Add(c.Amount)
-	if !(a.Balance.Equal(newBalance)) {
-		log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): %f -> %f",
-			   a.ID, c.ID, a.Balance.InexactFloat64(), newBalance.InexactFloat64())
-		db.Model(a).Update("Balance", newBalance)
-		a.Balance = newBalance
+	if c.oldAmount.Equal(decimal.Zero) {
+		// Create, Scheduled CashFlows
+		log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): +%f",
+			   a.ID, c.ID, c.Amount.InexactFloat64())
+		db.Model(a).Update("Balance", gorm.Expr("balance + ?", c.Amount))
+	} else {
+		// Update
+		newBalance := (a.Balance.Sub(c.oldAmount)).Add(c.Amount)
+		if !(a.Balance.Equal(newBalance)) {
+			log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): %f -> %f",
+				   a.ID, c.ID, a.Balance.InexactFloat64(),
+				   newBalance.InexactFloat64())
+			db.Model(a).Update("Balance", newBalance)
+			a.Balance = newBalance
+		}
 	}
 }
 
@@ -155,6 +164,8 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 		scheduled := a.ListScheduled(db, true)
 		for i := 0; i < len(scheduled); i++ {
 			repeat := &scheduled[i]
+			repeat.Account.ID = a.ID
+			repeat.Account.Verified = a.Verified
 			repeat.tryInsertRepeatCashFlow(db)
 		}
 	}

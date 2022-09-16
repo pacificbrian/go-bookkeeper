@@ -225,11 +225,16 @@ func (c *CashFlow) applyCashFlowType() {
 
 func (c *CashFlow) cloneScheduled(src *CashFlow) {
 	c.Transfer = src.Transfer
+	if src.Split {
+		c.setSplit(src.SplitFrom)
+	}
 	c.Date = src.Date
 	c.TaxYear = c.Date.Year()
 	c.Memo = src.Memo
 	c.Transnum = src.Transnum
 	c.AccountID = src.AccountID
+	c.Account.ID = c.AccountID
+	c.Account.Verified = src.Account.Verified
 	c.PayeeID = src.PayeeID
 	c.CategoryID = src.CategoryID
 	c.Amount = src.Amount
@@ -272,12 +277,16 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 	var pair *CashFlow = nil // Transfer Pair
 
 	if c.Transfer {
+		var a *Account
+
 		if c.PayeeName != "" {
-			a := accountGetByName(db, c.PayeeName)
+			a = accountGetByName(db, c.PayeeName)
 			if a == nil {
 				return errors.New("Account.Name Invalid"), nil
 			}
+		}
 
+		if a != nil && !c.IsScheduled() {
 			// create pair CashFlow
 			pair = new(CashFlow)
 			if c.oldPairID > 0 {
@@ -314,14 +323,17 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 // c.Account access must be verified
 func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 	if !c.Account.Verified {
+		log.Printf("[MODEL] INSERT CASHFLOW PERMISSION DENIED")
 		return errors.New("Permission Denied")
 	}
 	err, pair := c.prepareInsertCashFlow(db)
 	if err == nil {
+		//result := db.Omit(clause.Associations).Create(c)
 		result := db.Create(c)
 		err = result.Error
 	}
 	if err != nil {
+		log.Printf("[MODEL] INSERT CASHFLOW ERROR")
 		return err
 	}
 	// insert successful, no errors after this point
@@ -362,14 +374,23 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 	return err
 }
 
+func (repeat *CashFlow) advance(db *gorm.DB) {
+	//repeat.Date.Month += 1
+}
+
 func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 	c := new(CashFlow)
 	c.cloneScheduled(repeat)
 	err := c.insertCashFlow(db)
-	if err == nil {
+	if err == nil && !c.Split {
 		// handle Splits
-		// update ScheduledCashFlow
-		// repeat.Advance()
+		splits, _ := repeat.ListSplit(db)
+		for i := 0; i < len(splits); i++ {
+			split := splits[i]
+			split.SplitFrom = c.ID
+			split.tryInsertRepeatCashFlow(db)
+		}
+		repeat.advance(db)
 	}
 	return err
 }
