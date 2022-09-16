@@ -71,6 +71,16 @@ func (c *CashFlow) CanSplit() bool {
 	return !(c.Transfer || c.Split)
 }
 
+func (c *CashFlow) setSplit(SplitFrom uint) {
+	if SplitFrom > 0 {
+		if c.Type != "Repeat" {
+			c.Type = "Split"
+		}
+		c.Split = true
+	}
+	c.SplitFrom = SplitFrom
+}
+
 func (c *CashFlow) IsScheduled() bool {
 	return c.Type == "Repeat"
 }
@@ -93,9 +103,7 @@ func NewSplitCashFlow(db *gorm.DB, SplitFrom uint) (*CashFlow, int) {
 		return nil, http.StatusBadRequest
 	}
 
-	c.Type = "Split"
-	c.Split = true
-	c.SplitFrom = SplitFrom
+	c.setSplit(SplitFrom)
 	c.oldAmount = decimal.Zero
 	c.ID = 0
 	return c, 0
@@ -241,11 +249,14 @@ func (c *CashFlow) cloneTransfer(src *CashFlow) {
 	c.Amount = src.Amount.Neg()
 }
 
-// Using src CashFlow, construct the Pair (other side of a Transfer)
-// This is used during Update or Delete
+// Using src CashFlow, construct the Pair (other side of a Transfer).
+// This is used during Update or Delete.
+// We can even reconstruct Splits (careful: old transactions in DB
+// don't store this!)
 func (c *CashFlow) pairFrom(src *CashFlow) {
 	c.Transfer = true
 	c.ID = src.oldPairID
+	c.setSplit(src.SplitFrom)
 	c.AccountID = src.PayeeID
 	c.Amount = src.oldAmount.Neg()
 	c.oldAmount = c.Amount // used if Delete
