@@ -75,6 +75,11 @@ func (c *CashFlow) IsScheduled() bool {
 	return c.Type == "Repeat"
 }
 
+func (c *CashFlow) mustUpdateBalance() bool {
+	// aka Base Type (!Split and !Repeat)
+	return c.Type ==  ""
+}
+
 // Used with CreateSplitCashFlow. Controller calls to get common CashFlow
 // fields first, and before Bind (which can/will override other fields).
 func NewSplitCashFlow(db *gorm.DB, SplitFrom uint) (*CashFlow, int) {
@@ -471,7 +476,7 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 				log.Printf("[MODEL] UPDATE PAIR CASHFLOW(%d)", pair.ID)
 			}
 
-			if !(pair.Split) {
+			if pair.mustUpdateBalance() {
 				// if pair.Account changed, need two updates
 				if pair.oldAccountID > 0 &&
 				   pair.oldAccountID != pair.AccountID {

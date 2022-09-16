@@ -101,6 +101,10 @@ func (a *Account) Init() *Account {
 }
 
 func (a *Account) UpdateBalance(db *gorm.DB, c *CashFlow) {
+	if !c.mustUpdateBalance() {
+		return
+	}
+
 	newBalance := (a.Balance.Sub(c.oldAmount)).Add(c.Amount)
 	if !(a.Balance.Equal(newBalance)) {
 		log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): %f -> %f",
