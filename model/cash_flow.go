@@ -85,6 +85,10 @@ func (c *CashFlow) IsScheduled() bool {
 	return c.Type == "Repeat"
 }
 
+func (c *CashFlow) IsScheduledParent() bool {
+	return c.IsScheduled() && !c.Split
+}
+
 func (c *CashFlow) mustUpdateBalance() bool {
 	// aka Base Type (!Split and !Repeat)
 	return c.Type ==  ""
@@ -464,7 +468,20 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 	// defaults for DB fields not set during Create (are Edit only)
 	c.TaxYear = c.Date.Year()
 
-	return c.insertCashFlow(db)
+	err := c.insertCashFlow(db)
+	if err == nil && c.IsScheduledParent() {
+		c.RepeatInterval.CashFlowID = c.ID
+		c.RepeatInterval.StartDay = c.Date.Day()
+		_err := db.Create(&c.RepeatInterval)
+		if _err == nil {
+			c.RepeatIntervalID = c.RepeatInterval.ID
+			db.Model(c).Update("RepeatIntervalID", c.RepeatIntervalID)
+		}
+		log.Printf("[MODEL] CREATE REPEAT_INTERVAL(%d) FOR CASHFLOW(%d)",
+			   c.RepeatIntervalID, c.ID)
+	}
+
+	return err
 }
 
 // Edit, Delete, Update use Get

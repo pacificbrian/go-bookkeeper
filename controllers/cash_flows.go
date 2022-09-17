@@ -51,6 +51,7 @@ func CreateScheduledCashFlow(c echo.Context) error {
 
 	entry := new(model.CashFlow)
 	c.Bind(entry)
+	c.Bind(&entry.RepeatInterval)
 	entry.AccountID = uint(id)
 	entry.Date = getFormDate(c)
 	entry.Type = "Repeat"
