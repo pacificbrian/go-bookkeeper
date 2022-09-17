@@ -12,10 +12,10 @@ import (
 	"gorm.io/gorm"
 )
 
-func OpenMaria() (*gorm.DB, error) {
+func OpenMaria(gconfig *gorm.Config) (*gorm.DB, error) {
 	c := getConfig()
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local",
 			   c.DB.User, c.DB.Password,
 			   c.DB.Host, c.DB.Port, c.DB.Name)
-	return gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	return gorm.Open(mysql.Open(dsn), gconfig)
 }
