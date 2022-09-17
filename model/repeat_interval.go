@@ -16,5 +16,6 @@ type RepeatInterval struct {
 	RepeatIntervalTypeID uint `form:"repeat_interval_type_id"`
 	RepeatIntervalType RepeatIntervalType
 	RepeatsLeft uint `form:"repeats"`
-	Rate decimal.Decimal `form:"amount"`
+	Rate decimal.Decimal `form:"rate"`
+	StartDay int
 }

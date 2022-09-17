@@ -375,7 +375,62 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 }
 
 func (repeat *CashFlow) advance(db *gorm.DB) {
-	//repeat.Date.Month += 1
+	db.Preload("RepeatIntervalType").First(&repeat.RepeatInterval, repeat.RepeatIntervalID)
+	days := int(repeat.RepeatInterval.RepeatIntervalType.Days)
+
+	if repeat.RepeatInterval.RepeatsLeft > 0 {
+		repeat.RepeatInterval.RepeatsLeft -= 1
+		updates := map[string]interface{}{"repeats_left", gorm.Expr("split_from - ?", 1)}
+		db.Model(&repeat.RepeatInterval).Update(updates)
+	}
+
+	if days == 0 {
+		return
+	}
+
+	day_of_month := repeat.Date.Day()
+	if repeat.RepeatInterval.StartDay > 0 {
+		day_of_month = repeat.RepeatInterval.StartDay
+	}
+
+	if days < 15 {
+		// weekly / bi-weekly
+		repeat.Date = repeat.Date.AddDate(0, 0, days)
+	} else if days >= 30 {
+		// monthly, quarterly, annually, etc
+		months := days / 30
+		adjustedDate := repeat.Date.AddDate(0, months, day_of_month - repeat.Date.Day())
+		if  adjustedDate.Day() < repeat.Date.Day() {
+			// we overran into next month (less than 30/31 days)
+			adjustedDate = adjustedDate.AddDate(0, 0, -adjustedDate.Day())
+		}
+		repeat.Date = adjustedDate
+	} else {
+		// semi-monthly, one of two halves should use day_of_month exactly
+		if repeat.Date.Day() <= 15 {
+			// advance to 2nd half of month
+			adjustedDate := repeat.Date.AddDate(0, 0, 15)
+			if  adjustedDate.Day() < repeat.Date.Day() {
+				// we overran into next month (less than 30/31 days)
+				adjustedDate = adjustedDate.AddDate(0, 0, -adjustedDate.Day())
+			}
+			repeat.Date = adjustedDate
+		} else {
+			if day_of_month > 15 {
+				day_of_month -= 15
+			}
+			// advance to next month
+			repeat.Date = repeat.Date.AddDate(0, 1, day_of_month - repeat.Date.Day())
+		}
+	}
+	repeat.TaxYear = repeat.Date.Year()
+
+	// update Splits (same as Update uses)
+
+	updates := map[string]interface{}{"date": repeat.Date, "tax_year": repeat.TaxYear}
+	db.Model(repeat).Updates(updates)
+	log.Printf("[MODEL] ADVANCE SCHEDULED CASHFLOW(%d)", repeat.ID,
+		   repeat.Date.Format("2006-01-02"))
 }
 
 func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
