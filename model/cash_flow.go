@@ -147,10 +147,7 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 
 	if c.IsScheduled() {
 		c.RepeatInterval.ID = c.RepeatIntervalID
-		db.First(&c.RepeatInterval)
-		// need userCache lookup
-		c.RepeatInterval.RepeatIntervalType.ID = c.RepeatInterval.RepeatIntervalTypeID
-		db.First(&c.RepeatInterval.RepeatIntervalType)
+		c.RepeatInterval.Preload(db)
 	}
 }
 
@@ -332,12 +329,11 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 	}
 	err, pair := c.prepareInsertCashFlow(db)
 	if err == nil {
-		//result := db.Omit(clause.Associations).Create(c)
 		result := db.Create(c)
 		err = result.Error
 	}
 	if err != nil {
-		log.Printf("[MODEL] INSERT CASHFLOW ERROR")
+		log.Fatalf("[MODEL] INSERT CASHFLOW ERROR: %s", err)
 		return err
 	}
 	// insert successful, no errors after this point
@@ -379,15 +375,8 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 }
 
 func (repeat *CashFlow) advance(db *gorm.DB) {
-	db.Preload("RepeatIntervalType").First(&repeat.RepeatInterval, repeat.RepeatIntervalID)
-	days := int(repeat.RepeatInterval.RepeatIntervalType.Days)
-
-	if repeat.RepeatInterval.RepeatsLeft > 0 {
-		repeat.RepeatInterval.RepeatsLeft -= 1
-		updates := map[string]interface{}{"repeats_left", gorm.Expr("split_from - ?", 1)}
-		db.Model(&repeat.RepeatInterval).Update(updates)
-	}
-
+	repeat.RepeatInterval.ID = repeat.RepeatIntervalID
+	days := repeat.RepeatInterval.Advance(db)
 	if days == 0 {
 		return
 	}
@@ -470,15 +459,12 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 
 	err := c.insertCashFlow(db)
 	if err == nil && c.IsScheduledParent() {
-		c.RepeatInterval.CashFlowID = c.ID
-		c.RepeatInterval.StartDay = c.Date.Day()
-		_err := db.Create(&c.RepeatInterval)
-		if _err == nil {
-			c.RepeatIntervalID = c.RepeatInterval.ID
-			db.Model(c).Update("RepeatIntervalID", c.RepeatIntervalID)
+		_err := c.RepeatInterval.Create(db, c)
+		if _err != nil {
+			log.Fatalf("INSERT REPEAT_INTERVAL ERROR: %s", _err)
 		}
-		log.Printf("[MODEL] CREATE REPEAT_INTERVAL(%d) FOR CASHFLOW(%d)",
-			   c.RepeatIntervalID, c.ID)
+		c.RepeatIntervalID = c.RepeatInterval.ID
+		db.Model(c).Update("RepeatIntervalID", c.RepeatIntervalID)
 	}
 
 	return err
