@@ -30,6 +30,7 @@ type CashFlow struct {
 	oldAccountID uint `gorm:"-:all"`
 	Account Account
 	Date time.Time
+	oldDate time.Time
 	TaxYear int `form:"tax_year"`
 	Amount decimal.Decimal `form:"amount" gorm:"not null"`
 	oldAmount decimal.Decimal `gorm:"-:all"`
@@ -262,6 +263,7 @@ func (c *CashFlow) cloneTransfer(src *CashFlow) {
 func (c *CashFlow) pairFrom(src *CashFlow) {
 	c.Transfer = true
 	c.ID = src.oldPairID
+	// keep split details accurate, and decrement SplitCount in Parent (Delete)
 	c.setSplit(src.SplitFrom)
 	c.AccountID = src.PayeeID
 	c.Amount = src.oldAmount.Neg()
@@ -374,6 +376,36 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 	return err
 }
 
+func (c *CashFlow) splitUpdateMap() map[string]interface{} {
+	// map of fields that must be equivalent in Split/Parent
+	// if Transfer, payee_id is pruned out later
+	return map[string]interface{}{"date": c.Date, "tax_year": c.TaxYear,
+				      "payee_id": c.PayeeID}
+}
+
+// update only selected fields in Splits from the given map
+func (repeat *CashFlow) updateSplits(db *gorm.DB, updates map[string]interface{}) {
+	if repeat.HasSplits() {
+		// for Transfers, copy map and remove payee_id
+		// wish there was cleaner way
+		transferUpdates := make(map[string]interface{})
+		for k,v := range updates {
+			transferUpdates[k] = v
+		}
+		delete(transferUpdates, "payee_id")
+
+		splits, _ := repeat.ListSplit(db)
+		for i := 0; i < len(splits); i++ {
+			split := splits[i]
+			if split.Transfer {
+				db.Model(split).Updates(transferUpdates)
+			} else {
+				db.Model(split).Updates(updates)
+			}
+		}
+	}
+}
+
 func (repeat *CashFlow) advance(db *gorm.DB) {
 	repeat.RepeatInterval.ID = repeat.RepeatIntervalID
 	days := repeat.RepeatInterval.Advance(db)
@@ -418,12 +450,11 @@ func (repeat *CashFlow) advance(db *gorm.DB) {
 	}
 	repeat.TaxYear = repeat.Date.Year()
 
-	// update Splits (same as Update uses)
-
 	updates := map[string]interface{}{"date": repeat.Date, "tax_year": repeat.TaxYear}
 	db.Model(repeat).Updates(updates)
 	log.Printf("[MODEL] ADVANCE SCHEDULED CASHFLOW(%d)", repeat.ID,
 		   repeat.Date.Format("2006-01-02"))
+	repeat.updateSplits(db, updates)
 }
 
 func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
@@ -481,6 +512,7 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 
 	c.determineCashFlowType()
 	c.oldAmount = c.Amount
+	c.oldDate = c.Date
 	if c.Transfer {
 		// backup CategoryID as cleared by Bind
 		c.oldPairID = c.CategoryID // Peer Cashflow (Transfers)
@@ -498,6 +530,14 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 	return c
 }
 
+func (c *CashFlow) deleteTransfer(db *gorm.DB) {
+	if c.Transfer {
+		pair := new(CashFlow)
+		pair.pairFrom(c)
+		pair.delete(db)
+	}
+}
+
 func (c *CashFlow) delete(db *gorm.DB) {
 	if c.Split {
 		log.Printf("[MODEL] DELETE CASHFLOW(%d) PARENT(%d)", c.ID, c.SplitFrom)
@@ -506,17 +546,26 @@ func (c *CashFlow) delete(db *gorm.DB) {
 		parent := new(CashFlow)
 		parent.ID = c.SplitFrom
 		db.Model(parent).Update("split_from", gorm.Expr("split_from - ?", 1))
+
+		db.Delete(c)
 	} else {
 		log.Printf("[MODEL] DELETE CASHFLOW(%d)", c.ID)
-		// delete SplitCashFlows first
+		if c.HasSplits() {
+			splits, _ := c.ListSplit(db)
+			for i := 0; i < len(splits); i++ {
+				split := splits[i]
+				split.delete(db)
+				split.deleteTransfer(db)
+			}
+		}
+
+		db.Delete(c)
+
+		c.Account.ID = c.AccountID
+		c.Amount = decimal.Zero
+		// UpdateBalance will subtract c.oldAmount
+		c.Account.UpdateBalance(db, c)
 	}
-
-	db.Delete(c)
-
-	c.Account.ID = c.AccountID
-	c.Amount = decimal.Zero
-	// UpdateBalance will subtract c.oldAmount
-	c.Account.UpdateBalance(db, c)
 }
 
 func (c *CashFlow) Delete(db *gorm.DB) error {
@@ -524,12 +573,7 @@ func (c *CashFlow) Delete(db *gorm.DB) error {
 	c = c.Get(db, false)
 	if c != nil {
 		c.delete(db)
-
-		if c.Transfer {
-			pair := new(CashFlow)
-			pair.pairFrom(c)
-			pair.delete(db)
-		}
+		c.deleteTransfer(db)
 	}
 	return errors.New("Permission Denied")
 }
@@ -537,6 +581,11 @@ func (c *CashFlow) Delete(db *gorm.DB) error {
 // CashFlow access already verified with Get
 func (c *CashFlow) Update(db *gorm.DB) error {
 	c.applyCashFlowType()
+	if c.Split {
+		// don't let Splits mess with date
+		c.Date = c.oldDate
+	}
+
 	err, pair := c.prepareInsertCashFlow(db)
 	if err == nil {
 		result := db.Save(c)
@@ -551,6 +600,10 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 			log.Printf("[MODEL] UPDATE CASHFLOW(%d)", c.ID)
 			spewModel(c)
 			c.Account.UpdateBalance(db, c)
+			if c.HasSplits() {
+				// TODO use BeforeUpdate hook to test if these fields changed
+				c.updateSplits(db, c.splitUpdateMap())
+			}
 		}
 
 		// Create or save pair CashFlow if have one (Transfers)
