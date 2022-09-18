@@ -410,11 +410,12 @@ func (repeat *CashFlow) updateSplits(db *gorm.DB, updates map[string]interface{}
 	}
 }
 
-func (repeat *CashFlow) advance(db *gorm.DB) {
+// returns true if advanced date is still less than time.Now
+func (repeat *CashFlow) advance(db *gorm.DB) bool {
 	repeat.RepeatInterval.ID = repeat.RepeatIntervalID
 	days := repeat.RepeatInterval.Advance(db)
 	if days == 0 {
-		return
+		return false
 	}
 
 	day_of_month := repeat.Date.Day()
@@ -459,13 +460,20 @@ func (repeat *CashFlow) advance(db *gorm.DB) {
 	log.Printf("[MODEL] ADVANCE SCHEDULED CASHFLOW(%d)", repeat.ID,
 		   repeat.Date.Format("2006-01-02"))
 	repeat.updateSplits(db, updates)
+
+	return time.Now().After(repeat.Date)
 }
 
 func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
+	var err error
 	c := new(CashFlow)
-	c.cloneScheduled(repeat)
-	err := c.insertCashFlow(db)
-	if err == nil && !c.Split {
+	for {
+		c.cloneScheduled(repeat)
+		err = c.insertCashFlow(db)
+		if err != nil || c.Split {
+			break
+		}
+
 		// handle Splits
 		splits, _ := repeat.ListSplit(db)
 		for i := 0; i < len(splits); i++ {
@@ -473,7 +481,12 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 			split.SplitFrom = c.ID
 			split.tryInsertRepeatCashFlow(db)
 		}
-		repeat.advance(db)
+
+		canRepeat := repeat.advance(db)
+		if !canRepeat {
+			break
+		}
+		c.ID = 0
 	}
 	return err
 }

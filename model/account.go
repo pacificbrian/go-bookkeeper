@@ -58,12 +58,16 @@ func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlo
 		account.Get(db, false)
 	}
 	if account.Verified {
-		// &CashFlow{AccountID: account.ID, Type: "Repeat", Split: false})
-		query := map[string]interface{}{"account_id": account.ID, "type": "Repeat", "split": false}
+		query := map[string]interface{}{"account_id": account.ID,
+					        "type": "Repeat", "split": false}
 		if canRecordOnly {
-			db.Order("date asc").Where("date <= ? AND repeat_interval_id > ?", time.Now(), 0).Find(&entries, query)
+			db.Order("date asc").Where("date <= ?", time.Now()).
+					     Where("repeats_left > 0 OR repeats_left IS NULL").
+					     Where("repeat_interval_id > 0").
+					     Joins("RepeatInterval").Find(&entries, query)
 		} else {
-			db.Order("date asc").Find(&entries, query)
+			db.Order("date asc").Where("repeat_interval_id > 0").
+					     Find(&entries, query)
 			for i := 0; i < len(entries); i++ {
 				repeat := &entries[i]
 				// for #Show

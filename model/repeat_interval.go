@@ -53,8 +53,12 @@ func (r *RepeatInterval) Advance(db *gorm.DB) int {
 
 	// decrement RepeatsLeft
 	if r.RepeatsLeft > 0 {
+		r.RepeatsLeft -= 1
 		updates := map[string]interface{}{"repeats_left": gorm.Expr("split_from - ?", 1)}
 		db.Model(r).Updates(updates)
+	}
+	if r.RepeatsLeft == 0 {
+		days = 0 // hit when looping until final Repeat
 	}
 
 	return days
