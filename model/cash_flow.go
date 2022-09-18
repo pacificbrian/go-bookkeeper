@@ -125,6 +125,13 @@ func (c *CashFlow) HasSplits() bool {
 	return c.SplitCount() > 0
 }
 
+func (c *CashFlow) PreloadScheduled(db *gorm.DB) {
+	if c.IsScheduled() {
+		c.RepeatInterval.ID = c.RepeatIntervalID
+		c.RepeatInterval.Preload(db)
+	}
+}
+
 func (c *CashFlow) Preload(db *gorm.DB) {
 	if c.Transfer {
 		a := new(Account)
@@ -146,10 +153,7 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 		}
 	}
 
-	if c.IsScheduled() {
-		c.RepeatInterval.ID = c.RepeatIntervalID
-		c.RepeatInterval.Preload(db)
-	}
+	c.PreloadScheduled(db)
 }
 
 // Account access already verified by caller
@@ -525,6 +529,8 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 		// #Edit wants Amount to be always positive; safe to
 		// modify here because Delete doen't use, and Update overwrites
 		c.Amount = c.Amount.Abs()
+	} else {
+		c.PreloadScheduled(db)
 	}
 
 	return c
@@ -603,6 +609,9 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 			if c.HasSplits() {
 				// TODO use BeforeUpdate hook to test if these fields changed
 				c.updateSplits(db, c.splitUpdateMap())
+			}
+			if c.IsScheduled() {
+				c.RepeatInterval.Update(db)
 			}
 		}
 

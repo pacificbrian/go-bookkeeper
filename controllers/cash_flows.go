@@ -103,6 +103,7 @@ func UpdateCashFlow(c echo.Context) error {
 	}
 
 	c.Bind(entry)
+	c.Bind(&entry.RepeatInterval)
 	entry.Update(db)
 	a_id := entry.AccountID
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", a_id))

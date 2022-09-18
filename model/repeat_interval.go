@@ -68,3 +68,10 @@ func (r *RepeatInterval) Create(db *gorm.DB, c *CashFlow) error {
 		   c.RepeatIntervalID, c.ID)
 	return result.Error
 }
+
+func (r *RepeatInterval) Update(db *gorm.DB) error {
+	result := db.Save(r)
+	log.Printf("[MODEL] UPDATE REPEAT_INTERVAL(%d) FOR CASHFLOW(%d)",
+		   r.ID, r.CashFlowID)
+	return result.Error
+}
