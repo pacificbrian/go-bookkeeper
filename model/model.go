@@ -7,6 +7,7 @@
 package model
 
 import (
+	"github.com/davecgh/go-spew/spew"
 	"gorm.io/gorm"
 )
 
@@ -18,4 +19,12 @@ type ModelWithDelete struct {
 type Model struct {
         ID        uint `gorm:"primaryKey"`
         //DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+var useSpew bool = false
+
+func spewModel(data any) {
+	if useSpew {
+		spew.Dump(data)
+	}
 }

@@ -11,7 +11,6 @@ import (
 	"log"
 	"net/http"
 	"time"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
@@ -341,7 +340,7 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 
 	if c.Split {
 		log.Printf("[MODEL] CREATE SPLIT CASHFLOW(%d) PARENT(%d)", c.ID, c.SplitFrom)
-		spew.Dump(c)
+		spewModel(c)
 
 		// increment split count in parent
 		parent := new(CashFlow)
@@ -349,7 +348,7 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 		db.Model(parent).Update("split_from", gorm.Expr("split_from + ?", 1))
 	} else {
 		log.Printf("[MODEL] CREATE %s CASHFLOW(%d)", c.Type, c.ID)
-		spew.Dump(c)
+		spewModel(c)
 		c.Account.UpdateBalance(db, c)
 	}
 
@@ -547,10 +546,10 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 		c.Account.ID = c.AccountID
 		if c.Split {
 			log.Printf("[MODEL] UPDATE CASHFLOW(%d) PARENT(%d)", c.ID, c.SplitFrom)
-			spew.Dump(c)
+			spewModel(c)
 		} else {
 			log.Printf("[MODEL] UPDATE CASHFLOW(%d)", c.ID)
-			spew.Dump(c)
+			spewModel(c)
 			c.Account.UpdateBalance(db, c)
 		}
 

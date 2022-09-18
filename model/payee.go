@@ -8,7 +8,6 @@ package model
 
 import (
 	"errors"
-	"github.com/davecgh/go-spew/spew"
 	"gorm.io/gorm"
 )
 
@@ -49,7 +48,7 @@ func payeeGetByName(db *gorm.DB, name string) *Payee {
 
 	if payee.ID == 0 {
 		db.Create(payee)
-		spew.Dump(payee)
+		spewModel(payee)
 	}
 
 	return payee
@@ -60,7 +59,7 @@ func (p *Payee) Create(db *gorm.DB) error {
 	if u != nil {
 		// Payee.User is set to CurrentUser()
 		p.UserID = u.ID
-		spew.Dump(p)
+		spewModel(p)
 		result := db.Create(p)
 		return result.Error
 	}
@@ -86,7 +85,7 @@ func (p *Payee) Delete(db *gorm.DB) error {
 	// Verify we have access to Payee
 	p = p.Get(db)
 	if p != nil {
-		spew.Dump(p)
+		spewModel(p)
 		db.Delete(p)
 		return nil
 	}
@@ -95,7 +94,7 @@ func (p *Payee) Delete(db *gorm.DB) error {
 
 // Payee access already verified with Get
 func (p *Payee) Update(db *gorm.DB) error {
-	spew.Dump(p)
+	spewModel(p)
 	result := db.Save(p)
 	return result.Error
 }

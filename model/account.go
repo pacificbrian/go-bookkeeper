@@ -11,7 +11,6 @@ import (
 	"log"
 	"time"
 	"github.com/shopspring/decimal"
-	"github.com/davecgh/go-spew/spew"
 	"gorm.io/gorm"
 )
 
@@ -128,7 +127,7 @@ func (a *Account) Create(db *gorm.DB) error {
 	if u != nil {
 		// Account.User is set to CurrentUser()
 		a.UserID = u.ID
-		spew.Dump(a)
+		spewModel(a)
 		result := db.Create(a)
 		return result.Error
 	}
@@ -158,7 +157,7 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 	}
 
 	if preload {
-		spew.Dump(a)
+		spewModel(a)
 
 		// test if any ScheduledCashFlows need to post
 		scheduled := a.ListScheduled(db, true)
@@ -183,7 +182,7 @@ func (a *Account) Delete(db *gorm.DB) error {
 		} else {
 			db.Delete(a)
 		}
-		spew.Dump(a)
+		spewModel(a)
 		return nil
 	}
 	return errors.New("Permission Denied")
@@ -191,7 +190,7 @@ func (a *Account) Delete(db *gorm.DB) error {
 
 // Account access already verified with Get
 func (a *Account) Update(db *gorm.DB) error {
-	spew.Dump(a)
+	spewModel(a)
 	result := db.Save(a)
 	return result.Error
 }

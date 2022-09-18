@@ -32,7 +32,7 @@ func getFormDate(c echo.Context) time.Time {
 func CreateCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("CREATE CASHFLOW (ACCOUNT:%d)", id)
-	db := gormdb.DbManager()
+	db := gormdb.DebugDbManager()
 
 	entry := new(model.CashFlow)
 	c.Bind(entry)
@@ -47,7 +47,7 @@ func CreateCashFlow(c echo.Context) error {
 func CreateScheduledCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("CREATE SCHEDULED CASHFLOW (FROM:%d)", id)
-	db := gormdb.DbManager()
+	db := gormdb.DebugDbManager()
 
 	entry := new(model.CashFlow)
 	c.Bind(entry)
@@ -63,7 +63,7 @@ func CreateScheduledCashFlow(c echo.Context) error {
 func CreateSplitCashFlow(c echo.Context) error {
 	split_from, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("CREATE SPLIT CASHFLOW (PARENT:%d)", split_from)
-	db := gormdb.DbManager()
+	db := gormdb.DebugDbManager()
 
 	entry, httpStatus := model.NewSplitCashFlow(db, uint(split_from))
 	if entry == nil {
@@ -93,7 +93,7 @@ func DeleteCashFlow(c echo.Context) error {
 func UpdateCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("UPDATE CASHFLOW(%d)", id)
-	db := gormdb.DbManager()
+	db := gormdb.DebugDbManager()
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
