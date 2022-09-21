@@ -9,7 +9,6 @@ package controllers
 import (
 	"fmt"
 	"log"
-	"time"
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
@@ -17,14 +16,6 @@ import (
 	"go-bookkeeper/model"
 	"go-bookkeeper/helpers"
 )
-
-func getFormDate(c echo.Context) time.Time {
-	dateStr := c.FormValue("date_month") + "/" +
-		c.FormValue("date_day") + "/" +
-		c.FormValue("date_year")
-	date, _ := time.Parse("1/2/2006", dateStr)
-	return date
-}
 
 // For http.Status, see:
 // https://go.dev/src/net/http/status.go
