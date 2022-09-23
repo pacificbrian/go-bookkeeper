@@ -122,7 +122,7 @@ func EditCashFlow(c echo.Context) error {
 				"cash_flows": cash_flows,
 				"total_amount": cash_flow_total,
 				"cash_flow_types": new(model.CashFlowType).List(db),
-				"categories": new(model.CategoryType).List(db) }
+				"categories": new(model.Category).List(db) }
 	return c.Render(http.StatusOK, "cash_flows/edit.html", data)
 }
 
@@ -148,6 +148,6 @@ func ListScheduledCashFlows(c echo.Context) error {
 				"cash_flows": cash_flows,
 				"cash_flow_types": new(model.CashFlowType).List(db),
 				"repeat_interval_types": new(model.RepeatIntervalType).List(db),
-				"categories": new(model.CategoryType).List(db) }
+				"categories": new(model.Category).List(db) }
 	return c.Render(http.StatusOK, "cash_flows/index.html", data)
 }
