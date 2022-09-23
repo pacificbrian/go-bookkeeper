@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="show">
+<h2>{{ security.Company.name }}</h2>
+<table>
+<tr>
+<td>Type:
+<td>{{ security.SecurityType.Name }}
+<tr>
+<td>Basis:
+<td>{{ security.Currency(security.Basis) }}
+<tr>
+<td>Value:
+<td>{{ security.Currency(security.Value) }}
+<tr>
+<td>Return:
+<td>{{ security.TotalReturn }}
+</table>
+
+<p>
+<div id="trades">
+{% include "securities/_list_security_trades.html" -%}
+</div>
+
+<form method="POST" action="/securities/{{security.ID}}/trades">
+{% include "securities/_security_trade_form.html" -%}
+</form>
+</div>
+
+<ul id="footmenu">
+{% if security.AccountID > 0 -%}
+<li><a href=/accounts/{{security.AccountID}}>Back To Account</a></li>
+{% endif -%}
+{% if security.ID > 0 -%}
+<li><a href=/security/{{security.ID}}/edit>Edit Security</a></li>
+{% endif -%}
+</ul>
+
+{% endblock -%}

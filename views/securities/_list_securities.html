@@ -1,0 +1,39 @@
+<table class="standard">
+<th>Company Name</th>
+<th>Symbol</th>
+<th>Shares</th>
+<th>Price</th>
+<th>Avg. Price</th>
+<th>Value</th>
+<th>Basis</th>
+<th>Vested ROC</th>
+<th>Total ROC</th>
+<th></th>
+{% for s in securities -%}
+{% if s.Shares > 0 -%}
+<tr>
+<td>{{ s.Company.Name }}</td>
+<td>{{ s.Company.Symbol }}</td>
+<td>{{ s.Shares }}</td>
+<td class="currency">{{ s.Currency(s.Value.Div(s.Shares)) }}</td>
+<td class="currency">{{ s.Currency(s.Basis.Div.(s.Shares)) }}</td>
+<td class="currency">{{ s.Currency(s.Value) }}</td>
+<td class="currency">{{ s.Currency(s.Basis) }}</td>
+<td></td>
+<td></td>
+<td><a rhref=href=/account/{{account.ID}}/{{s.ID}}>Info</a></td>
+</tr>
+{% endif -%}
+{% endfor -%}
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td class="currency">{{ account.Currency(account.Portfolio.Value) }}</td>
+<td class="currency">{{ account.Currency(account.Portfolio.Basis) }}</td>
+<td></td>
+<td></td>
+</tr>
+</table>

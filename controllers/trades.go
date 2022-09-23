@@ -20,18 +20,28 @@ import (
 // https://go.dev/src/net/http/status.go
 
 func CreateTrade(c echo.Context) error {
-	id, _ := strconv.Atoi(c.Param("id"))
+	account_id, _ := strconv.Atoi(c.Param("account_id"))
+	security_id, _ := strconv.Atoi(c.Param("security_id"))
 	log.Println("CREATE TRADE")
 	db := gormdb.DbManager()
 
 	entry := new(model.Trade)
 	c.Bind(entry)
-	entry.AccountID = uint(id)
+	entry.AccountID = uint(account_id)
+	entry.SecurityID = uint(security_id)
 	entry.Date = getFormDate(c)
 	entry.Create(db)
 
-	// how to determine if referred here by Account or Security?
-	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
+	if security_id > 0 {
+		return c.Redirect(http.StatusSeeOther,
+				  fmt.Sprintf("/accounts/%d/securities/%d",
+				  account_id, security_id))
+	} else if account_id > 0 {
+		return c.Redirect(http.StatusSeeOther,
+				  fmt.Sprintf("/accounts/%d", account_id))
+	} else {
+		return c.NoContent(http.StatusAccepted)
+	}
 }
 
 func DeleteTrade(c echo.Context) error {
@@ -50,6 +60,7 @@ func DeleteTrade(c echo.Context) error {
 
 func UpdateTrade(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
+	security_id, _ := strconv.Atoi(c.Param("security_id"))
 	log.Printf("UPDATE TRADE(%d)", id)
 	db := gormdb.DbManager()
 
@@ -63,9 +74,14 @@ func UpdateTrade(c echo.Context) error {
 	c.Bind(entry)
 	entry.Update(db)
 	a_id := entry.AccountID
-	// how to determine if referred here by Account or Security?
-	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", a_id))
-	//return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/trade/%d", id))
+	s_id := entry.SecurityID
+	if security_id > 0 {
+		return c.Redirect(http.StatusSeeOther,
+				  fmt.Sprintf("/accounts/%d/securities/%d", a_id, s_id))
+	} else {
+		return c.Redirect(http.StatusSeeOther,
+				  fmt.Sprintf("/accounts/%d", a_id))
+	}
 }
 
 func EditTrade(c echo.Context) error {

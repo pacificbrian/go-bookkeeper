@@ -14,6 +14,7 @@ import (
 	"github.com/labstack/echo/v4"
 	gormdb "go-bookkeeper/db"
 	"go-bookkeeper/model"
+	"go-bookkeeper/helpers"
 )
 
 // For http.Status, see:
@@ -64,6 +65,40 @@ func DeleteSecurity(c echo.Context) error {
 		return c.NoContent(http.StatusUnauthorized)
 	} else {
 		return c.NoContent(http.StatusAccepted)
+	}
+}
+
+func GetSecurity(c echo.Context) error {
+	accountID, _ := strconv.Atoi(c.Param("account_id"))
+	id, _ := strconv.Atoi(c.Param("id"))
+	log.Printf("GET ACCOUNT(%d) SECURITY(%d)", accountID, id)
+	db := gormdb.DebugDbManager()
+	get_json := false
+
+	entry := new(model.Security)
+	entry.ID = uint(id)
+	entry = entry.Get(db)
+	// set status based on if Get failed
+
+	if get_json {
+		return c.JSON(http.StatusOK, entry)
+	} else {
+		var trades []model.Trade
+		var account *model.Account
+
+		if entry != nil {
+			account = &entry.Account
+		}
+
+		dh := new(helpers.DateHelper)
+		dh.Init()
+
+		data := map[string]any{ "security": entry,
+					"account": account,
+					"date_helper": dh,
+					"trades": trades,
+					"trade_types": new(model.TradeType).List(db) }
+		return c.Render(http.StatusOK, "securities/show.html", data)
 	}
 }
 

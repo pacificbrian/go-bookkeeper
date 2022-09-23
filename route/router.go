@@ -30,9 +30,7 @@ func Init() *echo.Echo {
 	e.Static("/", "public")
 	e.Renderer = UsePongo2(e)
 
-	// Use controller classes, here.
-	// So becomes Accounts.List, Accounts.Create
-
+	// Account
 	e.GET("/accounts", controllers.ListAccounts)   // Index/List
 	e.POST("/accounts", controllers.CreateAccount) // Create
 	e.GET("/accounts/new", controllers.NewAccount)
@@ -41,6 +39,7 @@ func Init() *echo.Echo {
 	e.POST("/accounts/:id", controllers.UpdateAccount) // Update
 	e.DELETE("/accounts/:id", controllers.DeleteAccount)
 
+	// CashFlow
 	e.POST("/accounts/:id/cash_flows", controllers.CreateCashFlow)
 	e.POST("/accounts/:id/scheduled", controllers.CreateScheduledCashFlow)
 	e.GET("/accounts/:id/scheduled", controllers.ListScheduledCashFlows)
@@ -48,11 +47,19 @@ func Init() *echo.Echo {
 	e.GET("/cash_flows/:id/edit", controllers.EditCashFlow)
 	e.POST("/cash_flows/:id", controllers.UpdateCashFlow)
 
+	// Payee
 	e.GET("/payees", controllers.ListPayees)
 	e.POST("/payees", controllers.CreatePayee)
 	//e.GET("/payees/:id/edit", controllers.EditPayee)
 	//e.GET("/payees/:id", controllers.GetPayee)
 	e.POST("/payees/:id", controllers.UpdatePayee)
+
+	// Security
+	e.GET("/accounts/:account_id/securities/:id", controllers.GetSecurity) // Show
+
+	// Trade
+	e.POST("/accounts/:account_id/trades", controllers.CreateTrade)
+	e.POST("/securities/:security_id/trades", controllers.CreateTrade)
 
 	return e
 }

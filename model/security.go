@@ -14,10 +14,12 @@ import (
 
 type Security struct {
 	Model
+	Company Company
+	CompanyID uint `gorm:"not null"`
 	SecurityTypeID uint `form:"security_type_id" gorm:"-:all"`
 	AccountID uint `gorm:"not null"`
 	Account Account
-	Symbol string `form:"Name"`
+	Symbol string `form:"Symbol"`
 }
 
 func (s *Security) List(db *gorm.DB) []Security {

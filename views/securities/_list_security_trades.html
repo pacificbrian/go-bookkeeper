@@ -1,0 +1,53 @@
+<table class="ledger">
+{% if !security -%}
+{% if !account -%}
+<th>Account</th>
+{% endif -%}
+<th>Security</th>
+{% endif -%}
+<th>Type</th>
+<th>Date</th>
+<th>Shares</th>
+<th>Price</th>
+<th>Basis</th>
+<th>Amount</th>
+{% for t in trades -%}
+<tr>
+{% if !security -%}
+{% if !account -%}
+<td>{{ t.Account.Name }}</td>
+{% endif -%}
+<td>{{ t.Security.Company.Name }}</td>
+{% endif -%}
+<td>{{ t.TradeType.Name }}</td>
+<td>{{ t.Date }}</td>
+<td>{{ t.Shares }}</td>
+<td class="currency">{{ t.Currency(t.Price) }}</td>
+<td class="currency">{{ t.Currency(t.GetBasis) }}</td>
+<td class="currency">{{ t.Currency(t.Amount) }}</td>
+<li><a href=/trades/{{t.ID}}/edit>Edit</a></li>
+</tr>
+{% endfor -%}
+{% if security -%}
+<tr>
+<td align ="left">
+<strong>Totals:</strong>
+</td>
+<td>
+</td>
+<td>
+{{ security.Shares }}
+</td>
+<td class="currency">
+{{ s.Currency(security.Basis.Div(security.Shares)) }}
+</td>
+<td>
+</td>
+<td class="currency">
+{{ security.Currency(security.Basis) }}
+</td>
+<td colspan="2">
+</td>
+</tr>
+{% endif -%}
+</table>
