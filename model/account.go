@@ -97,6 +97,30 @@ func accountGetByName(db *gorm.DB, name string) *Account {
 	return a
 }
 
+func (a *Account) securityGetBySymbol(db *gorm.DB, symbol string) *Security {
+	security := new(Security)
+	c := companyGetBySymbol(db, symbol)
+	security.CompanyID = c.ID
+	security.AccountID = a.ID
+	// need Where because these are not primary keys
+	db.Where(&security).First(&security)
+
+	if security.ID > 0 {
+		// verify Account
+		account := security.Account.Get(db, false)
+		if account == nil {
+			return nil
+		}
+	} else { // security.ID == 0
+		err := security.Create(db)
+		if err != nil {
+			return nil
+		}
+	}
+
+	return security
+}
+
 func (a *Account) Init() *Account {
 	a.Taxable = true
 	// a.UserID unset (not needed for New)

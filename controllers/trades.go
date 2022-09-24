@@ -22,7 +22,8 @@ import (
 func CreateTrade(c echo.Context) error {
 	account_id, _ := strconv.Atoi(c.Param("account_id"))
 	security_id, _ := strconv.Atoi(c.Param("security_id"))
-	log.Println("CREATE TRADE")
+	log.Printf("CREATE TRADE ACCOUNT(%d) SECURITY(%d)",
+		   account_id, security_id)
 	db := gormdb.DbManager()
 
 	entry := new(model.Trade)

@@ -9,6 +9,7 @@ package model
 import (
 	"errors"
 	"log"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -16,10 +17,12 @@ type Security struct {
 	Model
 	Company Company
 	CompanyID uint `gorm:"not null"`
-	SecurityTypeID uint `form:"security_type_id" gorm:"-:all"`
+	SecurityTypeID uint `form:"security_type_id"`
 	AccountID uint `gorm:"not null"`
 	Account Account
-	Symbol string `form:"Symbol"`
+	Shares decimal.Decimal
+	Basis decimal.Decimal
+	Value decimal.Decimal
 }
 
 func (s *Security) List(db *gorm.DB) []Security {
@@ -43,6 +46,9 @@ func (s *Security) Create(db *gorm.DB) error {
 		spewModel(s)
 		result := db.Create(s)
 		log.Printf("[MODEL] CREATE SECURITY(%d)", s.ID)
+		if result.Error != nil {
+			log.Fatal(result.Error)
+		}
 		return result.Error
 	}
 	return errors.New("Permission Denied")
