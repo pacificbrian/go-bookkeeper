@@ -36,6 +36,10 @@ func (Account) Currency(value decimal.Decimal) string {
 	return "$" + value.StringFixedBank(2)
 }
 
+func (a *Account) IsInvestment() bool {
+	return a.AccountType.isType("Investment")
+}
+
 func ListAccounts(db *gorm.DB) []Account {
 	u := GetCurrentUser()
 	entries := []Account{}

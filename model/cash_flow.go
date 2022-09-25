@@ -52,10 +52,6 @@ type CashFlow struct {
 	Type string `gorm:"default:NULL"`
 }
 
-func currency(value decimal.Decimal) string {
-	return  "$" + value.StringFixedBank(2)
-}
-
 func (CashFlow) Currency(value decimal.Decimal) string {
 	return currency(value)
 }

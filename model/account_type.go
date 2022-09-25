@@ -45,6 +45,10 @@ func (a AccountType) GetIconPath() string {
 	return path
 }
 
+func (a *AccountType) isType(askedType string) bool {
+	return a.Name == askedType
+}
+
 func (*AccountType) List(db *gorm.DB) []AccountType {
 	entries := []AccountType{}
 	db.Find(&entries)

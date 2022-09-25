@@ -25,6 +25,18 @@ type Security struct {
 	Value decimal.Decimal
 }
 
+func (Security) Currency(value decimal.Decimal) string {
+	return currency(value)
+}
+
+func (s Security) Price() decimal.Decimal {
+	if s.Shares.Equal(decimal.Zero) {
+		return decimal.Zero
+	} else {
+		return s.Basis.Div(s.Shares)
+	}
+}
+
 func (s *Security) List(db *gorm.DB) []Security {
 	entries := []Security{}
 	// Verify we have access to Account

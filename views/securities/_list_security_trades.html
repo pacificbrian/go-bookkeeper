@@ -11,6 +11,7 @@
 <th>Price</th>
 <th>Basis</th>
 <th>Amount</th>
+<th></th>
 {% for t in trades -%}
 <tr>
 {% if !security -%}
@@ -20,12 +21,12 @@
 <td>{{ t.Security.Company.Name }}</td>
 {% endif -%}
 <td>{{ t.TradeType.Name }}</td>
-<td>{{ t.Date }}</td>
+<td>{{ t.Date.Format("2006-01-02") }}</td>
 <td>{{ t.Shares }}</td>
 <td class="currency">{{ t.Currency(t.Price) }}</td>
-<td class="currency">{{ t.Currency(t.GetBasis) }}</td>
+<td class="currency">{{ t.Currency(t.Basis) }}</td>
 <td class="currency">{{ t.Currency(t.Amount) }}</td>
-<li><a href=/trades/{{t.ID}}/edit>Edit</a></li>
+<td><a href=/trades/{{t.ID}}/edit>Edit</a></td>
 </tr>
 {% endfor -%}
 {% if security -%}
@@ -39,14 +40,14 @@
 {{ security.Shares }}
 </td>
 <td class="currency">
-{{ s.Currency(security.Basis.Div(security.Shares)) }}
+{{ security.Currency(security.Price()) }}
 </td>
 <td>
 </td>
 <td class="currency">
 {{ security.Currency(security.Basis) }}
 </td>
-<td colspan="2">
+<td colspan="1">
 </td>
 </tr>
 {% endif -%}

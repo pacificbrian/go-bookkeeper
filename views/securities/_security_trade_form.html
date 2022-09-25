@@ -3,6 +3,11 @@
 <td><br> {{ form_select_type(trade_types, "trade_type_id") }} </td>
 <tr>
 <td><br> {{ form_date_select(date_helper) }} </td>
+{% if !security -%}
+<tr>
+<td>Symbol:<br> <input type="text" name="symbol"/></td>
+{% endif -%}
+<tr>
 <tr>
 <td>Shares:<br> <input type="text" name="shares"/></td>
 <tr>

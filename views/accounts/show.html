@@ -23,6 +23,18 @@
 {% include "accounts/_total.html" -%}
 </div>
 
+<table class="collapse">
+{% if account.IsInvestment() -%}
+<tr>
+<td>
+<form method="POST" action="/accounts/{{account.ID}}/trades">
+{% include "securities/_security_trade_form.html" -%}
+</form>
+</td>
+<td class="vertical-bar">
+</td>
+{% endif -%}
+<td>
 <form method="POST" action="/accounts/{{account.ID}}/cash_flows">
 <table>
 <tr>
@@ -41,6 +53,8 @@
 <input type="submit" value="{{ button_text }}"/>
 </p>
 </form>
+</td>
+</table>
 
 </div>
 

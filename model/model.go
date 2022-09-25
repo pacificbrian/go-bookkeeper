@@ -8,6 +8,7 @@ package model
 
 import (
 	"github.com/davecgh/go-spew/spew"
+	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 )
 
@@ -27,4 +28,8 @@ func spewModel(data any) {
 	if useSpew {
 		spew.Dump(data)
 	}
+}
+
+func currency(value decimal.Decimal) string {
+	return  "$" + value.StringFixedBank(2)
 }

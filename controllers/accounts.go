@@ -99,7 +99,8 @@ func GetAccount(c echo.Context) error {
 					"cash_flows": cash_flows,
 					"total_amount": nil,
 					"cash_flow_types": new(model.CashFlowType).List(db),
-					"categories": new(model.Category).List(db) }
+					"categories": new(model.Category).List(db),
+					"trade_types": new(model.TradeType).List(db) }
 		return c.Render(http.StatusOK, "accounts/show.html", data)
 	}
 }

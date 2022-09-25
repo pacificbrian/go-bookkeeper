@@ -88,6 +88,7 @@ func GetSecurity(c echo.Context) error {
 
 		if entry != nil {
 			account = &entry.Account
+			trades = new(model.Trade).List(db, account)
 		}
 
 		dh := new(helpers.DateHelper)

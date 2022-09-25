@@ -35,11 +35,18 @@ type Trade struct {
 	Closed bool
 }
 
+func (Trade) Currency(value decimal.Decimal) string {
+	return currency(value)
+}
+
+// Account access already verified by caller
 func (*Trade) List(db *gorm.DB, account *Account) []Trade {
 	entries := []Trade{}
 	if account.Verified {
 		// Find Trades for Account()
-		db.Where(&Trade{AccountID: account.ID}).Find(&entries)
+		db.Preload("TradeType").
+		   Order("date asc").
+		   Where(&Trade{AccountID: account.ID}).Find(&entries)
 		log.Printf("[MODEL] LIST TRADES ACCOUNT(%d:%d)", account.ID, len(entries))
 	}
 	return entries
