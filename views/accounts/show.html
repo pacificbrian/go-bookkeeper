@@ -15,6 +15,13 @@
 </tr>
 </table>
 
+{% if account.IsInvestment() -%}
+<div id="securities">
+{% include "securities/_list_securities.html" -%}
+</div>
+<p>
+{% endif -%}
+
 <div id="cash_flows">
 {% include "cash_flows/_list_cash_flows.html" -%}
 </div>

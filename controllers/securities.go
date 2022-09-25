@@ -29,7 +29,7 @@ func ListSecurities(c echo.Context) error {
 	var entries []model.Security
 	entry := new(model.Security)
 	entry.AccountID = uint(id)
-	entries = entry.List(db)
+	entries = entry.List(db, nil)
 
 	if get_json {
 		return c.JSON(http.StatusOK, entries)

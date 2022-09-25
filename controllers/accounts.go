@@ -84,10 +84,12 @@ func GetAccount(c echo.Context) error {
 		return c.JSON(http.StatusOK, entry)
 	} else {
 		var cash_flows []model.CashFlow
+		var securities []model.Security
 
 		if entry != nil {
-			// order by date
+			// .List will order returned results
 			cash_flows = new(model.CashFlow).List(db, entry)
+			securities = new(model.Security).List(db, entry)
 		}
 
 		dh := new(helpers.DateHelper)
@@ -97,6 +99,8 @@ func GetAccount(c echo.Context) error {
 					"date_helper": dh,
 					"button_text": "Add",
 					"cash_flows": cash_flows,
+					"securities": securities,
+					"allSecurities": true,
 					"total_amount": nil,
 					"cash_flow_types": new(model.CashFlowType).List(db),
 					"categories": new(model.Category).List(db),

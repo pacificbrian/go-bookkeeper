@@ -13,6 +13,12 @@ import (
 	"gorm.io/gorm"
 )
 
+type SecurityValue struct {
+	Basis decimal.Decimal
+	Shares decimal.Decimal
+	Value decimal.Decimal
+}
+
 type Security struct {
 	Model
 	Company Company
@@ -20,9 +26,7 @@ type Security struct {
 	SecurityTypeID uint `form:"security_type_id"`
 	AccountID uint `gorm:"not null"`
 	Account Account
-	Shares decimal.Decimal
-	Basis decimal.Decimal
-	Value decimal.Decimal
+	SecurityValue
 }
 
 func (Security) Currency(value decimal.Decimal) string {
@@ -33,18 +37,31 @@ func (s Security) Price() decimal.Decimal {
 	if s.Shares.Equal(decimal.Zero) {
 		return decimal.Zero
 	} else {
+		return s.Value.Div(s.Shares)
+	}
+}
+
+func (s Security) BasisPrice() decimal.Decimal {
+	if s.Shares.Equal(decimal.Zero) {
+		return decimal.Zero
+	} else {
 		return s.Basis.Div(s.Shares)
 	}
 }
 
-func (s *Security) List(db *gorm.DB) []Security {
+// with account argument, Account access already verified by caller
+func (s *Security) List(db *gorm.DB, account *Account) []Security {
 	entries := []Security{}
-	// Verify we have access to Account
-	s.Account.ID = s.AccountID
-	account := s.Account.Get(db, false)
-	if account != nil {
+
+	if account == nil {
+		// Verify we have access to Account
+		s.Account.ID = s.AccountID
+		account = s.Account.Get(db, false)
+	}
+	if account != nil && account.Verified && account.IsInvestment() {
 		// Find Securities for Account()
-		db.Where(&Security{AccountID: account.ID}).Find(&entries)
+		db.Preload("Company").
+		   Where(&Security{AccountID: account.ID}).Find(&entries)
 		log.Printf("[MODEL] LIST SECURITIES ACCOUNT(%d:%d)", account.ID, len(entries))
 	}
 	return entries

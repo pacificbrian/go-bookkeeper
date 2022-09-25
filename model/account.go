@@ -30,6 +30,7 @@ type Account struct {
 	Hidden bool `form:"account.Hidden"`
 	Verified bool `gorm:"-:all"`
 	CashFlows []CashFlow
+	Portfolio SecurityValue `gorm:"-:all"`
 }
 
 func (Account) Currency(value decimal.Decimal) string {

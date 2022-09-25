@@ -10,18 +10,18 @@
 <th>Total ROC</th>
 <th></th>
 {% for s in securities -%}
-{% if s.Shares > 0 -%}
+{% if allSecurities || s.Shares > 0 -%}
 <tr>
 <td>{{ s.Company.Name }}</td>
 <td>{{ s.Company.Symbol }}</td>
 <td>{{ s.Shares }}</td>
-<td class="currency">{{ s.Currency(s.Value.Div(s.Shares)) }}</td>
-<td class="currency">{{ s.Currency(s.Basis.Div.(s.Shares)) }}</td>
+<td class="currency">{{ s.Currency(s.Price()) }}</td>
+<td class="currency">{{ s.Currency(s.BasisPrice()) }}</td>
 <td class="currency">{{ s.Currency(s.Value) }}</td>
 <td class="currency">{{ s.Currency(s.Basis) }}</td>
 <td></td>
 <td></td>
-<td><a rhref=href=/account/{{account.ID}}/{{s.ID}}>Info</a></td>
+<td><a href=/accounts/{{account.ID}}/securities/{{s.ID}}>Info</a></td>
 </tr>
 {% endif -%}
 {% endfor -%}
@@ -33,6 +33,7 @@
 <td></td>
 <td class="currency">{{ account.Currency(account.Portfolio.Value) }}</td>
 <td class="currency">{{ account.Currency(account.Portfolio.Basis) }}</td>
+<td></td>
 <td></td>
 <td></td>
 </tr>
