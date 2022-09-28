@@ -11,6 +11,7 @@ import (
 	"log"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type SecurityValue struct {
@@ -37,7 +38,7 @@ func (s Security) Price() decimal.Decimal {
 	if s.Shares.Equal(decimal.Zero) {
 		return decimal.Zero
 	} else {
-		return s.Value.Div(s.Shares)
+		return s.Value.Div(s.Shares).RoundBank(2)
 	}
 }
 
@@ -45,7 +46,7 @@ func (s Security) BasisPrice() decimal.Decimal {
 	if s.Shares.Equal(decimal.Zero) {
 		return decimal.Zero
 	} else {
-		return s.Basis.Div(s.Shares)
+		return s.Basis.Div(s.Shares).RoundBank(2)
 	}
 }
 
@@ -73,7 +74,7 @@ func (s *Security) Create(db *gorm.DB) error {
 	account := s.Account.Get(db, false)
 	if account != nil {
 		spewModel(s)
-		result := db.Create(s)
+		result := db.Omit(clause.Associations).Create(s)
 		log.Printf("[MODEL] CREATE SECURITY(%d)", s.ID)
 		if result.Error != nil {
 			log.Fatal(result.Error)

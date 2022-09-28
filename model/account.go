@@ -109,9 +109,11 @@ func (a *Account) securityGetBySymbol(db *gorm.DB, symbol string) *Security {
 	security.AccountID = a.ID
 	// need Where because these are not primary keys
 	db.Where(&security).First(&security)
+	log.Printf("[MODEL] ACCOUNT GET SECURITY for (%s:%d)", symbol, security.ID)
 
 	if security.ID > 0 {
 		// verify Account
+		security.Account.ID = security.AccountID
 		account := security.Account.Get(db, false)
 		if account == nil {
 			return nil

@@ -12,6 +12,20 @@ import (
 	"time"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
+)
+
+const (
+	UndefinedTradeType uint = iota
+	Buy
+	Sell
+	Dividend
+	Distribution
+	ReinvestedDividend
+	ReinvestedDistribution
+	SharesIn
+	SharesOut
+	Split
 )
 
 type Trade struct {
@@ -39,6 +53,36 @@ func (Trade) Currency(value decimal.Decimal) string {
 	return currency(value)
 }
 
+func (t *Trade) getCashFlowType() uint {
+	var cType uint
+
+	switch t.TradeTypeID {
+	case Buy:
+		cType = Debit
+	case Sell:
+	case Dividend:
+	case Distribution:
+		cType = Credit
+	default:
+		cType = 0
+	}
+
+	return cType
+}
+
+func (t *Trade) tradeToCashFlow() *CashFlow {
+	cType := t.getCashFlowType()
+	if cType == 0 {
+		return nil
+	}
+
+	c := new(CashFlow)
+	c.CashFlowTypeID = cType
+	c.Amount = t.Amount
+	c.applyCashFlowType()
+	return c
+}
+
 // Account access already verified by caller
 func (*Trade) List(db *gorm.DB, account *Account) []Trade {
 	entries := []Trade{}
@@ -57,7 +101,6 @@ func (t *Trade) securityGetBySymbol(db *gorm.DB) *Security {
 	var security *Security
 
 	if t.Symbol != "" {
-		log.Printf("[MODEL] GET SECURITY for '%s'", t.Symbol)
 		a := &t.Account
 		a.ID = t.AccountID
 		// verifies Account
@@ -83,11 +126,17 @@ func (t *Trade) Create(db *gorm.DB) error {
 	}
 
 	if security != nil {
+		t.AccountID = t.Security.AccountID
 		spewModel(t)
-		result := db.Create(t)
+		result := db.Omit(clause.Associations).Create(t)
 		log.Printf("[MODEL] CREATE %s TRADE(%d)", t.TradeType.Name, t.ID)
 		if result.Error != nil {
 			log.Fatal(result.Error)
+		}
+
+		c := t.tradeToCashFlow()
+		if c != nil {
+			security.Account.UpdateBalance(db, c)
 		}
 		return result.Error
 	}
