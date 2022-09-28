@@ -47,14 +47,14 @@ func (r *RepeatInterval) Preload(db *gorm.DB) {
 	db.First(&r.RepeatIntervalType)
 }
 
+// r should already been Preloaded
 func (r *RepeatInterval) Advance(db *gorm.DB) int {
-	r.Preload(db)
 	days := int(r.RepeatIntervalType.Days)
 
 	// decrement RepeatsLeft
 	if r.RepeatsLeft > 0 {
 		r.RepeatsLeft -= 1
-		updates := map[string]interface{}{"repeats_left": gorm.Expr("split_from - ?", 1)}
+		updates := map[string]interface{}{"repeats_left": gorm.Expr("repeats_left - ?", 1)}
 		db.Model(r).Updates(updates)
 	}
 	if r.RepeatsLeft == 0 {

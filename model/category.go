@@ -20,6 +20,10 @@ type Category struct {
 	OmitFromPie bool
 }
 
+func (c *Category) IsInterestIncome() bool {
+	return (c.ID == 74)
+}
+
 func (*Category) List(db *gorm.DB) []Category {
 	// need userCache lookup
 	var entries []Category

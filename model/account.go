@@ -132,6 +132,56 @@ func (a *Account) Init() *Account {
 	return a
 }
 
+// Average Balance for last 30 days prior to end date.
+// We need to handle case where Account age < 30 days, but currently cannot.
+func (a *Account) averageDailyBalance(db *gorm.DB, endDate time.Time) decimal.Decimal {
+	var total decimal.Decimal
+	var daysLeft int32 = 30
+	var days int32
+	var validEntries uint
+
+	lastBalance := a.Balance
+	lastTime := endDate
+	thirtyDaysAgo := lastTime.AddDate(0, 0, int(-daysLeft))
+
+	// entries will be descending order
+	entries := new(CashFlow).ListByDate(db, a, &thirtyDaysAgo)
+
+	for i := 0; i < len(entries); i++ {
+		if daysLeft <= 0 {
+			break
+		}
+
+		cf := &entries[i]
+		lastBalance = cf.Balance
+		if !(cf.Date.After(endDate)) {
+			days = int32(lastTime.Sub(cf.Date).Hours()) / 24
+			if days > 0 {
+				if days > daysLeft {
+					days = daysLeft
+				}
+				total = total.Add(lastBalance.Mul(decimal.NewFromInt32(days)))
+				daysLeft -= days
+			}
+			lastTime = cf.Date
+			validEntries += 1
+		}
+		// if no more entries[], but still days_left, this is correct
+		// Balance that was in account for remaining days left, which
+		// is handled outside loop (below)
+		lastBalance = lastBalance.Sub(cf.Amount)
+	}
+
+	if daysLeft > 0 {
+		total = total.Add(lastBalance.Mul(decimal.NewFromInt32(daysLeft)))
+	}
+
+	balance := total.DivRound(decimal.NewFromInt32(30), 2)
+	log.Printf("[MODEL] ACCOUNT 30-DAY AVERAGE BALANCE (%d: $%f from %d/%d entries)",
+		   a.ID, balance.InexactFloat64(), validEntries, len(entries))
+	return balance
+}
+
 func (a *Account) UpdateBalance(db *gorm.DB, c *CashFlow) {
 	if !c.mustUpdateBalance() {
 		return
@@ -198,6 +248,7 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 			repeat := &scheduled[i]
 			repeat.Account.ID = a.ID
 			repeat.Account.Verified = a.Verified
+			repeat.Account.Balance = a.Balance
 			repeat.tryInsertRepeatCashFlow(db)
 		}
 	}

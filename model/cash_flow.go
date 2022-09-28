@@ -153,14 +153,20 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 }
 
 // Account access already verified by caller
-func (*CashFlow) List(db *gorm.DB, account *Account) []CashFlow {
+func (*CashFlow) ListByDate(db *gorm.DB, account *Account, date *time.Time) []CashFlow {
 	entries := []CashFlow{}
 	if account.Verified {
 		// sort by Date
 		// db.Order("date desc").Find(&entries, &CashFlow{AccountID: account.IDl})
 		// use map to support NULL string
 		query := map[string]interface{}{"account_id": account.ID, "type": nil}
-		db.Order("date desc").Find(&entries, query)
+		if date != nil {
+			db.Order("date desc").
+			   Where("date >= ?", date).
+			   Find(&entries, query)
+		} else {
+			db.Order("date desc").Find(&entries, query)
+		}
 
 		// update Balances
 		balance := account.Balance
@@ -174,6 +180,10 @@ func (*CashFlow) List(db *gorm.DB, account *Account) []CashFlow {
 		log.Printf("[MODEL] LIST CASHFLOWS ACCOUNT(%d:%d)", account.ID, len(entries))
 	}
 	return entries
+}
+
+func (*CashFlow) List(db *gorm.DB, account *Account) []CashFlow {
+	return new(CashFlow).ListByDate(db, account, nil)
 }
 
 // Account access already verified by caller
@@ -406,9 +416,32 @@ func (repeat *CashFlow) updateSplits(db *gorm.DB, updates map[string]interface{}
 	}
 }
 
-// returns true if advanced date is still less than time.Now
-func (repeat *CashFlow) advance(db *gorm.DB) bool {
+func (repeat *CashFlow) applyRate(db *gorm.DB) bool {
+	repeat.Category.ID = repeat.CategoryID
+	if !repeat.Category.IsInterestIncome() {
+		return false
+	}
+
 	repeat.RepeatInterval.ID = repeat.RepeatIntervalID
+	repeat.RepeatInterval.Preload(db)
+
+	if repeat.RepeatInterval.RepeatIntervalType.Days != 30 {
+		return false
+	}
+
+	rate := &repeat.RepeatInterval.Rate
+	if rate.Equal(decimal.Zero) {
+		return false
+	}
+
+	monthlyRate := rate.Div(decimal.NewFromInt32(12))
+	averageDailyBalance := repeat.Account.averageDailyBalance(db, repeat.Date)
+	repeat.Amount = averageDailyBalance.Mul(monthlyRate).RoundBank(2)
+	return true
+}
+
+// returns true if advanced date is still less than time.Now
+func (repeat *CashFlow) advance(db *gorm.DB, updateAmount bool) bool {
 	days := repeat.RepeatInterval.Advance(db)
 	if days == 0 {
 		return false
@@ -452,8 +485,11 @@ func (repeat *CashFlow) advance(db *gorm.DB) bool {
 	repeat.TaxYear = repeat.Date.Year()
 
 	updates := map[string]interface{}{"date": repeat.Date, "tax_year": repeat.TaxYear}
+	if updateAmount {
+		updates["amount"] = repeat.Amount
+	}
 	db.Model(repeat).Updates(updates)
-	log.Printf("[MODEL] ADVANCE SCHEDULED CASHFLOW(%d)", repeat.ID,
+	log.Printf("[MODEL] ADVANCE SCHEDULED CASHFLOW(%d) to %s", repeat.ID,
 		   repeat.Date.Format("2006-01-02"))
 	repeat.updateSplits(db, updates)
 
@@ -464,7 +500,14 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 	var err error
 	c := new(CashFlow)
 	for {
+		var newAmount bool
+		if !c.Split {
+			// no need to extend for Splits,
+			// this uses repeat.Account.Balance
+			newAmount = repeat.applyRate(db)
+		}
 		c.cloneScheduled(repeat)
+
 		err = c.insertCashFlow(db)
 		if err != nil || c.Split {
 			break
@@ -478,7 +521,7 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 			split.tryInsertRepeatCashFlow(db)
 		}
 
-		canRepeat := repeat.advance(db)
+		canRepeat := repeat.advance(db, newAmount)
 		if !canRepeat {
 			break
 		}
