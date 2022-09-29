@@ -77,9 +77,14 @@ func (t *Trade) tradeToCashFlow() *CashFlow {
 	}
 
 	c := new(CashFlow)
+	c.Type = "Trade"
+	c.AccountID = t.AccountID
 	c.CashFlowTypeID = cType
 	c.Amount = t.Amount
+	c.Date = t.Date
 	c.applyCashFlowType()
+	c.CategoryID = t.TradeTypeID
+	c.PayeeID = t.SecurityID
 	return c
 }
 
@@ -94,6 +99,35 @@ func (*Trade) List(db *gorm.DB, account *Account) []Trade {
 		log.Printf("[MODEL] LIST TRADES ACCOUNT(%d:%d)", account.ID, len(entries))
 	}
 	return entries
+}
+
+// Account access already verified by caller
+func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
+	entries := []Trade{}
+	cf_entries := []CashFlow{}
+
+	if account.Verified {
+		// Need to Join with Company
+		// Find Trades for Account()
+		db.Preload("TradeType").
+		   Order("date desc").
+		   Joins("Security").
+		   Where("trade_type_id <= ?", Distribution).
+		   Where(&Trade{AccountID: account.ID}).Find(&entries)
+		log.Printf("[MODEL] LIST TRADES ACCOUNT(%d:%d)", account.ID, len(entries))
+
+		for i := 0; i < len(entries); i++ {
+			t := entries[i]
+			cf := t.tradeToCashFlow()
+			if cf != nil {
+				db.First(&t.Security.Company, t.Security.CompanyID)
+				cf.PayeeName = t.Security.Company.CompanyName()
+				cf.CategoryName = t.TradeType.Name
+				cf_entries = append(cf_entries, *cf)
+			}
+		}
+	}
+	return cf_entries
 }
 
 // Look up Security by symbol, creates Security if none exists

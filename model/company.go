@@ -17,6 +17,13 @@ type Company struct {
 	Symbol string `form:"Symbol"`
 }
 
+func (co *Company) CompanyName() string {
+	if co.Name != "" {
+		return co.Name
+	}
+	return co.Symbol
+}
+
 func companyGetBySymbol(db *gorm.DB, symbol string) *Company {
 	company := new(Company)
 	company.Symbol = symbol

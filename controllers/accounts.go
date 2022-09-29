@@ -83,22 +83,25 @@ func GetAccount(c echo.Context) error {
 	if get_json {
 		return c.JSON(http.StatusOK, entry)
 	} else {
-		var cash_flows []model.CashFlow
+		var cashflows []model.CashFlow
 		var securities []model.Security
 
 		if entry != nil {
-			// .List will order returned results
-			cash_flows = new(model.CashFlow).List(db, entry)
-			securities = new(model.Security).List(db, entry)
+			// List will order returned results
+			if entry.IsInvestment() {
+				securities = new(model.Security).List(db, entry)
+				cashflows = new(model.Trade).ListCashFlows(db, entry)
+			}
+			cashflows = new(model.CashFlow).ListMerge(db, entry, cashflows)
 		}
 
 		dh := new(helpers.DateHelper)
 		dh.Init()
 
-		data := map[string]any{ "account":entry,
+		data := map[string]any{ "account": entry,
 					"date_helper": dh,
 					"button_text": "Add",
-					"cash_flows": cash_flows,
+					"cash_flows": cashflows,
 					"securities": securities,
 					"allSecurities": true,
 					"total_amount": nil,
