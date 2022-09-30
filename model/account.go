@@ -12,6 +12,7 @@ import (
 	"time"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type Account struct {
@@ -193,7 +194,8 @@ func (a *Account) UpdateBalance(db *gorm.DB, c *CashFlow) {
 		// Create, Scheduled CashFlows
 		log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): +%f",
 			   a.ID, c.ID, c.Amount.InexactFloat64())
-		db.Model(a).Update("Balance", gorm.Expr("balance + ?", c.Amount))
+		db.Omit(clause.Associations).Model(a).
+		   Update("Balance", gorm.Expr("balance + ?", c.Amount))
 	} else {
 		// Update
 		newBalance := (a.Balance.Sub(c.oldAmount)).Add(c.Amount)
@@ -201,7 +203,8 @@ func (a *Account) UpdateBalance(db *gorm.DB, c *CashFlow) {
 			log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): %f -> %f",
 				   a.ID, c.ID, a.Balance.InexactFloat64(),
 				   newBalance.InexactFloat64())
-			db.Model(a).Update("Balance", newBalance)
+			db.Omit(clause.Associations).Model(a).
+			   Update("Balance", newBalance)
 			a.Balance = newBalance
 		}
 	}

@@ -13,6 +13,7 @@ import (
 	"time"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 const (
@@ -405,7 +406,7 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 	}
 	err, pair := c.prepareInsertCashFlow(db)
 	if err == nil {
-		result := db.Create(c)
+		result := db.Omit(clause.Associations).Create(c)
 		err = result.Error
 	}
 	if err != nil {
@@ -421,7 +422,7 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 		// increment split count in parent
 		parent := new(CashFlow)
 		parent.ID = c.SplitFrom
-		db.Model(parent).Update("split_from", gorm.Expr("split_from + ?", 1))
+		db.Omit(clause.Associations).Model(parent).Update("split_from", gorm.Expr("split_from + ?", 1))
 	} else {
 		log.Printf("[MODEL] CREATE %s CASHFLOW(%d)", c.Type, c.ID)
 		spewModel(c)
@@ -438,7 +439,7 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 		}
 		// categoryID stores paired CashFlow.ID
 		pair.CategoryID = c.ID
-		db.Create(pair)
+		db.Omit(clause.Associations).Create(pair)
 		c.CategoryID = pair.ID
 		db.Model(c).Update("CategoryID", pair.ID)
 		log.Printf("[MODEL] CREATE PAIR CASHFLOW(%d)", pair.ID)
@@ -472,9 +473,11 @@ func (repeat *CashFlow) updateSplits(db *gorm.DB, updates map[string]interface{}
 		for i := 0; i < len(splits); i++ {
 			split := splits[i]
 			if split.Transfer {
-				db.Model(split).Updates(transferUpdates)
+				db.Omit(clause.Associations).Model(split).
+				   Updates(transferUpdates)
 			} else {
-				db.Model(split).Updates(updates)
+				db.Omit(clause.Associations).Model(split).
+				   Updates(updates)
 			}
 		}
 	}
@@ -552,7 +555,7 @@ func (repeat *CashFlow) advance(db *gorm.DB, updateAmount bool) bool {
 	if updateAmount {
 		updates["amount"] = repeat.Amount
 	}
-	db.Model(repeat).Updates(updates)
+	db.Omit(clause.Associations).Model(repeat).Updates(updates)
 	log.Printf("[MODEL] ADVANCE SCHEDULED CASHFLOW(%d) to %s", repeat.ID,
 		   repeat.Date.Format("2006-01-02"))
 	repeat.updateSplits(db, updates)
@@ -615,7 +618,8 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 			log.Fatalf("INSERT REPEAT_INTERVAL ERROR: %s", _err)
 		}
 		c.RepeatIntervalID = c.RepeatInterval.ID
-		db.Model(c).Update("RepeatIntervalID", c.RepeatIntervalID)
+		db.Omit(clause.Associations).Model(c).
+		   Update("RepeatIntervalID", c.RepeatIntervalID)
 	}
 
 	return err
@@ -735,9 +739,10 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 		// Note, either side might be a Split
 		if pair != nil {
 			if pair.ID == 0 {
-				db.Create(pair)
+				db.Omit(clause.Associations).Create(pair)
 				c.CategoryID = pair.ID
-				db.Model(c).Update("CategoryID", pair.ID)
+				db.Omit(clause.Associations).Model(c).
+				   Update("CategoryID", pair.ID)
 				log.Printf("[MODEL] CREATE PAIR CASHFLOW(%d)", pair.ID)
 			} else {
 				db.Save(pair)

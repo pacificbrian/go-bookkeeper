@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type RepeatInterval struct {
@@ -55,7 +56,8 @@ func (r *RepeatInterval) Advance(db *gorm.DB) int {
 	if r.RepeatsLeft > 0 {
 		r.RepeatsLeft -= 1
 		updates := map[string]interface{}{"repeats_left": gorm.Expr("repeats_left - ?", 1)}
-		db.Model(r).Updates(updates)
+		db.Omit(clause.Associations).Model(r).
+		   Select("repeats_left").Updates(updates)
 	}
 	if r.RepeatsLeft == 0 {
 		days = 0 // hit when looping until final Repeat
