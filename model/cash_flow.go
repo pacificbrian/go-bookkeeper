@@ -70,8 +70,8 @@ func (c *CashFlow) CanSplit() bool {
 
 func (c *CashFlow) setSplit(SplitFrom uint) {
 	if SplitFrom > 0 {
-		if c.Type != "Repeat" {
-			c.Type = "Split"
+		if !c.IsScheduled() {
+			c.Type = "SplitCashFlow"
 		}
 		c.Split = true
 	}
@@ -79,7 +79,7 @@ func (c *CashFlow) setSplit(SplitFrom uint) {
 }
 
 func (c *CashFlow) IsScheduled() bool {
-	return c.Type == "Repeat"
+	return c.Type == "RCashFlow"
 }
 
 func (c *CashFlow) IsScheduledParent() bool {
@@ -87,7 +87,7 @@ func (c *CashFlow) IsScheduledParent() bool {
 }
 
 func (c *CashFlow) IsTrade() bool {
-	return c.Type == "Trade"
+	return c.Type == "TradeCashFlow"
 }
 
 func (c *CashFlow) mustUpdateBalance() bool {

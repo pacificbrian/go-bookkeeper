@@ -77,7 +77,7 @@ func (t *Trade) tradeToCashFlow() *CashFlow {
 	}
 
 	c := new(CashFlow)
-	c.Type = "Trade"
+	c.Type = "TradeCashFlow"
 	c.AccountID = t.AccountID
 	c.CashFlowTypeID = cType
 	c.Amount = t.Amount

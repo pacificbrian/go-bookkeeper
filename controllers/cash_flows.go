@@ -45,7 +45,7 @@ func CreateScheduledCashFlow(c echo.Context) error {
 	c.Bind(&entry.RepeatInterval)
 	entry.AccountID = uint(id)
 	entry.Date = getFormDate(c)
-	entry.Type = "Repeat"
+	entry.Type = "RCashFlow"
 	entry.Create(db)
 
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
@@ -134,7 +134,7 @@ func ListScheduledCashFlows(c echo.Context) error {
 	var cash_flows []model.CashFlow
 	entry := new(model.CashFlow)
 	entry.AccountID = uint(id)
-	entry.Type = "Repeat"
+	entry.Type = "RCashFlow"
 
 	entry.Account.ID = entry.AccountID
 	cash_flows = entry.Account.ListScheduled(db, false)
