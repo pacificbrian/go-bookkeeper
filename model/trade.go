@@ -181,6 +181,9 @@ func (t *Trade) Create(db *gorm.DB) error {
 func (t *Trade) HaveAccessPermission() bool {
 	u := GetCurrentUser()
 	t.Account.Verified = !(u == nil || t.Account.ID == 0 || u.ID != t.Account.UserID)
+	if t.Account.Verified {
+		t.Account.User = *u
+	}
 	return t.Account.Verified
 }
 

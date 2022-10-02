@@ -88,6 +88,9 @@ func (s *Security) Create(db *gorm.DB) error {
 func (s *Security) HaveAccessPermission() bool {
 	u := GetCurrentUser()
 	s.Account.Verified = !(u == nil || s.Account.ID == 0 || u.ID != s.Account.UserID)
+	if s.Account.Verified {
+		s.Account.User = *u
+	}
 	return s.Account.Verified
 }
 

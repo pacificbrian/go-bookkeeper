@@ -232,10 +232,20 @@ func (a *Account) Create(db *gorm.DB) error {
 	return errors.New("Permission Denied")
 }
 
+func (a *Account) cloneVerified(src *Account) {
+	a.ID = src.ID
+	a.User = src.User
+	a.Balance = src.Balance
+	a.Verified = src.Verified
+}
+
 func (a *Account) HaveAccessPermission() bool {
 	u := GetCurrentUser()
 	// store in a.Verified if this Account is trusted
 	a.Verified = !(u == nil || u.ID != a.UserID)
+	if a.Verified {
+		a.User = *u
+	}
 	return a.Verified
 }
 
@@ -261,9 +271,7 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 		scheduled := a.ListScheduled(db, true)
 		for i := 0; i < len(scheduled); i++ {
 			repeat := &scheduled[i]
-			repeat.Account.ID = a.ID
-			repeat.Account.Verified = a.Verified
-			repeat.Account.Balance = a.Balance
+			repeat.Account.cloneVerified(a)
 			repeat.tryInsertRepeatCashFlow(db)
 		}
 	}

@@ -168,55 +168,59 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 	c.PreloadScheduled(db)
 }
 
-func mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow, balance decimal.Decimal) []CashFlow {
+func mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
+		    balance decimal.Decimal, limit int) []CashFlow {
 	totalEntries := len(A) + len(B)
+	var mergedEntries []CashFlow
 	var a, b, c *CashFlow
 
+	entries := &A
 	if len(A) == 0 || len(B) == 0 {
-		singleEntries := &A
 		if len(A) == 0 {
-			singleEntries = &B
+			entries = &B
 		}
 
 		for i := 0; i < totalEntries; i++ {
-			c = &(*singleEntries)[i]
+			c = &(*entries)[i]
 			c.Balance = balance
 			balance = balance.Sub(c.Amount)
 			c.Preload(db)
 		}
+	} else {
+		aIdx := 0
+		bIdx := 0
+		// merge the 2 arrays together, keeping sorted by date
+		mergedEntries = make([]CashFlow, totalEntries)
+		for i := 0; i < totalEntries; i++ {
+			a = nil
+			b = nil
+			if aIdx < len(A) {
+				a = &A[aIdx]
+			}
+			if bIdx < len(B) {
+				b = &B[bIdx]
+			}
 
-		return *singleEntries
+			if b == nil || (a != nil && a.Date.After(b.Date)) {
+				c = a
+				aIdx += 1
+			} else {
+				c = b
+				bIdx += 1
+			}
+
+			c.Balance = balance
+			balance = balance.Sub(c.Amount)
+			c.Preload(db)
+			mergedEntries[i] = *c
+		}
+		entries = &mergedEntries
 	}
 
-	aIdx := 0
-	bIdx := 0
-	// merge the 2 arrays together, keeping sorted by date
-	mergedEntries := make([]CashFlow, totalEntries)
-	for i := 0; i < totalEntries; i++ {
-		a = nil
-		b = nil
-		if aIdx < len(A) {
-			a = &A[aIdx]
-		}
-		if bIdx < len(B) {
-			b = &B[bIdx]
-		}
-
-		if b == nil || (a != nil && a.Date.After(b.Date)) {
-			c = a
-			aIdx += 1
-		} else {
-			c = b
-			bIdx += 1
-		}
-
-		c.Balance = balance
-		balance = balance.Sub(c.Amount)
-		c.Preload(db)
-		mergedEntries[i] = *c
+	if limit <= 0 || limit > totalEntries {
+		limit = totalEntries
 	}
-
-	return mergedEntries
+	return (*entries)[0:limit]
 }
 
 // Account access already verified by caller
@@ -227,20 +231,23 @@ func (*CashFlow) ListMergeByDate(db *gorm.DB, account *Account, other []CashFlow
 		return entries
 	}
 
+	limit := account.User.UserSettings.CashFlowLimit
+
 	// sort by Date
 	// db.Order("date desc").Find(&entries, &CashFlow{AccountID: account.IDl})
 	// use map to support NULL string
 	query := map[string]interface{}{"account_id": account.ID, "type": nil}
+	queryPrefix := db.Order("date desc")
 	if date != nil {
-		db.Order("date desc").
-		   Where("date >= ?", date).
-		   Find(&entries, query)
-	} else {
-		db.Order("date desc").Find(&entries, query)
+		queryPrefix = queryPrefix.Where("date >= ?", date)
+		limit = -1
+	} else if limit > 0 {
+		queryPrefix = queryPrefix.Limit(int(limit))
 	}
+	queryPrefix.Find(&entries, query)
 
 	// merge if multiple CashFlow sets, update Balances
-	entries = mergeCashFlows(db, entries, other, account.Balance)
+	entries = mergeCashFlows(db, entries, other, account.Balance, limit)
 
 	log.Printf("[MODEL] LIST CASHFLOWS ACCOUNT(%d:%d)", account.ID, len(entries))
 	return entries
@@ -277,6 +284,9 @@ func (c *CashFlow) ListSplit(db *gorm.DB) ([]CashFlow, string) {
 func (c *CashFlow) HaveAccessPermission() bool {
 	u := GetCurrentUser()
 	c.Account.Verified = !(u == nil || c.Account.ID == 0 || u.ID != c.Account.UserID)
+	if c.Account.Verified {
+		c.Account.User = *u
+	}
 	return c.Account.Verified
 }
 
@@ -317,8 +327,7 @@ func (c *CashFlow) cloneScheduled(src *CashFlow) {
 	c.Memo = src.Memo
 	c.Transnum = src.Transnum
 	c.AccountID = src.AccountID
-	c.Account.ID = c.AccountID
-	c.Account.Verified = src.Account.Verified
+	c.Account.cloneVerified(&src.Account)
 	c.PayeeID = src.PayeeID
 	c.CategoryID = src.CategoryID
 	c.Amount = src.Amount
@@ -592,6 +601,7 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 		for i := 0; i < len(splits); i++ {
 			split := splits[i]
 			split.SplitFrom = c.ID
+			split.Account.cloneVerified(&repeat.Account)
 			split.tryInsertRepeatCashFlow(db)
 		}
 
