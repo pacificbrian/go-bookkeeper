@@ -57,6 +57,13 @@ func (CashFlow) Currency(value decimal.Decimal) string {
 	return currency(value)
 }
 
+func (c CashFlow) GetTransnum() string {
+	if len(c.Transnum) > 8 {
+		return ""
+	}
+	return c.Transnum
+}
+
 func (c CashFlow) ParentID() uint {
 	if !c.Split {
 		return 0

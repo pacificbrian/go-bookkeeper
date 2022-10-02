@@ -22,7 +22,7 @@
 <tr id="{{ c.ID }}" class="even">
 {% endif -%}
 <td>{{ c.Date.Format("2006-01-02") }}</td>
-<td>{{ c.Transnum }}</td>
+<td>{{ c.GetTransnum() }}</td>
 {% if c.Transfer -%}
 <td><a href=/accounts/{{ c.PayeeID }}>{{ c.PayeeName }}</a></td>
 {% else -%}

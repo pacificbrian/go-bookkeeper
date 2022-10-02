@@ -21,7 +21,7 @@
 {% else -%}
 <tr id="{{ c.ID }}" class="even">
 {% endif -%}
-<td>{{ c.RepeatInterval.RepeatIntervalType.name }}</td>
+<td>{{ c.RepeatInterval.RepeatIntervalType.Name }}</td>
 <td>{{ c.RepeatInterval.GetRepeatsLeft() }}</td>
 <td>{{ c.Date.Format("2006-01-02") }}</td>
 <td>{{ c.Transnum }}</td>
