@@ -42,20 +42,29 @@ func (a *Account) IsInvestment() bool {
 	return a.AccountType.isType("Investment")
 }
 
-func ListAccounts(db *gorm.DB) []Account {
+func ListAccounts(db *gorm.DB, all bool) []Account {
 	u := GetCurrentUser()
 	entries := []Account{}
+	hidden_clause := ""
 	if u == nil {
 		return entries
 	}
 
+	if !all {
+		hidden_clause = "hidden != 1"
+	}
+
 	// Find Accounts for CurrentUser()
-	db.Where(&Account{UserID: u.ID}).Find(&entries)
+	db.Preload("AccountType").
+	   Order("account_type_id").Order("Name").
+	   Where(hidden_clause).
+	   Where(&Account{UserID: u.ID}).Find(&entries)
+	log.Printf("[MODEL] LIST ACCOUNTS(%d)", len(entries))
 	return entries
 }
 
-func (*Account) List(db *gorm.DB) []Account {
-	return ListAccounts(db)
+func (*Account) List(db *gorm.DB, all bool) []Account {
+	return ListAccounts(db, all)
 }
 
 func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlow {

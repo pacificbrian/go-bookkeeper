@@ -6,7 +6,7 @@
 <tr>
 <td><img width="18" src={{ a.AccountType.GetIconPath() }} alt={{ a.AccountType.GetAltText() }} /></td>
 <td><a href=/accounts/{{a.ID}}>{{ a.Name }}</a></td>
-<td>{{ a.Balance }}</td>
+<td align="right">{{ a.Currency(a.Balance) }}</td>
 <td>
 </td>
 <td>

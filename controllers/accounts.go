@@ -30,7 +30,7 @@ func ListAccounts(c echo.Context) error {
 	db := gormdb.DbManager()
 	get_json := false
 
-	entries := model.ListAccounts(db)
+	entries := model.ListAccounts(db, false)
 
 	if get_json {
 		return c.JSON(http.StatusOK, entries)
