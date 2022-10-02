@@ -78,6 +78,7 @@ func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlo
 		if canRecordOnly {
 			db.Order("date asc").Where("date <= ?", time.Now()).
 					     Where("repeats_left > 0 OR repeats_left IS NULL").
+					     Where("cash_flow_id > 0").
 					     Where("repeat_interval_id > 0").
 					     Joins("RepeatInterval").Find(&entries, query)
 		} else {
