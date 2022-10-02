@@ -20,19 +20,23 @@ type DateHelper struct {
 	DayIndex int
 }
 
-func (dh *DateHelper) Init() {
-	year,month,day := time.Now().Date()
+func (dh *DateHelper) SetDate(date time.Time) {
+	year,month,day := date.Date()
 
 	dh.YearIndex = 4
 	for i := 0; i < 8; i++ {
 		dh.Years[i] = year - (dh.YearIndex - 1) + i;
 	}
-
-	dh.Months = []string{ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }
 	dh.MonthIndex = int(month)
+	dh.DayIndex = day
+}
+
+func (dh *DateHelper) Init() {
+	dh.Months = []string{ "January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December" }
 
 	for i := 0; i < 31; i++ {
 		dh.Days[i] = i+1
 	}
-	dh.DayIndex = day
+
+	dh.SetDate(time.Now())
 }

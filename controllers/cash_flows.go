@@ -116,6 +116,7 @@ func EditCashFlow(c echo.Context) error {
 
 	dh := new(helpers.DateHelper)
 	dh.Init()
+	dh.SetDate(entry.Date)
 
 	data := map[string]any{ "cash_flow": entry,
 				"date_helper": dh,
