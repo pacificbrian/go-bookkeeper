@@ -20,13 +20,21 @@ type DateHelper struct {
 	DayIndex int
 }
 
-func (dh *DateHelper) SetDate(date time.Time) {
-	year,month,day := date.Date()
+func (dh *DateHelper) Year() int {
+	return dh.Years[dh.YearIndex - 1]
+}
 
+func (dh *DateHelper) SetYear(year int) {
 	dh.YearIndex = 4
 	for i := 0; i < 8; i++ {
 		dh.Years[i] = year - (dh.YearIndex - 1) + i;
 	}
+}
+
+func (dh *DateHelper) SetDate(date time.Time) {
+	year,month,day := date.Date()
+
+	dh.SetYear(year)
 	dh.MonthIndex = int(month)
 	dh.DayIndex = day
 }

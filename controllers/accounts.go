@@ -32,12 +32,16 @@ func ListAccounts(c echo.Context) error {
 
 	entries := model.ListAccounts(db, false)
 
+	dh := new(helpers.DateHelper)
+	dh.Init()
+
 	if get_json {
 		return c.JSON(http.StatusOK, entries)
 	} else {
 		// Test if performance diff w/ map vs pongo2.context
 		//data := pongo2.Context{ "accounts":entries }
-		data := map[string]any{ "accounts":entries }
+		data := map[string]any{ "accounts": entries,
+					"date_helper": dh }
 		return c.Render(http.StatusOK, "accounts/index.html", data)
 	}
 }

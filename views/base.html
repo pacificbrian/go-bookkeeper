@@ -66,6 +66,18 @@
 </select>
 {% endmacro -%}
 
+{% macro form_year_select(helper) %}
+<select name="year">
+{% for y in helper.Years -%}
+{% if forloop.Counter == helper.YearIndex -%}
+<option value="{{y}}" selected="selected">{{y}}</option>
+{% else -%}
+<option value="{{y}}">{{y}}</option>
+{% endif -%}
+{% endfor -%}
+</select>
+{% endmacro -%}
+
 <div id="content">
 {% block content %}{% endblock %}
 </div>

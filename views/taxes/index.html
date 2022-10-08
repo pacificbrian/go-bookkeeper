@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="show">
+
+<h2>Tax Results</h2>
+<table class="standard">
+<th>Year</th>
+<th>Status</th>
+<th>AGI</th>
+<th>Deductions</th>
+<th>Taxable</th>
+<th>Owed Tax</th>
+<th>Credits</th>
+<th>Payments</th>
+<th>Unpaid_Tax</th>
+<th></th>
+{% for r in tax_returns -%}
+<tr>
+<td><a href=/years/{{ r.Year }}/taxes>{{ r.Year }}</a> : {{ r.TaxRegion.Name }}</td>
+<td>{{ r.FilingStatusLabel() }}, {{ r.Exemptions }}</td>
+<td class="currency">{{ r.Currency(r.AgiIncome) }}</td>
+<td class="currency">{{ r.Currency(r.FromAGI) }}</td>
+<td class="currency">{{ r.Currency(r.TaxableIncome) }}</td>
+<td class="currency">{{ r.Currency(r.OwedTax) }}</td>
+<td class="currency">{{ r.Currency(r.Credits) }}</td>
+<td class="currency">{{ r.Currency(r.Payments) }}</td>
+<td class="currency">{{ r.Currency(r.UnpaidTax) }}</td>
+<td>
+<a href=/taxes/{{r.ID}}>Recalculate</a><br>
+<a href=/taxes/{{r.ID}}/edit>Edit</a><br>
+</td>
+</tr>
+{% endfor -%}
+</table>
+
+<form method="POST" action="/taxes">
+<fieldset>
+<label>Tax Year</label>
+{% if year > 0 -%}
+<input type="text" name="year" value={{year}} size=10/>
+{% else -%}
+<input type="text" name="year" size=10/>
+{% endif -%}
+{{ form_select_type(tax_regions, "tax_region_id") }}
+{{ form_select_type(filing_status, "tax_filing_status") }}
+</fieldset>
+<fieldset class="last">
+<label>Exemptions</label>
+<input type="text" name="exemptions" size=10/>
+</fieldset>
+<fieldset class="submit">
+<input type="submit" value="Add Tax Result"/>
+</fieldset>
+</form>
+
+{% if year > 0 -%}
+<h2>Tax Items</h2>
+<table class="standard">
+{% for t in tax_entries -%}
+<tr>
+<td>{{ t.Year.Year() }}</td>
+<td>{{ t.TaxRegion.Name }}</td>
+<td><a href=/years/{{t.Year.Year()}}/tax_types/{{t.TaxTypeID}}>{{t.TaxType.Name}}</a></td>
+<td><a href=/years/{{t.Year.Year()}}/tax_items/{{t.TaxItemID}}>{{t.TaxItem.Name}}</a></td>
+<td>{{ t.Memo }}</td>
+<td class="currency">{{ t.Currency(t.Amount) }}</td>
+{% if t.ID > 0 -%}
+<td><a href=/years/{{t.Year.Year()}}/tax_entry/{{t.ID}}/edit>Edit</a></td>
+{% else -%}
+<td></td>
+{% endif -%}
+</tr>
+{% endfor -%}
+</table>
+
+{% if !account -%}
+<form method="POST" action="/tax_entries">
+<fieldset>
+<label>Tax Year</label>
+{{ form_year_select(date_helper) }}
+{{ form_select_type(tax_regions, "tax_region_id") }}
+</fieldset>
+<fieldset>
+<label>Item Name</label>
+{{ form_select_type(tax_types, "tax_type_id") }}
+{{ form_select_type(tax_items, "tax_item_id") }}
+</fieldset>
+</fieldset>
+</fieldset>
+<fieldset>
+<label>Memo</label>
+<input type="text" name="memo"/>
+</fieldset>
+<fieldset class="last">
+<label>Amount</label>
+<input type="text" name="amount"/>
+</fieldset>
+<fieldset class="submit">
+<input type="submit" value="Add Tax Item"/>
+</fieldset>
+</form>
+{% endif -%}
+{% endif -%}
+</div>
+
+<ul id="footmenu">
+{% if year > 0 -%}
+<li><a href=/years/{{year - 1}}/taxes>Last Year Taxes</a></li>
+<li><a href=/taxes>All Taxes</a></li>
+{% else -%}
+<li><a href=/years/{{date_helper.Year()}}/taxes>Current Year Taxes</a></li>
+<li><a href=/years/{{date_helper.Year() - 1}}/taxes>Last Year Taxes</a></li>
+{% endif -%}
+<li><a href=/tax_categories>Tax Categories</a></li>
+<li><a href=/tax_years>Tax Year Data</a></li>
+</ul>
+{% endblock -%}

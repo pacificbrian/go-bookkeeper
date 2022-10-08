@@ -13,7 +13,7 @@ import (
 	"go-bookkeeper/controllers"
 )
 
-func UsePongo2(e *echo.Echo) echo.Renderer {
+func usePongo2(e *echo.Echo) echo.Renderer {
 	r, err := echopongo2.NewRenderer("views/")
 	if err != nil {
 		r = nil
@@ -28,7 +28,7 @@ func Init() *echo.Echo {
 	e.Use(middleware.Recover())   // auto recover from any panic
 	e.Use(middleware.RequestID()) // log request info with id
 	e.Static("/", "public")
-	e.Renderer = UsePongo2(e)
+	e.Renderer = usePongo2(e)
 
 	// Account
 	e.GET("/accounts", controllers.ListAccounts)   // Index/List
@@ -60,6 +60,17 @@ func Init() *echo.Echo {
 	// Trade
 	e.POST("/accounts/:account_id/trades", controllers.CreateTrade)
 	e.POST("/securities/:security_id/trades", controllers.CreateTrade)
+
+	// Taxes
+	e.GET("/years/:year/taxes", controllers.ListTaxes)
+	e.GET("/taxes", controllers.ListTaxes)
+	e.POST("/taxes", controllers.CreateTaxes)
+	//e.PUT("/taxes/:id", controllers.RecalculateTaxes)
+	e.POST("/tax_entries", controllers.CreateTaxEntry)
+	//e.GET("/tax_entries/:id/edit", controllers.EditTaxEntry)
+	//e.POST"/tax_entries/:id", controllers.UpdateTaxEntry)
+	//e.GET("/tax_categories", controllers.ListTaxCategories)
+	//e.GET("/tax_years", controllers.ListTaxYears)
 
 	return e
 }
