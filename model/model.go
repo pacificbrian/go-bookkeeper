@@ -9,17 +9,10 @@ package model
 import (
 	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 )
-
-type ModelWithDelete struct {
-        ID        uint `gorm:"primaryKey"`
-        DeletedAt gorm.DeletedAt `gorm:"index"`
-}
 
 type Model struct {
         ID        uint `gorm:"primaryKey"`
-        //DeletedAt gorm.DeletedAt `gorm:"index"`
 }
 
 var useSpew bool = false

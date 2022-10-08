@@ -12,9 +12,12 @@ import (
 	"gorm.io/gorm"
 )
 
-func OpenSqlite(gconfig *gorm.Config) (*gorm.DB, error) {
+func Open() gorm.Dialector {
 	c := getConfig()
 	log.Printf("OPEN DATABASE(%s)", c.DB.Name)
-	sqldb := sqlite.Open(c.DB.Name)
-	return gorm.Open(sqldb, gconfig)
+	return sqlite.Open(c.DB.Name)
+}
+
+func Name() string {
+	return "sqlite3"
 }

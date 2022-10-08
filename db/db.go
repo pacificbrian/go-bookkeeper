@@ -8,11 +8,13 @@ package db
 
 import (
 	"log"
+	"database/sql"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
 	"go-bookkeeper/db/sqlite"
 )
 
+var sqldb *sql.DB
 var db *gorm.DB
 
 func init() {
@@ -20,12 +22,16 @@ func init() {
 
 	config := &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)}
 
-	db, err = sqlite.OpenSqlite(config)
+	name := sqlite.Name()
+	db, err = gorm.Open(sqlite.Open(), config)
+	if err == nil {
+		sqldb, err = db.DB()
+	}
 	if err != nil {
 		log.Panic(err)
 	}
 
-	autoMigrate(db)
+	sqlMigrate(sqldb, name)
 }
 
 func DbManager() *gorm.DB {

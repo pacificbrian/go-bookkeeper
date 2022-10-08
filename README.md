@@ -10,9 +10,8 @@ This is something I made for fun to learn Go, and to refresh my old
 bookkeeping application that was using Rails.<br>
   
 It's not ready to use yet, as is missing:
-1. prime Database with initial values
 1. Delete support (was easy in Rails)
-1. TradeCashFlows are incomplete 
+1. TradeCashFlows#Update
 
 ## Setup
 

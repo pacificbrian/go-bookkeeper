@@ -11,7 +11,7 @@ import (
 )
 
 type AccountType struct {
-	gorm.Model
+	Model
 	Name string `form:"account_type.Name"`
 }
 

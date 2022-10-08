@@ -11,7 +11,7 @@ import (
 )
 
 type CashFlowType struct {
-	gorm.Model
+	Model
 	Name string `form:"cash_flow_type.Name"`
 }
 

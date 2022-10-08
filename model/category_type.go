@@ -11,7 +11,7 @@ import (
 )
 
 type CategoryType struct {
-	gorm.Model
+	Model
 	Name string `form:"category_type.Name"`
 }
 
