@@ -12,7 +12,7 @@ upgrade:
 	yarn upgrade
 
 js:
-	yarn run webpack --config webpack.dev.js
+	yarn run webpack --config javascript/webpack.dev.js
 
 client: js
 
