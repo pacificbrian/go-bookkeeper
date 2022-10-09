@@ -16,6 +16,26 @@ import (
 
 var FilingStatusLabels = [5]string{"","S","MFJ","MFS","HH"}
 
+const (
+	FilingStatusUndefined uint = iota
+	Single
+	MarriedJointly
+	MarriedSeparately
+	HeadOfHousehold
+)
+
+const (
+	TaxTypeUndefined uint = iota
+	TaxTypeIncome
+	TaxTypeIncomeCapitalGain
+	TaxTypeDeductionsForAGI
+	TaxTypeDeductionFromAGI
+	TaxTypeItemizedDeduction
+	TaxTypeTax
+	TaxTypeCredits
+	TaxTypePayments
+)
+
 type TaxFilingStatus struct {
 	Model
 	Name string
@@ -65,7 +85,7 @@ type TaxReturn struct {
 	TaxRegion TaxRegion
 	User User
 	Year int `form:"year"`
-	Exemptions int `form:"exemptions"`
+	Exemptions int32 `form:"exemptions"`
 	Income decimal.Decimal
 	AgiIncome decimal.Decimal
 	TaxableIncome decimal.Decimal
@@ -178,4 +198,101 @@ func (t *TaxReturn) Create(db *gorm.DB) error {
 		return result.Error
 	}
 	return errors.New("Permission Denied")
+}
+
+func (item *TaxItem) GetByName(db *gorm.DB, name string) *TaxItem {
+	item.Name = name
+	db.Where(&item).First(&item)
+
+	if item.ID == 0 {
+		return nil
+	}
+	return item
+}
+
+// Some TaxTypes may need Mul(-1) of the CashFlows
+// Possibly we should add Round(2) to be cautious
+func (*TaxType) Sum(db *gorm.DB, r *TaxReturn, taxType uint) decimal.Decimal {
+	var total decimal.Decimal
+
+	entries := []TaxEntry{}
+	t := new(TaxEntry)
+	t.UserID = r.UserID
+	t.TaxRegionID = r.TaxRegionID
+	t.TaxTypeID = taxType
+	db.Table("taxes").Where(&t).Find(&entries)
+
+	for i := 0; i < len(entries); i++ {
+		t = &entries[i]
+		total.Add(t.Amount)
+	}
+	return total
+}
+
+func (item *TaxItem) Sum(db *gorm.DB, r *TaxReturn, name string) decimal.Decimal {
+	var total decimal.Decimal
+
+	item = item.GetByName(db, name)
+	if item == nil {
+		return total
+	}
+
+	entries := []TaxEntry{}
+	t := new(TaxEntry)
+	t.UserID = r.UserID
+	t.TaxRegionID = r.TaxRegionID
+	t.TaxTypeID = item.TaxTypeID
+	t.TaxItemID = item.ID
+	db.Table("taxes").Where(&t).Find(&entries)
+
+	for i := 0; i < len(entries); i++ {
+		t = &entries[i]
+		total.Add(t.Amount)
+	}
+	return total
+}
+
+func (r *TaxReturn) calculate(db *gorm.DB) {
+	taxYear := new(TaxYear).Get(db, r.Year)
+	if taxYear == nil {
+		return
+	}
+
+	r.Income = new(TaxType).Sum(db, r, TaxTypeIncome)
+	// qualified dividends double-counted, so remove from Income
+	qualDividends := new(TaxItem).Sum(db, r, "Qualified Dividends")
+	r.Income = r.Income.Sub(qualDividends)
+
+	r.ForAGI = new(TaxType).Sum(db, r, TaxTypeDeductionsForAGI)
+	r.Credits = new(TaxType).Sum(db, r, TaxTypeCredits)
+	r.Payments = new(TaxType).Sum(db, r, TaxTypePayments)
+	r.OtherTax = new(TaxType).Sum(db, r, TaxTypeTax)
+	r.ItemizedDeduction = new(TaxType).Sum(db, r, TaxTypeItemizedDeduction)
+
+	if r.ItemizedDeduction.IsPositive() && taxYear.SaltMaximum > 0 {
+		saltMaximum := decimal.NewFromInt32(taxYear.SaltMaximum)
+		saltTotal := new(TaxItem).Sum(db, r, "State Local Income Taxes")
+		saltTotal = saltTotal.Add(new(TaxItem).Sum(db, r, "Real Estate Taxes"))
+		saltTotal = saltTotal.Add(new(TaxItem).Sum(db, r, "Personal Property Taxes"))
+		if saltTotal.IsPositive() && saltTotal.GreaterThan(saltMaximum) {
+			r.ItemizedDeduction = r.ItemizedDeduction.Sub(saltTotal)
+			r.ItemizedDeduction = r.ItemizedDeduction.Add(saltMaximum)
+		}
+	}
+
+	r.Exemption = decimal.NewFromInt32(r.Exemptions * taxYear.ExemptionAmount)
+	r.StandardDeduction = taxYear.standardDeduction(r.FilingStatus)
+
+	// if user provided FromAGI use it, otherwise we auto-calculate
+	r.FromAGI = new(TaxType).Sum(db, r, TaxTypeDeductionFromAGI)
+	if r.FromAGI.IsZero() {
+		r.FromAGI = decimal.Max(r.StandardDeduction, r.ItemizedDeduction).Add(r.Exemption)
+	}
+
+	// Calculate Tax Result
+	r.AgiIncome = r.Income.Sub(r.ForAGI)
+	r.TaxableIncome = r.AgiIncome.Sub(r.FromAGI)
+	r.BaseTax = taxYear.calculateTax(db, r.FilingStatus, r.TaxableIncome)
+	r.OwedTax = r.BaseTax.Add(r.OtherTax).Sub(r.Credits)
+	r.UnpaidTax = r.OwedTax.Sub(r.Payments)
 }
