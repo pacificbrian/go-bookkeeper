@@ -1,8 +1,10 @@
 *.db
 *.sum
 *.sql*
+*.swo
 *.swp
 TODO
 *.lock
 node_modules/
+yarn-error.log
 public/javascript/bundle.js
