@@ -5,14 +5,85 @@
  */
 
 import { Controller } from '@hotwired/stimulus';
+import { Subject } from 'rxjs';
+import { ajax } from 'rxjs/ajax';
+import { distinctUntilChanged, map, switchMap } from 'rxjs/operators';
 
 export default class extends Controller {
-  static get targets() {
-    return [ "cashflowAmount", "cashflowNewAmount" ]
-  }
+  static targets = [ "cashflowTableRow", "cashflowAmount", "cashflowNewAmount" ]
+
+  cashflowDelete$ = new Subject();
+  cashflowPut$ = new Subject();
 
   connect() {
     console.log("Stimulus connected!", this.element);
+
+    this.cashflowDelete$
+      .pipe(
+        distinctUntilChanged(),
+        switchMap((cashflowID) => {
+          console.log("RXJS:ajax:DELETE: ", [cashflowID])
+          return ajax({
+            method: 'DELETE',
+            url: '/cash_flows/'+cashflowID,
+            responseType: 'json',
+          });
+        }),
+        map((response) => {
+          return response.response;
+        })
+      )
+      .subscribe((response) => {
+        console.log(response)
+      })
+
+    this.cashflowPut$
+      .pipe(
+        distinctUntilChanged(),
+        switchMap((cashflowSet) => {
+          console.log("RXJS:ajax:PUT: ", cashflowSet)
+          return ajax({
+            method: 'PUT',
+            url: '/cash_flows/'+cashflowSet[0],
+            responseType: 'json',
+            body: {
+              key: cashflowSet[1],
+              value: +cashflowSet[2]
+            }
+          });
+        }),
+        map((response) => {
+          return response.response;
+        })
+      )
+      .subscribe((response) => {
+        console.log(response)
+        // for GETs:
+        //this.someDivClass.innerHTML = response;
+      })
+  }
+
+  disconnect() {
+    this.cashflowDelete$.unsubscribe();
+    this.cashflowPut$.unsubscribe();
+  }
+
+  actionDelete(event) {
+    let target = event.currentTarget
+    let cashflowID = target.getAttribute('data-cashflow-id')
+    console.log("Stimulus: actionDelete", cashflowID)
+    event.preventDefault()
+    // add to RXJS stream processed with cashflowDelete.pipe above
+    this.cashflowDelete$.next(cashflowID)
+
+    // hide deleted CashFlow row in table
+    const cashflowRows = this.cashflowTableRowTargets;
+    for (let r in cashflowRows) {
+      let id = cashflowRows[r].getAttribute('data-cashflow-id')
+      if (id == cashflowID) {
+        cashflowRows[r].hidden = 1
+      }
+    }
   }
 
   // using click event
@@ -30,7 +101,7 @@ export default class extends Controller {
       let id = inputAmounts[i].getAttribute('data-cashflow-id')
       if (id == cashflowID) {
         inputAmounts[i].hidden = 0
-        // how to auto select for input?
+        inputAmounts[i].autofocus = 1
       }
     }
   }
@@ -45,6 +116,7 @@ export default class extends Controller {
     } else {
       return
     }
+    console.log("Stimulus: keyCode is ", event.keyCode)
 
     // get new value and hide input field
     let inputAmount = event.currentTarget
@@ -68,6 +140,7 @@ export default class extends Controller {
       }
     }
 
-    // add to RXJS stream processed with cashflowPutAmount.pipe
+    // add to RXJS stream processed with cashflowPut.pipe
+    this.cashflowPut$.next([cashflowID, "amount", newAmount]);
   }
 }
