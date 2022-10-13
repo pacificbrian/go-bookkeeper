@@ -48,7 +48,7 @@ func CreateScheduledCashFlow(c echo.Context) error {
 	entry.Type = "RCashFlow"
 	entry.Create(db)
 
-	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
+	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d/scheduled", id))
 }
 
 func CreateSplitCashFlow(c echo.Context) error {
@@ -115,9 +115,20 @@ func UpdateCashFlow(c echo.Context) error {
 
 	c.Bind(entry)
 	c.Bind(&entry.RepeatInterval)
+	entry.Date = getFormDate(c)
 	entry.Update(db)
-	a_id := entry.AccountID
-	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", a_id))
+
+	// possibly can clean this up with Sessions
+	if entry.Split {
+		return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/cash_flows/%d/edit",
+								   entry.ParentID()))
+	} else if entry.IsScheduled() {
+		return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d/scheduled",
+								   entry.AccountID))
+	} else {
+		return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d",
+								   entry.AccountID))
+	}
 }
 
 func EditCashFlow(c echo.Context) error {

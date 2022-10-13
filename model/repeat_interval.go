@@ -63,20 +63,23 @@ func (r *RepeatInterval) Advance(db *gorm.DB) int {
 		days = 0 // hit when looping until final Repeat
 	}
 
+	log.Printf("[MODEL] ADVANCE REPEAT_INTERVAL(%d) DAYS(%d) LEFT(%d)",
+		   r.ID, days, r.RepeatsLeft)
 	return days
 }
 
 func (r *RepeatInterval) Create(db *gorm.DB, c *CashFlow) error {
 	r.CashFlowID = c.ID
 	r.StartDay = c.Date.Day()
-	result := db.Create(r)
+	result := db.Omit(clause.Associations).Create(r)
 	log.Printf("[MODEL] CREATE REPEAT_INTERVAL(%d) FOR CASHFLOW(%d)",
 		   c.RepeatIntervalID, c.ID)
 	return result.Error
 }
 
-func (r *RepeatInterval) Update(db *gorm.DB) error {
-	result := db.Save(r)
+func (r *RepeatInterval) Update(db *gorm.DB, c *CashFlow) error {
+	r.StartDay = c.Date.Day()
+	result := db.Omit(clause.Associations).Save(r)
 	log.Printf("[MODEL] UPDATE REPEAT_INTERVAL(%d) FOR CASHFLOW(%d)",
 		   r.ID, r.CashFlowID)
 	return result.Error

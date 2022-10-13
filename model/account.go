@@ -76,7 +76,8 @@ func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlo
 		query := map[string]interface{}{"account_id": account.ID,
 					        "type": "RCashFlow", "split": false}
 		if canRecordOnly {
-			db.Order("date asc").Where("date <= ?", time.Now()).
+			db.Order("date asc").Preload("RepeatInterval.RepeatIntervalType").
+					     Where("date <= ?", time.Now()).
 					     Where("repeats_left > 0 OR repeats_left IS NULL").
 					     Where("cash_flow_id > 0").
 					     Where("repeat_interval_id > 0").
@@ -90,7 +91,8 @@ func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlo
 				repeat.Preload(db)
 			}
 		}
-		log.Printf("[MODEL] LIST SCHEDULED ACCOUNT(%d:%d)", account.ID, len(entries))
+		log.Printf("[MODEL] LIST SCHEDULED ACCOUNT(%d:%d) (%t)",
+			   account.ID, len(entries), canRecordOnly)
 	}
 	return entries
 }

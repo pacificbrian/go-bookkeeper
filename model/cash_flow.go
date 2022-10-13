@@ -66,11 +66,18 @@ func (c CashFlow) GetTransnum() string {
 	return c.Transnum
 }
 
-func (c CashFlow) ParentID() uint {
+func (c *CashFlow) ParentID() uint {
 	if !c.Split {
 		return 0
 	}
 	return c.SplitFrom
+}
+
+func (c *CashFlow) RepeatParentID() uint {
+	if c.IsScheduled() {
+		return 0
+	}
+	return c.RepeatInterval.CashFlowID
 }
 
 func (c *CashFlow) CanSplit() bool {
@@ -135,8 +142,8 @@ func (c *CashFlow) HasSplits() bool {
 	return c.SplitCount() > 0
 }
 
-func (c *CashFlow) PreloadScheduled(db *gorm.DB) {
-	if c.IsScheduled() {
+func (c *CashFlow) PreloadRepeat(db *gorm.DB) {
+	if c.RepeatIntervalID > 0 {
 		c.RepeatInterval.ID = c.RepeatIntervalID
 		c.RepeatInterval.Preload(db)
 	}
@@ -167,7 +174,7 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 		}
 	}
 
-	c.PreloadScheduled(db)
+	c.PreloadRepeat(db)
 }
 
 func mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
@@ -324,6 +331,7 @@ func (c *CashFlow) cloneScheduled(src *CashFlow) {
 	if src.Split {
 		c.setSplit(src.SplitFrom)
 	}
+	c.RepeatIntervalID = src.RepeatIntervalID
 	c.Date = src.Date
 	c.TaxYear = c.Date.Year()
 	c.Memo = src.Memo
@@ -507,9 +515,7 @@ func (repeat *CashFlow) applyRate(db *gorm.DB) bool {
 		return false
 	}
 
-	repeat.RepeatInterval.ID = repeat.RepeatIntervalID
-	repeat.RepeatInterval.Preload(db)
-
+	repeat.PreloadRepeat(db)
 	if repeat.RepeatInterval.RepeatIntervalType.Days != 30 {
 		return false
 	}
@@ -639,6 +645,8 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 		c.RepeatIntervalID = c.RepeatInterval.ID
 		db.Omit(clause.Associations).Model(c).
 		   Update("RepeatIntervalID", c.RepeatIntervalID)
+
+		// mark Account as having ScheduledCashFlows
 	}
 
 	return err
@@ -669,7 +677,9 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 		// modify here because Delete doen't use, and Update overwrites
 		c.Amount = c.Amount.Abs()
 	} else {
-		c.PreloadScheduled(db)
+		if c.IsScheduled() {
+			c.PreloadRepeat(db)
+		}
 	}
 
 	return c
@@ -771,7 +781,7 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 
 	err, pair := c.prepareInsertCashFlow(db)
 	if err == nil {
-		result := db.Save(c)
+		result := db.Omit(clause.Associations).Save(c)
 		err = result.Error
 	}
 	if err == nil {
@@ -788,7 +798,7 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 				c.updateSplits(db, c.splitUpdateMap())
 			}
 			if c.IsScheduled() {
-				c.RepeatInterval.Update(db)
+				c.RepeatInterval.Update(db, c)
 			}
 		}
 
@@ -802,7 +812,7 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 				   Update("CategoryID", pair.ID)
 				log.Printf("[MODEL] CREATE PAIR CASHFLOW(%d)", pair.ID)
 			} else {
-				db.Save(pair)
+				db.Omit(clause.Associations).Save(pair)
 				log.Printf("[MODEL] UPDATE PAIR CASHFLOW(%d)", pair.ID)
 			}
 

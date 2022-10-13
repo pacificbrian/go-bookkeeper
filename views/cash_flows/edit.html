@@ -2,7 +2,11 @@
 {% block content -%}
 
 <div class="edit">
+{% if cash_flow.IsScheduled() -%}
+<h2>Edit Recurring Transaction</h2>
+{% else -%}
 <h2>Edit Transaction</h2>
+{% endif -%}
 
 <table>
 <tr>
@@ -78,6 +82,9 @@
 {% endif -%}
 {% if cash_flow.ParentID > 0 -%}
 <li><a href=/cash_flows/{{ cash_flow.ParentID }}/edit>Edit Parent CashFlow</a></li>
+{% endif -%}
+{% if cash_flow.RepeatParentID > 0 -%}
+<li><a href=/cash_flows/{{ cash_flow.RepeatParentID }}/edit>Edit Scheduled CashFlow</a></li>
 {% endif -%}
 <li><a href=/cash_flows/{{ cash_flow.ID }} method="delete">Delete CashFlow</a></li>
 </ul>
