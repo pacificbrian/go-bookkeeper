@@ -7,9 +7,11 @@
 package model
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 	"net/http"
+	"strconv"
 	"time"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -401,7 +403,7 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 		if c.oldPairID > 0 {
 			oldPair := new(CashFlow)
 			oldPair.pairFrom(c)
-			oldPair.delete(db)
+			oldPair.deletePair(db)
 		}
 
 		if !c.Split && c.PayeeName != "" {
@@ -651,7 +653,7 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 		return nil
 	}
 
-	c.determineCashFlowType()
+	c.determineCashFlowType() // Edit only?
 	c.oldAmount = c.Amount
 	c.oldDate = c.Date
 	if c.Transfer {
@@ -673,11 +675,17 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 	return c
 }
 
+func (c *CashFlow) deletePair(db *gorm.DB) {
+	// Clear Transfer flag so Pairs don't loop deleting each other
+	c.Transfer = false
+	c.delete(db)
+}
+
 func (c *CashFlow) deleteTransfer(db *gorm.DB) {
 	if c.Transfer {
 		pair := new(CashFlow)
 		pair.pairFrom(c)
-		pair.delete(db)
+		pair.deletePair(db)
 	}
 }
 
@@ -691,6 +699,7 @@ func (c *CashFlow) delete(db *gorm.DB) {
 		db.Model(parent).Update("split_from", gorm.Expr("split_from - ?", 1))
 
 		db.Delete(c)
+		c.deleteTransfer(db)
 	} else {
 		log.Printf("[MODEL] DELETE CASHFLOW(%d)", c.ID)
 		if c.HasSplits() {
@@ -698,11 +707,11 @@ func (c *CashFlow) delete(db *gorm.DB) {
 			for i := 0; i < len(splits); i++ {
 				split := splits[i]
 				split.delete(db)
-				split.deleteTransfer(db)
 			}
 		}
 
 		db.Delete(c)
+		c.deleteTransfer(db)
 
 		c.Account.ID = c.AccountID
 		c.Amount = decimal.Zero
@@ -714,11 +723,42 @@ func (c *CashFlow) delete(db *gorm.DB) {
 func (c *CashFlow) Delete(db *gorm.DB) error {
 	// Verify we have access to CashFlow
 	c = c.Get(db, false)
-	if c != nil {
-		c.delete(db)
-		c.deleteTransfer(db)
+	if c == nil {
+		return errors.New("Permission Denied")
 	}
-	return errors.New("Permission Denied")
+
+	log.Printf("[MODEL] DELETE CASHFLOW(%d) %s", c.ID)
+	c.delete(db)
+	return nil
+}
+
+func (c *CashFlow) Put(db *gorm.DB, request map[string]interface{}) error {
+	// Verify we have access to CashFlow
+	c = c.Get(db, false)
+	if c == nil {
+		return errors.New("Permission Denied")
+	}
+
+	jrequest, _ := json.Marshal(request)
+	log.Printf("[MODEL] PUT CASHFLOW(%d) %s", c.ID, jrequest)
+
+	// special case c.Amount
+	// need better way if expanded with more fields/types
+	if request["amount"] != "" {
+		newAmount, _ := strconv.ParseFloat(request["amount"].(string), 2)
+		c.Amount = decimal.NewFromFloat(newAmount)
+		if c.Amount.Equal(c.oldAmount) {
+			// ignore non-update
+			delete(request, "amount")
+		} else {
+			c.Account.UpdateBalance(db, c)
+			// change type in map for db.Update to succeed
+			request["amount"] = c.Amount
+		}
+	}
+
+	db.Omit(clause.Associations).Model(c).Updates(request)
+	return nil
 }
 
 // CashFlow access already verified with Get

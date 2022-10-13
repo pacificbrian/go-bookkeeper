@@ -11,6 +11,10 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+type PutKeyValue struct {
+	Key string `json:"key"`
+	Value string `json:"value"`
+}
 
 func getFormDate(c echo.Context) time.Time {
 	dateStr := c.FormValue("date_month") + "/" +

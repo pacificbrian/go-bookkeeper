@@ -67,6 +67,26 @@ func CreateSplitCashFlow(c echo.Context) error {
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/cash_flows/%d/edit", split_from))
 }
 
+func PutCashFlow(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	log.Printf("PUT CASHFLOW(%d)", id)
+	db := gormdb.DbManager()
+
+	entry := new(model.CashFlow)
+	entry.Model.ID = uint(id)
+
+	kv := new(PutKeyValue)
+	c.Bind(kv)
+	putRequest := make(map[string]interface{})
+	putRequest[kv.Key] = kv.Value
+
+	if entry.Put(db, putRequest) != nil {
+		return c.NoContent(http.StatusUnauthorized)
+	} else {
+		return c.NoContent(http.StatusAccepted)
+	}
+}
+
 func DeleteCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("DELETE CASHFLOW(%d)", id)

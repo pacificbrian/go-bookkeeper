@@ -47,8 +47,9 @@ export default class extends Controller {
             url: '/cash_flows/'+cashflowSet[0],
             responseType: 'json',
             body: {
+              // server reads using KeyValue struct with string types
               key: cashflowSet[1],
-              value: +cashflowSet[2]
+              value: cashflowSet[2]
             }
           });
         }),

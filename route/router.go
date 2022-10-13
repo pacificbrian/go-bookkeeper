@@ -46,6 +46,8 @@ func Init() *echo.Echo {
 	e.POST("/cash_flows/:id/split", controllers.CreateSplitCashFlow)
 	e.GET("/cash_flows/:id/edit", controllers.EditCashFlow)
 	e.POST("/cash_flows/:id", controllers.UpdateCashFlow)
+	e.PUT("/cash_flows/:id", controllers.PutCashFlow)
+	e.DELETE("/cash_flows/:id", controllers.DeleteCashFlow)
 
 	// Payee
 	e.GET("/payees", controllers.ListPayees)
