@@ -232,6 +232,13 @@ func mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
 	return (*entries)[0:limit]
 }
 
+func (c *CashFlow) Count(db *gorm.DB, account *Account) int64 {
+	var count int64
+
+	db.Model(c).Where(&CashFlow{AccountID: account.ID}).Count(&count)
+	return count
+}
+
 // Account access already verified by caller
 func (*CashFlow) ListMergeByDate(db *gorm.DB, account *Account, other []CashFlow,
 				 date *time.Time) []CashFlow {
@@ -737,7 +744,6 @@ func (c *CashFlow) Delete(db *gorm.DB) error {
 		return errors.New("Permission Denied")
 	}
 
-	log.Printf("[MODEL] DELETE CASHFLOW(%d) %s", c.ID)
 	c.delete(db)
 	return nil
 }

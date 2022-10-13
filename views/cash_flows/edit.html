@@ -75,7 +75,7 @@
 
 </div>
 
-<ul id="footmenu">
+<ul id="footmenu" data-controller="cashflow">
 <li><a href=/accounts/{{cash_flow.AccountID}}>Back To Account</a></li>
 {% if not cash_flow.Transfer -%}
 <li><a href=/payees/{{cash_flow.PayeeID}}>Back to Payee</a></li>
@@ -86,7 +86,7 @@
 {% if cash_flow.RepeatParentID > 0 -%}
 <li><a href=/cash_flows/{{ cash_flow.RepeatParentID }}/edit>Edit Scheduled CashFlow</a></li>
 {% endif -%}
-<li><a href=/cash_flows/{{ cash_flow.ID }} method="delete">Delete CashFlow</a></li>
+<li><a href=/cash_flows/{{ cash_flow.ID }} data-cashflow-id="{{ cash_flow.ID }}" data-action="cashflow#actionDelete">Delete CashFlow</a></li>
 </ul>
 
 {% endblock -%}

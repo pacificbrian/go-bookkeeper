@@ -228,7 +228,7 @@ func (a *Account) Create(db *gorm.DB) error {
 		// Account.User is set to CurrentUser()
 		a.UserID = u.ID
 		spewModel(a)
-		result := db.Create(a)
+		result := db.Omit(clause.Associations).Create(a)
 		return result.Error
 	}
 	return errors.New("Permission Denied")
@@ -283,23 +283,28 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 func (a *Account) Delete(db *gorm.DB) error {
 	// Verify we have access to Account
 	a = a.Get(db, false)
-	if a != nil {
-		// on first delete, we only make Hidden
-		if !a.Hidden {
-			a.Hidden = true
-			db.Save(a)
-		} else {
+	if a == nil {
+		return errors.New("Permission Denied")
+	}
+
+	// on first delete, we only make Hidden
+	if !a.Hidden {
+		a.Hidden = true
+		db.Omit(clause.Associations).Save(a)
+	} else {
+		count := new(CashFlow).Count(db, a)
+		log.Printf("[MODEL] DELETE ACCOUNT(%d) IF (%d == 0)", a.ID, count)
+		if count == 0 {
 			db.Delete(a)
 		}
-		spewModel(a)
-		return nil
 	}
-	return errors.New("Permission Denied")
+	spewModel(a)
+	return nil
 }
 
 // Account access already verified with Get
 func (a *Account) Update(db *gorm.DB) error {
 	spewModel(a)
-	result := db.Save(a)
+	result := db.Omit(clause.Associations).Save(a)
 	return result.Error
 }

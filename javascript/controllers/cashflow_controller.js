@@ -16,13 +16,13 @@ export default class extends Controller {
   cashflowPut$ = new Subject();
 
   connect() {
-    console.log("Stimulus connected!", this.element);
+    console.log("Stimulus[CASHFLOW] connected!", this.element);
 
     this.cashflowDelete$
       .pipe(
         distinctUntilChanged(),
         switchMap((cashflowID) => {
-          console.log("RXJS:ajax:DELETE: ", [cashflowID])
+          console.log("RXJS[CASHFLOW]:ajax:DELETE: ", [cashflowID])
           return ajax({
             method: 'DELETE',
             url: '/cash_flows/'+cashflowID,
@@ -41,7 +41,7 @@ export default class extends Controller {
       .pipe(
         distinctUntilChanged(),
         switchMap((cashflowSet) => {
-          console.log("RXJS:ajax:PUT: ", cashflowSet)
+          console.log("RXJS[CASHFLOW]:ajax:PUT: ", cashflowSet)
           return ajax({
             method: 'PUT',
             url: '/cash_flows/'+cashflowSet[0],
@@ -72,7 +72,7 @@ export default class extends Controller {
   actionDelete(event) {
     let target = event.currentTarget
     let cashflowID = target.getAttribute('data-cashflow-id')
-    console.log("Stimulus: actionDelete", cashflowID)
+    console.log("Stimulus[CASHFLOW]: actionDelete", cashflowID)
     event.preventDefault()
     // add to RXJS stream processed with cashflowDelete.pipe above
     this.cashflowDelete$.next(cashflowID)
@@ -94,7 +94,7 @@ export default class extends Controller {
     let cashflowID = displayAmount.getAttribute('data-cashflow-id')
     displayAmount.hidden = 1
 
-    console.log("Stimulus: actionEditAmount", cashflowID)
+    console.log("Stimulus[CASHFLOW]: actionEditAmount", cashflowID)
 
     // unhide input field so user can change value
     const inputAmounts = this.cashflowNewAmountTargets
@@ -117,7 +117,7 @@ export default class extends Controller {
     } else {
       return
     }
-    console.log("Stimulus: keyCode is ", event.keyCode)
+    console.log("Stimulus[CASHFLOW]: keyCode is ", event.keyCode)
 
     // get new value and hide input field
     let inputAmount = event.currentTarget
@@ -126,7 +126,7 @@ export default class extends Controller {
     inputAmount.hidden = 1
 
     if (send_amount) {
-      console.log("Stimulus: actionPutNewAmount", cashflowID, newAmount)
+      console.log("Stimulus[CASHFLOW]: actionPutNewAmount", cashflowID, newAmount)
     }
 
     // unhide and update value in table (if changed)
