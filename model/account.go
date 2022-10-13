@@ -29,6 +29,7 @@ type Account struct {
 	Balance decimal.Decimal
 	Taxable bool `form:"account.Taxable"`
 	Hidden bool `form:"account.Hidden"`
+	HasScheduled bool
 	Verified bool `gorm:"-:all"`
 	CashFlows []CashFlow
 	Portfolio SecurityValue `gorm:"-:all"`
@@ -73,6 +74,10 @@ func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlo
 		account.Get(db, false)
 	}
 	if account.Verified {
+		if !account.HasScheduled {
+			return entries
+		}
+
 		query := map[string]interface{}{"account_id": account.ID,
 					        "type": "RCashFlow", "split": false}
 		if canRecordOnly {
@@ -197,7 +202,11 @@ func (a *Account) averageDailyBalance(db *gorm.DB, endDate time.Time) decimal.De
 	return balance
 }
 
-func (a *Account) UpdateBalance(db *gorm.DB, c *CashFlow) {
+func (a *Account) addScheduled(db *gorm.DB) {
+	db.Omit(clause.Associations).Model(a).Update("HasScheduled", 1)
+}
+
+func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 	if !c.mustUpdateBalance() {
 		return
 	}

@@ -170,7 +170,7 @@ func (t *Trade) Create(db *gorm.DB) error {
 
 		c := t.tradeToCashFlow()
 		if c != nil {
-			security.Account.UpdateBalance(db, c)
+			security.Account.updateBalance(db, c)
 		}
 		return result.Error
 	}
