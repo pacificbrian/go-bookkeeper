@@ -16,6 +16,7 @@
 <th>Payments</th>
 <th>Unpaid_Tax</th>
 <th></th>
+<tbody data-controller="tax">
 {% for r in tax_returns -%}
 <tr>
 <td><a href=/years/{{ r.Year }}/taxes>{{ r.Year }}</a> : {{ r.TaxRegion.Name }}</td>
@@ -28,11 +29,13 @@
 <td class="currency">{{ r.Currency(r.Payments) }}</td>
 <td class="currency">{{ r.Currency(r.UnpaidTax) }}</td>
 <td>
-<a href=/taxes/{{r.ID}}>Recalculate</a><br>
+<a href=/taxes/{{r.ID}} data-cashflow-id="{{ r.ID }}" data-action="tax#actionCalculate">Recalculate</a><br>
 <a href=/taxes/{{r.ID}}/edit>Edit</a><br>
+<a href=/taxes/{{r.ID}} data-cashflow-id="{{ r.ID }}" data-action="tax#actionDelete">Delete</a><br>
 </td>
 </tr>
 {% endfor -%}
+</tbody>
 </table>
 {% endif -%}
 

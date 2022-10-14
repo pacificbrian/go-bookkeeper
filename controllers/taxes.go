@@ -85,3 +85,33 @@ func CreateTaxes(c echo.Context) error {
 		return c.Redirect(http.StatusSeeOther, "/taxes")
 	}
 }
+
+func RecalculateTaxes(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	log.Printf("RECALCULATE TAX RETURN(%d)", id)
+	db := gormdb.DbManager()
+
+	entry := new(model.TaxReturn)
+	entry.ID = uint(id)
+
+	// Recalculate will verify if have TaxReturn access
+	if entry.Recalculate(db) != nil {
+		return c.NoContent(http.StatusUnauthorized)
+	} else {
+		return c.NoContent(http.StatusAccepted)
+	}
+}
+
+func DeleteTaxes(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	log.Printf("DELETE TAX RETURN(%d)", id)
+	db := gormdb.DbManager()
+
+	entry := new(model.TaxReturn)
+	entry.ID = uint(id)
+	if entry.Delete(db) != nil {
+		return c.NoContent(http.StatusUnauthorized)
+	} else {
+		return c.NoContent(http.StatusAccepted)
+	}
+}

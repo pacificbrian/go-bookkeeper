@@ -290,9 +290,47 @@ func (r *TaxReturn) calculate(db *gorm.DB) {
 	}
 
 	// Calculate Tax Result
-	r.AgiIncome = r.Income.Sub(r.ForAGI)
-	r.TaxableIncome = r.AgiIncome.Sub(r.FromAGI)
+	r.AgiIncome = decimal.Max(r.Income.Sub(r.ForAGI), decimal.Zero)
+	r.TaxableIncome = decimal.Max(r.AgiIncome.Sub(r.FromAGI), decimal.Zero)
 	r.BaseTax = taxYear.calculateTax(db, r.FilingStatus, r.TaxableIncome)
 	r.OwedTax = r.BaseTax.Add(r.OtherTax).Sub(r.Credits)
 	r.UnpaidTax = r.OwedTax.Sub(r.Payments)
+}
+
+func (r *TaxReturn) HaveAccessPermission() bool {
+	u := GetCurrentUser()
+	return !(u == nil || u.ID != r.UserID)
+}
+
+func (r *TaxReturn) Get(db *gorm.DB) *TaxReturn {
+	db.Table("tax_users").First(&r)
+	if !r.HaveAccessPermission() {
+		return nil
+	}
+	return r
+}
+
+func (r *TaxReturn) Recalculate(db *gorm.DB) error {
+	r = r.Get(db)
+	if r == nil {
+		return errors.New("Permission Denied")
+	}
+
+	log.Printf("[MODEL] RECALCULATE TAX RETURN(%d) REGION(%d)", r.ID, r.TaxRegionID)
+	if (r.TaxRegionID == 1) {
+		r.calculate(db)
+		db.Table("tax_users").Save(r)
+	}
+	return nil
+}
+
+func (r *TaxReturn) Delete(db *gorm.DB) error {
+	r = r.Get(db)
+	if r == nil {
+		return errors.New("Permission Denied")
+	}
+
+	log.Printf("[MODEL] DELETE TAX RETURN(%d)", r.ID)
+	db.Table("tax_users").Delete(r)
+	return nil
 }
