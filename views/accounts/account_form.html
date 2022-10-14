@@ -30,11 +30,7 @@
 </fieldset>
 <fieldset class="last">
 <label>Routing Number</label>
-{% if is_edit -%}
-<input type="text" name="account.Routing" value="{{account.Routing}}"/>
-{% else -%}
-<input type="text" name="account.Routing"/>
-{% endif -%}
+<input type="text" name="account.Routing" value="{{account.GetRouting()}}"/>
 </fieldset>
 <fieldset class="submit">
 <input type="submit" value="{{ button_text }}"/>

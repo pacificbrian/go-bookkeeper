@@ -4,9 +4,11 @@
 <div class="show">
 <h2>{{ cash_flow.Account.Name }} - Recurring Transactions</h2>
 
+{% if (cash_flows|length > 0) -%}
 <div id="cash_flows">
 {% include "cash_flows/_list_scheduled_cash_flows.html" -%}
 </div>
+{% endif -%}
 
 <form method="POST" action="/accounts/{{cash_flow.AccountID}}/scheduled">
 {% include "cash_flows/_cash_flow_form.html" -%}

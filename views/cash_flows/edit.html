@@ -13,9 +13,11 @@
 <td>Account: <strong>{{ cash_flow.Account.Name }}</strong>
 </table>
 
+{% if (cash_flows|length > 0) -%}
 <div id="cash_flows">
 {% include "cash_flows/_list_cash_flows.html" -%}
 </div>
+{% endif -%}
 
 <form method="POST" action="/cash_flows/{{cash_flow.ID}}">
 <table>
@@ -67,6 +69,7 @@
 </form>
 
 {% if cash_flow.CanSplit() -%}
+<h3 class="horizontal-bar">Add Split</h3>
 <form method="POST" action="/cash_flows/{{cash_flow.ID}}/split">
 <table>
 <tr>

@@ -88,6 +88,40 @@ a img {
   display: none;
 }
 
+#content h1 {
+  position: absolute;
+  left: 60px;
+  top: 1em;
+  margin-bottom: 0;
+  float: left;
+  font-size: 1.6em;
+}
+
+#content h2 {
+  font-size: 1.5em;
+}
+
+#content h3 {
+  padding-top: 9px;
+  margin-bottom: 0.2;
+  font-size: 1.28em;
+}
+
+#content h3.horizontal-bar {
+  border-top: solid 2px #bbb;
+  margin-bottom: 0;
+}
+
+#content h4 {
+  padding-top: 8px;
+  margin-bottom: 0;
+  font-size: 1.2em;
+}
+
+#content strong {
+  font-size: 1.08em;
+}
+
 #content fieldset {
 	margin:0 30px;
 	border:none;
@@ -147,15 +181,6 @@ a img {
   border-left:8px solid #900;
 }
 
-#content h1 {
-  position:absolute;
-  left:60px;
-  top:1em;
-  margin-bottom:0;
-  float:left;
-  font-size:1.6em;
-}
-
 h1 span {
   color: #5b9908;
 }
@@ -163,6 +188,11 @@ h1 span {
 td, th {
   font-size: 1.2em;
   padding: .2em;
+}
+
+.twin-collapse td {
+  font-size: 1.08em;
+  padding: .1em;
 }
 
 td.left {

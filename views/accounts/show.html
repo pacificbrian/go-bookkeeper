@@ -15,24 +15,25 @@
 </tr>
 </table>
 
-{% if account.IsInvestment() -%}
+{% if account.IsInvestment() && (securities|length > 0) -%}
 <div id="securities">
 {% include "securities/_list_securities.html" -%}
 </div>
 <p>
 {% endif -%}
 
+{% if (cash_flows|length > 0) -%}
 <div id="cash_flows">
 {% include "cash_flows/_list_cash_flows.html" -%}
 </div>
-
 <div id="total">
 {% include "accounts/_total.html" -%}
 </div>
+{% endif -%}
 
-<table class="collapse">
-{% if account.IsInvestment() -%}
+<table class="twin-collapse">
 <tr>
+{% if account.IsInvestment() -%}
 <td>
 <form method="POST" action="/accounts/{{account.ID}}/trades">
 {% include "securities/_security_trade_form.html" -%}
@@ -44,8 +45,8 @@
 <td>
 <form method="POST" action="/accounts/{{account.ID}}/cash_flows">
 <table>
-<tr>
-<td><br> {{ form_select_type(cash_flow_types, "cash_flow_type_id") }} </td>
+<tr><br>
+<td> {{ form_select_type(cash_flow_types, "cash_flow_type_id") }} </td>
 <tr>
 <td><br> {{ form_date_select(date_helper) }} </td>
 <td>Check/Number:<br> <input type="text" name="transnum"/></td>

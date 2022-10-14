@@ -4,6 +4,7 @@
 <div class="show">
 
 <h2>Tax Results</h2>
+{% if (tax_returns|length > 0) -%}
 <table class="standard">
 <th>Year</th>
 <th>Status</th>
@@ -33,6 +34,7 @@
 </tr>
 {% endfor -%}
 </table>
+{% endif -%}
 
 <form method="POST" action="/taxes">
 <fieldset>

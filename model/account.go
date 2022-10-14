@@ -9,6 +9,7 @@ package model
 import (
 	"errors"
 	"log"
+	"strconv"
 	"time"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -37,6 +38,13 @@ type Account struct {
 
 func (Account) Currency(value decimal.Decimal) string {
 	return "$" + value.StringFixedBank(2)
+}
+
+func (a *Account) GetRouting() string {
+	if a.Routing == 0 {
+		return ""
+	}
+	return strconv.Itoa(a.Routing)
 }
 
 func (a *Account) IsInvestment() bool {
