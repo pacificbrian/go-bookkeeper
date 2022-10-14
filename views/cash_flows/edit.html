@@ -10,9 +10,7 @@
 
 <table>
 <tr>
-<td>Account Name:
-<tr>
-<td><strong>{{ cash_flow.Account.Name }}</strong>
+<td>Account: <strong>{{ cash_flow.Account.Name }}</strong>
 </table>
 
 <div id="cash_flows">
@@ -21,13 +19,29 @@
 
 <form method="POST" action="/cash_flows/{{cash_flow.ID}}">
 <table>
+<tr><br>
+{% if cash_flow.IsScheduledParent() -%}
+<td>Type:</td>
+<td> {{ form_select_type(cash_flow_types, "cash_flow_type_id", cash_flow.CashFlowTypeID) }} </td>
 <tr>
-<td><br> {{ form_select_type(cash_flow_types, "cash_flow_type_id", cash_flow.CashFlowTypeID) }} </td>
+<td>Reoccurance:</td>
+<td> {{ form_select_type(repeat_interval_types, "repeat_interval_type_id", cash_flow.RepeatInterval.RepeatIntervalTypeID) }} </td>
+<tr>
+<td>Repeats:</td>
+<td><input type="text" name="repeats" value="{{cash_flow.RepeatInterval.GetRepeatsLeft()}}"/></td>
+<tr>
+<td>Rate:</td>
+<td><input type="text" name="rate" value="{{cash_flow.RepeatInterval.GetRate()}}"/></td>
+</table>
+<table>
+{% else -%}
+<td> {{ form_select_type(cash_flow_types, "cash_flow_type_id", cash_flow.CashFlowTypeID) }} </td>
 {% if not cash_flow.Split -%}
 <tr>
 <td>Tax Year<br>
 <input type="text" name="tax_year" value="{{cash_flow.TaxYear}}"/>
 </td>
+{% endif -%}
 {% endif -%}
 <tr>
 <td><br> {{ form_date_select(date_helper) }} </td>

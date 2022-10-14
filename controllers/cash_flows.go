@@ -137,6 +137,7 @@ func EditCashFlow(c echo.Context) error {
 	log.Printf("EDIT CASHFLOW(%d)", id)
 	db := gormdb.DbManager()
 
+	var repeat_interval_types []model.RepeatIntervalType
 	var cash_flows []model.CashFlow
 	var cash_flow_total string
 	entry := new(model.CashFlow)
@@ -144,6 +145,9 @@ func EditCashFlow(c echo.Context) error {
 	entry = entry.Get(db, true)
 	if entry != nil {
 		cash_flows, cash_flow_total = entry.ListSplit(db)
+		if entry.IsScheduled() {
+			repeat_interval_types = new(model.RepeatIntervalType).List(db)
+		}
 	}
 
 	dh := new(helpers.DateHelper)
@@ -155,7 +159,8 @@ func EditCashFlow(c echo.Context) error {
 				"cash_flows": cash_flows,
 				"total_amount": cash_flow_total,
 				"cash_flow_types": new(model.CashFlowType).List(db),
-				"categories": new(model.Category).List(db) }
+				"categories": new(model.Category).List(db),
+				"repeat_interval_types": repeat_interval_types }
 	return c.Render(http.StatusOK, "cash_flows/edit.html", data)
 }
 

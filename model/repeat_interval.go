@@ -25,6 +25,13 @@ type RepeatInterval struct {
 	StartDay int
 }
 
+func (r RepeatInterval) GetRate() string {
+	if r.Rate.IsZero() {
+		return ""
+	}
+	return r.Rate.StringFixed(3)
+}
+
 func (r RepeatInterval) GetRepeatsLeft() string {
 	if r.RepeatsLeftPtr == nil {
 		return ""

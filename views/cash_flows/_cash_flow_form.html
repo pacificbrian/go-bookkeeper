@@ -1,6 +1,6 @@
-{% if cash_flow.IsScheduled() -%}
 <table>
-<tr>
+<tr><br>
+{% if cash_flow.IsScheduledParent() -%}
 <td>Type:</td>
 <td> {{ form_select_type(cash_flow_types, "cash_flow_type_id") }} </td>
 <tr>
@@ -12,9 +12,10 @@
 <tr>
 <td>Rate:</td>
 <td><input type="text" name="rate"/></td>
-</table>
+{% else -%}
+<td> {{ form_select_type(cash_flow_types, "cash_flow_type_id") }} </td>
 {% endif -%}
-
+</table>
 <table>
 <tr>
 <td><br> {{ form_date_select(date_helper) }} </td>
