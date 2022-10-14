@@ -32,6 +32,13 @@ func (r RepeatInterval) GetRepeatsLeft() string {
 	return strconv.Itoa(int(r.RepeatsLeft))
 }
 
+func (r RepeatInterval) HasRepeatsLeft() bool {
+	if r.RepeatsLeftPtr == nil {
+		return true
+	}
+	return (r.RepeatsLeft > 0)
+}
+
 func (r *RepeatInterval) Preload(db *gorm.DB) {
 	//db.Preload("RepeatIntervalType").First(&r)
 	db.First(&r)

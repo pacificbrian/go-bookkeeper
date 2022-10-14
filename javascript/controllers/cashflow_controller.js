@@ -69,6 +69,15 @@ export default class extends Controller {
     this.cashflowPut$.unsubscribe();
   }
 
+  actionApply(event) {
+    let target = event.currentTarget
+    let cashflowID = target.getAttribute('data-cashflow-id')
+    console.log("Stimulus[CASHFLOW]: actionApply", cashflowID)
+    event.preventDefault()
+    // add to RXJS stream processed with cashflowPut.pipe above
+    this.cashflowPut$.next([cashflowID, "apply", "1"]);
+  }
+
   actionDelete(event) {
     let target = event.currentTarget
     let cashflowID = target.getAttribute('data-cashflow-id')

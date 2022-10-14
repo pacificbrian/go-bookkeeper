@@ -11,7 +11,6 @@
 <th id="amount">Amount</th>
 <th class="noedit"></th>
 <th class="noedit"></th>
-<th class="noedit"></th>
 </tr>
 </thead>
 <tbody data-controller="cashflow">
@@ -38,8 +37,7 @@
 <input hidden type="text" name="amount" value="{{c.Amount}}" data-cashflow-target="cashflowNewAmount" data-cashflow-id="{{ c.ID }}" data-action="keydown->cashflow#actionPutNewAmount"/>
 </td>
 <td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
-<td><a rel="nofollow" href=/cash_flows/{{ c.ID }} data-method="delete">Delete</a></td>
-<td>Pay Now</td>
+<td><a href=/cash_flows/{{ c.ID }} data-cashflow-id="{{ c.ID }}" data-action="cashflow#actionApply">Enter Now</a></td>
 </tr>
 {% endfor -%}
 </tbody>

@@ -102,6 +102,10 @@ func (c *CashFlow) IsScheduledParent() bool {
 	return c.IsScheduled() && !c.Split
 }
 
+func (c *CashFlow) IsScheduledEnterable() bool {
+	return (c.IsScheduledParent() && c.RepeatInterval.HasRepeatsLeft())
+}
+
 func (c *CashFlow) IsTrade() bool {
 	return c.Type == "TradeCashFlow"
 }
@@ -759,9 +763,16 @@ func (c *CashFlow) Put(db *gorm.DB, request map[string]interface{}) error {
 	jrequest, _ := json.Marshal(request)
 	log.Printf("[MODEL] PUT CASHFLOW(%d) %s", c.ID, jrequest)
 
+	if request["apply"] != nil {
+		delete(request, "apply")
+		if c.IsScheduledEnterable() {
+			return c.tryInsertRepeatCashFlow(db)
+		}
+	}
+
 	// special case c.Amount
 	// need better way if expanded with more fields/types
-	if request["amount"] != "" {
+	if request["amount"] != nil {
 		newAmount, _ := strconv.ParseFloat(request["amount"].(string), 2)
 		c.Amount = decimal.NewFromFloat(newAmount)
 		if c.Amount.Equal(c.oldAmount) {
@@ -774,7 +785,9 @@ func (c *CashFlow) Put(db *gorm.DB, request map[string]interface{}) error {
 		}
 	}
 
-	db.Omit(clause.Associations).Model(c).Updates(request)
+	if len(request) > 0 {
+		db.Omit(clause.Associations).Model(c).Updates(request)
+	}
 	return nil
 }
 
