@@ -10,6 +10,11 @@ import (
 	"gorm.io/gorm"
 )
 
+type CategoryType struct {
+	Model
+	Name string `form:"category_type.Name"`
+}
+
 type Category struct {
 	Model
 	UserID uint
@@ -22,6 +27,13 @@ type Category struct {
 
 func (c *Category) IsInterestIncome() bool {
 	return (c.ID == 74)
+}
+
+func (*CategoryType) List(db *gorm.DB) []CategoryType {
+	entries := []CategoryType{}
+	db.Find(&entries)
+
+	return entries
 }
 
 func (*Category) List(db *gorm.DB) []Category {

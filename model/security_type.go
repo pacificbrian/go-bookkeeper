@@ -10,9 +10,22 @@ import (
 	"gorm.io/gorm"
 )
 
+type SecurityBasisType struct {
+	Model
+	Name string `form:"security_basis_type.Name"`
+}
+
 type SecurityType struct {
 	Model
 	Name string `form:"security_type.Name"`
+}
+
+func (*SecurityBasisType) List(db *gorm.DB) []SecurityBasisType {
+	// need userCache lookup
+	entries := []SecurityBasisType{}
+	db.Find(&entries)
+
+	return entries
 }
 
 func (*SecurityType) List(db *gorm.DB) []SecurityType {

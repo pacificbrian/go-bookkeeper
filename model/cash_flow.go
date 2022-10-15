@@ -550,7 +550,7 @@ func (repeat *CashFlow) applyRate(db *gorm.DB) bool {
 
 // returns true if advanced date is still less than time.Now
 func (repeat *CashFlow) advance(db *gorm.DB, updateAmount bool) bool {
-	days := repeat.RepeatInterval.Advance(db)
+	days := repeat.RepeatInterval.advance(db)
 	if days == 0 {
 		return false
 	}

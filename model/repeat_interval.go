@@ -14,6 +14,12 @@ import (
 	"gorm.io/gorm/clause"
 )
 
+type RepeatIntervalType struct {
+	Model
+	Name string `form:"repeat_interval_type.Name"`
+	Days uint
+}
+
 type RepeatInterval struct {
 	Model
 	CashFlowID uint
@@ -63,7 +69,7 @@ func (r *RepeatInterval) Preload(db *gorm.DB) {
 }
 
 // r should already been Preloaded
-func (r *RepeatInterval) Advance(db *gorm.DB) int {
+func (r *RepeatInterval) advance(db *gorm.DB) int {
 	days := int(r.RepeatIntervalType.Days)
 
 	// decrement RepeatsLeft
@@ -80,6 +86,13 @@ func (r *RepeatInterval) Advance(db *gorm.DB) int {
 	log.Printf("[MODEL] ADVANCE REPEAT_INTERVAL(%d) DAYS(%d) LEFT(%d)",
 		   r.ID, days, r.RepeatsLeft)
 	return days
+}
+
+func (*RepeatIntervalType) List(db *gorm.DB) []RepeatIntervalType {
+	entries := []RepeatIntervalType{}
+	db.Find(&entries)
+
+	return entries
 }
 
 func (r *RepeatInterval) Create(db *gorm.DB, c *CashFlow) error {

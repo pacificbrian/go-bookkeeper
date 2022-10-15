@@ -15,6 +15,11 @@ type AccountType struct {
 	Name string `form:"account_type.Name"`
 }
 
+type CurrencyType struct {
+	Model
+	Name string `form:"currency_type.Name"`
+}
+
 func (a AccountType) GetAltText() string {
 	return a.Name
 }
@@ -51,6 +56,13 @@ func (a *AccountType) isType(askedType string) bool {
 
 func (*AccountType) List(db *gorm.DB) []AccountType {
 	entries := []AccountType{}
+	db.Find(&entries)
+
+	return entries
+}
+
+func (*CurrencyType) List(db *gorm.DB) []CurrencyType {
+	entries := []CurrencyType{}
 	db.Find(&entries)
 
 	return entries
