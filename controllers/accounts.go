@@ -75,7 +75,7 @@ func DeleteAccount(c echo.Context) error {
 func GetAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("GET ACCOUNT(%d)", id)
-	db := gormdb.DebugDbManager()
+	db := gormdb.DbManager()
 	get_json := false
 
 	// should be in Model

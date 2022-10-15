@@ -167,7 +167,7 @@ func EditCashFlow(c echo.Context) error {
 func ListScheduledCashFlows(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("LIST SCHEDULED CASHFLOWS (ACCOUNT:%d)", id)
-	db := gormdb.DebugDbManager()
+	db := gormdb.DbManager()
 
 	var cash_flows []model.CashFlow
 	entry := new(model.CashFlow)

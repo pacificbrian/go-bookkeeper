@@ -153,7 +153,7 @@ func (c *CashFlow) PreloadRepeat(db *gorm.DB) {
 	}
 }
 
-func (c *CashFlow) Preload(db *gorm.DB) {
+func (c *CashFlow) EditPreload(db *gorm.DB, fullPreload bool) {
 	if c.IsTrade() {
 		return
 	}
@@ -178,7 +178,13 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 		}
 	}
 
-	c.PreloadRepeat(db)
+	if c.IsScheduledParent() || fullPreload {
+		c.PreloadRepeat(db)
+	}
+}
+
+func (c *CashFlow) Preload(db *gorm.DB) {
+	c.EditPreload(db, false)
 }
 
 func mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
@@ -683,7 +689,7 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 	}
 
 	if edit {
-		c.Preload(db)
+		c.EditPreload(db, true)
 
 		// #Edit wants Amount to be always positive; safe to
 		// modify here because Delete doen't use, and Update overwrites
