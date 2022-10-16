@@ -26,10 +26,13 @@ func ListSecurities(c echo.Context) error {
 	db := gormdb.DbManager()
 	get_json := false
 
+	// need flag for all or open
+	openOnly := false
+
 	var entries []model.Security
 	entry := new(model.Security)
 	entry.AccountID = uint(id)
-	entries = entry.List(db, nil)
+	entries = entry.List(db, nil, openOnly)
 
 	if get_json {
 		return c.JSON(http.StatusOK, entries)

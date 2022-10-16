@@ -7,6 +7,7 @@
 package model
 
 import (
+	"time"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
 )
@@ -25,4 +26,8 @@ func spewModel(data any) {
 
 func currency(value decimal.Decimal) string {
 	return  "$" + value.StringFixedBank(2)
+}
+
+func durationDays(d time.Duration) int32 {
+	return int32(d.Hours()) / 24
 }

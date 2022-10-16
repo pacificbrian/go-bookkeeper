@@ -89,12 +89,15 @@ func GetAccount(c echo.Context) error {
 	} else {
 		var cashflows []model.CashFlow
 		var securities []model.Security
+		var tradeTypes []model.TradeType
 
 		if entry != nil {
 			// List will order returned results
 			if entry.IsInvestment() {
-				securities = new(model.Security).List(db, entry)
+				securities = new(model.Security).List(db, entry, true)
 				cashflows = new(model.Trade).ListCashFlows(db, entry)
+				tradeTypes = new(model.TradeType).List(db)
+				entry.TotalPortfolio(securities)
 			}
 			cashflows = new(model.CashFlow).ListMerge(db, entry, cashflows)
 		}
@@ -104,14 +107,14 @@ func GetAccount(c echo.Context) error {
 
 		data := map[string]any{ "account": entry,
 					"date_helper": dh,
-					"button_text": "Add",
+					"button_text": "Add CashFlow",
 					"cash_flows": cashflows,
 					"securities": securities,
 					"allSecurities": true,
 					"total_amount": nil,
 					"cash_flow_types": new(model.CashFlowType).List(db),
 					"categories": new(model.Category).List(db),
-					"trade_types": new(model.TradeType).List(db) }
+					"trade_types": tradeTypes }
 		return c.Render(http.StatusOK, "accounts/show.html", data)
 	}
 }

@@ -51,6 +51,14 @@ func (a *Account) IsInvestment() bool {
 	return a.AccountType.isType("Investment")
 }
 
+func (a *Account) TotalPortfolio(securities []Security) {
+	for i := 0; i < len(securities); i++ {
+		security := &securities[i]
+		a.Portfolio.Basis = a.Portfolio.Basis.Add(security.Basis)
+		a.Portfolio.Value = a.Portfolio.Value.Add(security.Value)
+	}
+}
+
 func ListAccounts(db *gorm.DB, all bool) []Account {
 	u := GetCurrentUser()
 	entries := []Account{}
@@ -122,7 +130,7 @@ func accountGetByName(db *gorm.DB, name string) *Account {
 	// need Where because these are not primary keys
 	db.Where(&a).First(&a)
 
-	if a.ID == 0 {
+	if a.ID == 0 || !a.HaveAccessPermission() {
 		return nil
 	}
 	return a
@@ -183,7 +191,7 @@ func (a *Account) averageDailyBalance(db *gorm.DB, endDate time.Time) decimal.De
 		cf := &entries[i]
 		lastBalance = cf.Balance
 		if !(cf.Date.After(endDate)) {
-			days = int32(lastTime.Sub(cf.Date).Hours()) / 24
+			days = durationDays(lastTime.Sub(cf.Date))
 			if days > 0 {
 				if days > daysLeft {
 					days = daysLeft

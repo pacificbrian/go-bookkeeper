@@ -15,19 +15,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const (
-	UndefinedTradeType uint = iota
-	Buy
-	Sell
-	Dividend
-	Distribution
-	ReinvestedDividend
-	ReinvestedDistribution
-	SharesIn
-	SharesOut
-	Split
-)
-
 type Trade struct {
 	gorm.Model
 	TradeTypeID uint `form:"trade_type_id"`
@@ -45,12 +32,33 @@ type Trade struct {
 	Price decimal.Decimal `form:"price"`
 	Shares decimal.Decimal `form:"shares"`
 	AdjustedShares decimal.Decimal
+	// Basis is accumulated (used) basis from Sells (starts at 0)
+	// for Buys: remaining Basis is: Amount - Basis
+	// for Sells: the Gain (Loss) then is: Amount - Basis
 	Basis decimal.Decimal
 	Closed bool
 }
 
 func (Trade) Currency(value decimal.Decimal) string {
 	return currency(value)
+}
+
+func (t *Trade) IsBuy() bool {
+	return TradeTypeIsBuy(t.TradeTypeID)
+}
+
+func (t *Trade) IsSell() bool {
+	return TradeTypeIsSell(t.TradeTypeID)
+}
+
+func (t Trade) GetBasis() string {
+	if t.IsSell() {
+		return "$" + t.Basis.StringFixed(2)
+	} else if t.IsBuy() {
+		return "$" + t.Amount.Sub(t.Basis).StringFixed(2)
+	} else {
+		return ""
+	}
 }
 
 func (t *Trade) getCashFlowType() uint {
@@ -70,7 +78,7 @@ func (t *Trade) getCashFlowType() uint {
 	return cType
 }
 
-func (t *Trade) tradeToCashFlow() *CashFlow {
+func (t *Trade) toCashFlow() *CashFlow {
 	cType := t.getCashFlowType()
 	if cType == 0 {
 		return nil
@@ -92,7 +100,7 @@ func (t *Trade) tradeToCashFlow() *CashFlow {
 func (*Trade) List(db *gorm.DB, account *Account) []Trade {
 	entries := []Trade{}
 	if account.Verified {
-		// Find Trades for Account()
+		// Find Trades for Account
 		db.Preload("TradeType").
 		   Order("date asc").
 		   Where(&Trade{AccountID: account.ID}).Find(&entries)
@@ -107,20 +115,19 @@ func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
 	cf_entries := []CashFlow{}
 
 	if account.Verified {
-		// Need to Join with Company
-		// Find Trades for Account()
+		// Find Trades for Account
 		db.Preload("TradeType").
+		   Preload("Security.Company").
 		   Order("date desc").
 		   Joins("Security").
-		   Where("trade_type_id <= ?", Distribution).
+		   Where(TradeTypeCashFlowsQuery).
 		   Where(&Trade{AccountID: account.ID}).Find(&entries)
 		log.Printf("[MODEL] LIST TRADES ACCOUNT(%d:%d)", account.ID, len(entries))
 
 		for i := 0; i < len(entries); i++ {
 			t := entries[i]
-			cf := t.tradeToCashFlow()
+			cf := t.toCashFlow()
 			if cf != nil {
-				db.First(&t.Security.Company, t.Security.CompanyID)
 				cf.PayeeName = t.Security.Company.CompanyName()
 				cf.CategoryName = t.TradeType.Name
 				cf_entries = append(cf_entries, *cf)
@@ -128,6 +135,36 @@ func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
 		}
 	}
 	return cf_entries
+}
+
+func (t *Trade) updateBasis(db *gorm.DB, basis decimal.Decimal) {
+	t.Basis = t.Basis.Add(basis)
+	updates := map[string]interface{}{"basis": t.Basis}
+	if t.IsBuy() && t.Amount.Equal(t.Basis) {
+		updates["closed"] = 1
+	}
+	db.Omit(clause.Associations).Model(t).Updates(updates)
+}
+
+// t is Sell trade and was already tested to be Valid
+func (t *Trade) recordGain(db *gorm.DB, activeBuys []Trade) {
+	var sellBasis decimal.Decimal
+	sharesRemain := t.Shares
+
+	tg := new(TradeGain)
+	for i := 0; sharesRemain.IsPositive(); i++ {
+		buy := &activeBuys[i]
+		tg.ID = 0
+		tg.recordGain(db, t, buy, sharesRemain)
+		sharesRemain = sharesRemain.Sub(tg.Shares)
+		sellBasis = sellBasis.Add(tg.Basis)
+
+		// update Basis in Buy
+		buy.updateBasis(db, tg.Basis)
+	}
+
+	// update Sell
+	t.updateBasis(db, sellBasis)
 }
 
 // Look up Security by symbol, creates Security if none exists
@@ -149,6 +186,8 @@ func (t *Trade) securityGetBySymbol(db *gorm.DB) *Security {
 
 func (t *Trade) Create(db *gorm.DB) error {
 	var security *Security
+	var activeBuys []Trade
+	var err error
 
 	if t.SecurityID > 0 {
 		// verify access to Security
@@ -159,22 +198,35 @@ func (t *Trade) Create(db *gorm.DB) error {
 		security = t.securityGetBySymbol(db)
 	}
 
-	if security != nil {
-		t.AccountID = t.Security.AccountID
-		spewModel(t)
-		result := db.Omit(clause.Associations).Create(t)
-		log.Printf("[MODEL] CREATE %s TRADE(%d)", t.TradeType.Name, t.ID)
-		if result.Error != nil {
-			log.Fatal(result.Error)
-		}
-
-		c := t.tradeToCashFlow()
-		if c != nil {
-			security.Account.updateBalance(db, c)
-		}
-		return result.Error
+	if security == nil {
+		return errors.New("Permission Denied")
 	}
-	return errors.New("Permission Denied")
+	t.AccountID = security.AccountID
+	spewModel(t)
+
+	if t.IsSell() {
+		activeBuys, err = security.validateSell(db, t)
+		if err != nil {
+			return err
+		}
+	}
+
+	result := db.Omit(clause.Associations).Create(t)
+	log.Printf("[MODEL] CREATE TRADE(%d) SECURITY(%d) ACCOUNT(%d) TYPE(%d)",
+		   t.ID, t.SecurityID, t.AccountID, t.TradeTypeID)
+	if result.Error != nil {
+		log.Fatal(result.Error)
+	}
+
+	if t.IsSell() {
+		t.recordGain(db, activeBuys)
+	}
+	security.addTrade(db, t)
+	c := t.toCashFlow()
+	if c != nil {
+		security.Account.updateBalance(db, c)
+	}
+	return nil
 }
 
 // t.Account must be preloaded
@@ -211,6 +263,6 @@ func (t *Trade) Delete(db *gorm.DB) error {
 // Trade access already verified with Get
 func (t *Trade) Update(db *gorm.DB) error {
 	spewModel(t)
-	result := db.Save(t)
+	result := db.Omit(clause.Associations).Save(t)
 	return result.Error
 }

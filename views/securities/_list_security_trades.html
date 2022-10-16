@@ -24,7 +24,7 @@
 <td>{{ t.Date.Format("2006-01-02") }}</td>
 <td>{{ t.Shares }}</td>
 <td class="currency">{{ t.Currency(t.Price) }}</td>
-<td class="currency">{{ t.Currency(t.Basis) }}</td>
+<td class="currency">{{ t.GetBasis() }}</td>
 <td class="currency">{{ t.Currency(t.Amount) }}</td>
 <td><a href=/trades/{{t.ID}}/edit>Edit</a></td>
 </tr>
