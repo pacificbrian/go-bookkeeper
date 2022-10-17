@@ -38,8 +38,13 @@
 {% if !total_amount -%}
 <td class="currency">{{ c.Currency(c.Balance) }}</td>
 {% endif -%}
+{% if c.ID > 0 -%}
 <td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
 <td><a href=/cash_flows/{{ c.ID }} data-cashflow-id="{{ c.ID }}" data-action="cashflow#actionDelete">Delete</a></td>
+{% else -%}
+<td></td>
+<td></td>
+{% endif -%}
 </tr>
 {% endfor -%}
 </tbody>

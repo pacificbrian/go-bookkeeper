@@ -14,12 +14,17 @@ const (
 	UndefinedTradeType uint = iota
 	Buy
 	Sell
+	// below are not Trades, but CashFlow Credits
 	Dividend
 	Distribution
+	// below are effectively Buy types, but no CashFlow Debit
 	ReinvestedDividend
 	ReinvestedDistribution
+	// below only for moving Shares between accounts, careful some 401k
+	// exported data will incorrectly encode ReinvestedDividend as SharesIn
 	SharesIn
 	SharesOut
+	// trade.Shares is split ratio (specified negative for reverse split)
 	Split
 )
 
@@ -41,6 +46,18 @@ func TradeTypeIsBuy(TradeTypeID uint) bool {
 
 func TradeTypeIsSell(TradeTypeID uint) bool {
 	return (TradeTypeID == Sell)
+}
+
+func TradeTypeIsSharesIn(TradeTypeID uint) bool {
+	return (TradeTypeID == SharesIn)
+}
+
+func TradeTypeIsSharesOut(TradeTypeID uint) bool {
+	return (TradeTypeID == SharesOut)
+}
+
+func TradeTypeIsSplit(TradeTypeID uint) bool {
+	return (TradeTypeID == Split)
 }
 
 func (*TradeType) List(db *gorm.DB) []TradeType {

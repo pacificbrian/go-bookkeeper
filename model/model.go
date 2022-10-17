@@ -7,6 +7,7 @@
 package model
 
 import (
+	"log"
 	"time"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
@@ -21,6 +22,12 @@ var useSpew bool = false
 func spewModel(data any) {
 	if useSpew {
 		spew.Dump(data)
+	}
+}
+
+func assert(assertion bool, panicString string) {
+	if (!assertion) {
+		log.Panic(panicString)
 	}
 }
 

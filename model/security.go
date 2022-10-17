@@ -39,7 +39,7 @@ func (s Security) Price() decimal.Decimal {
 	if s.Shares.Equal(decimal.Zero) {
 		return decimal.Zero
 	} else {
-		return s.Value.Div(s.Shares).RoundBank(2)
+		return s.Value.DivRound(s.Shares, 2)
 	}
 }
 
@@ -47,7 +47,7 @@ func (s Security) BasisPrice() decimal.Decimal {
 	if s.Shares.Equal(decimal.Zero) {
 		return decimal.Zero
 	} else {
-		return s.Basis.Div(s.Shares).RoundBank(2)
+		return s.Basis.DivRound(s.Shares, 2)
 	}
 }
 
@@ -63,11 +63,22 @@ func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 		s.Shares = s.Shares.Add(trade.Shares)
 		updates["basis"] = s.Basis
 		updates["shares"] = s.Shares
+	} else if trade.IsSharesIn() {
+		s.Shares = s.Shares.Add(trade.Shares)
+		updates["shares"] = s.Shares
+	} else if trade.IsSharesOut() {
+		s.Shares = s.Shares.Sub(trade.Shares)
+		updates["shares"] = s.Shares
+	} else if trade.IsSplit() {
+		s.Shares = s.Shares.Mul(trade.Shares)
+		updates["shares"] = s.Shares
 	} else if !trade.Price.IsPositive() {
 		return
 	}
-	s.Value = s.Shares.Mul(trade.Price)
-	updates["value"] = s.Value
+	if trade.Price.IsPositive() || s.Shares.IsZero() {
+		s.Value = s.Shares.Mul(trade.Price).Round(2)
+		updates["value"] = s.Value
+	}
 	db.Omit(clause.Associations).Model(s).Updates(updates)
 	log.Printf("[MODEL] SECURITY(%d) ADD TRADE (%d) TYPE(%d)",
 		   s.ID, trade.ID, trade.TradeTypeID)
@@ -136,7 +147,20 @@ func (s *Security) validateSell(db *gorm.DB, trade *Trade) ([]Trade, error) {
 	return activeBuys, nil
 }
 
-func (s *Security) Init() {
+func (s *Security) validateTrade(db *gorm.DB, trade *Trade) ([]Trade, error) {
+	if trade.IsSell() {
+		return s.validateSell(db, trade)
+	} else if trade.IsSplit() {
+		activeBuys := s.ListTrades(db, true)
+		if len(activeBuys) == 0 {
+			return nil, errors.New("Ignoring Split (No Shares)")
+		}
+		return activeBuys, nil
+	}
+	return nil, nil
+}
+
+func (s *Security) init() {
 	s.SecurityTypeID = 1 // Default is Stock
 	s.SecurityBasisTypeID = 1 // Default is FIFO
 }
@@ -144,7 +168,7 @@ func (s *Security) Init() {
 func (s *Security) Create(db *gorm.DB) error {
 	// Verify we have access to Account
 	s.Account.ID = s.AccountID
-	s.Init()
+	s.init()
 	account := s.Account.Get(db, false)
 	if account != nil {
 		spewModel(s)

@@ -31,6 +31,7 @@ type Trade struct {
 	oldAmount decimal.Decimal `gorm:"-:all"`
 	Price decimal.Decimal `form:"price"`
 	Shares decimal.Decimal `form:"shares"`
+	// AdjustedShares is remaining unsold shares, split adjusted
 	AdjustedShares decimal.Decimal
 	// Basis is accumulated (used) basis from Sells (starts at 0)
 	// for Buys: remaining Basis is: Amount - Basis
@@ -49,6 +50,18 @@ func (t *Trade) IsBuy() bool {
 
 func (t *Trade) IsSell() bool {
 	return TradeTypeIsSell(t.TradeTypeID)
+}
+
+func (t *Trade) IsSharesIn() bool {
+	return TradeTypeIsSharesIn(t.TradeTypeID)
+}
+
+func (t *Trade) IsSharesOut() bool {
+	return TradeTypeIsSharesOut(t.TradeTypeID)
+}
+
+func (t *Trade) IsSplit() bool {
+	return TradeTypeIsSplit(t.TradeTypeID)
 }
 
 func (t Trade) GetBasis() string {
@@ -137,12 +150,25 @@ func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
 	return cf_entries
 }
 
-func (t *Trade) updateBasis(db *gorm.DB, basis decimal.Decimal) {
-	t.Basis = t.Basis.Add(basis)
-	updates := map[string]interface{}{"basis": t.Basis}
-	if t.IsBuy() && t.Amount.Equal(t.Basis) {
-		updates["closed"] = 1
+func (t *Trade) updateBasis(db *gorm.DB, basis decimal.Decimal, soldShares decimal.Decimal) {
+	updates := make(map[string]interface{})
+	if t.IsBuy() {
+		if t.AdjustedShares.IsZero() {
+			assert(t.Basis.IsZero(), "Trade Basis Corrupted (1)")
+			t.AdjustedShares = t.Shares
+		}
+		t.AdjustedShares = t.AdjustedShares.Sub(soldShares)
+		updates["adjusted_shares"] = t.AdjustedShares
+
+		t.Basis = t.Basis.Add(basis)
+		if t.Amount.Equal(t.Basis) {
+			assert(t.AdjustedShares.IsZero(), "Trade Basis Corrupted (2)")
+			updates["closed"] = 1
+		}
+	} else {
+		t.Basis = t.Basis.Add(basis)
 	}
+	updates["basis"] = t.Basis
 	db.Omit(clause.Associations).Model(t).Updates(updates)
 }
 
@@ -160,11 +186,22 @@ func (t *Trade) recordGain(db *gorm.DB, activeBuys []Trade) {
 		sellBasis = sellBasis.Add(tg.Basis)
 
 		// update Basis in Buy
-		buy.updateBasis(db, tg.Basis)
+		buy.updateBasis(db, tg.Basis, tg.Shares)
 	}
 
 	// update Sell
-	t.updateBasis(db, sellBasis)
+	t.updateBasis(db, sellBasis, t.Shares)
+}
+
+// t is Split trade and was already tested to be Valid
+func (t *Trade) recordSplit(db *gorm.DB, activeBuys []Trade) {
+	// update unsold Shares in Buys that are not yet closed
+	for i := 0; i < len(activeBuys); i++ {
+		buy := &activeBuys[i]
+		buy.AdjustedShares = buy.AdjustedShares.Mul(t.Shares)
+		db.Omit(clause.Associations).Model(buy).
+		   Update("AdjustedShares", buy.AdjustedShares)
+	}
 }
 
 // Look up Security by symbol, creates Security if none exists
@@ -182,6 +219,23 @@ func (t *Trade) securityGetBySymbol(db *gorm.DB) *Security {
 	}
 
 	return security
+}
+
+func (t *Trade) validateInputs() error {
+	if t.IsSell() || t.IsBuy() {
+		if t.Amount.IsZero() || t.Price.IsZero() || t.Shares.IsZero() {
+			return errors.New("Invalid Trade Entered (Buy/Sell)")
+		}
+	} else if t.IsSharesIn() || t.IsSharesOut() {
+		if t.Shares.IsZero() {  // t.Amount (is optional)
+			return errors.New("Invalid Trade Entered (Shares In/Out)")
+		}
+	} else if t.IsSplit() {
+		if !t.Amount.IsZero() || t.Shares.IsZero() {
+			return errors.New("Invalid Trade Entered (Split)")
+		}
+	}
+	return nil
 }
 
 func (t *Trade) Create(db *gorm.DB) error {
@@ -202,13 +256,18 @@ func (t *Trade) Create(db *gorm.DB) error {
 		return errors.New("Permission Denied")
 	}
 	t.AccountID = security.AccountID
+	t.TaxYear = t.Date.Year()
+	if t.IsBuy() {
+		t.AdjustedShares = t.Shares
+	}
 	spewModel(t)
 
-	if t.IsSell() {
-		activeBuys, err = security.validateSell(db, t)
-		if err != nil {
-			return err
-		}
+	err = t.validateInputs()
+	if err == nil && (t.IsSell() || t.IsSplit()) {
+		activeBuys, err = security.validateTrade(db, t)
+	}
+	if err != nil {
+		return err
 	}
 
 	result := db.Omit(clause.Associations).Create(t)
@@ -220,6 +279,8 @@ func (t *Trade) Create(db *gorm.DB) error {
 
 	if t.IsSell() {
 		t.recordGain(db, activeBuys)
+	} else if t.IsSplit() {
+		t.recordSplit(db, activeBuys)
 	}
 	security.addTrade(db, t)
 	c := t.toCashFlow()

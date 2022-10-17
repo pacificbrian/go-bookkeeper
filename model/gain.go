@@ -20,7 +20,7 @@ type TradeGain struct {
 	Buy Trade
 	DaysHeld int32
 	Shares decimal.Decimal
-	AdjustedShares decimal.Decimal
+	AdjustedShares decimal.Decimal // deprecated
 	Basis decimal.Decimal
 }
 
@@ -32,12 +32,24 @@ func (*TradeGain) List(db *gorm.DB) []TradeGain {
 }
 
 func (tg *TradeGain) recordGain(db *gorm.DB, sell *Trade, buy *Trade,
-				shares decimal.Decimal) {
+				maxShares decimal.Decimal) {
+	var buyRemain decimal.Decimal
+
+	if buy.AdjustedShares.IsPositive() {
+		buyRemain = buy.AdjustedShares
+	} else {
+		buyRemain = buy.Shares
+	}
+
 	tg.SellID = sell.ID
 	tg.BuyID = buy.ID
 	tg.DaysHeld = durationDays(sell.Date.Sub(buy.Date))
-	tg.Shares = sell.Shares
+	tg.Shares = decimal.Min(maxShares, buyRemain)
 	tg.Basis = buy.Amount.Sub(buy.Basis)
+	if !buyRemain.Equal(tg.Shares) {
+		// must calculate using Basis per share
+		tg.Basis = tg.Basis.Div(buyRemain).Mul(tg.Shares).RoundBank(2)
+	}
 	// [sell,buy].Basis is updated in caller
 
 	db.Omit(clause.Associations).Create(tg)
