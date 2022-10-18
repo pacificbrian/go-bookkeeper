@@ -168,7 +168,7 @@ func (a *Account) Init() *Account {
 	return a
 }
 
-// Average Balance for last 30 days prior to end date.
+// Average Balance for last 30 days prior to end date; uses/requires a.Balance.
 // We need to handle case where Account age < 30 days, but currently cannot.
 func (a *Account) averageDailyBalance(db *gorm.DB, endDate time.Time) decimal.Decimal {
 	var total decimal.Decimal
@@ -227,7 +227,7 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 		return
 	}
 
-	if c.oldAmount.Equal(decimal.Zero) {
+	if c.oldAmount.IsZero() {
 		// Create, Scheduled CashFlows
 		log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): +%f",
 			   a.ID, c.ID, c.Amount.InexactFloat64())

@@ -25,8 +25,20 @@ type Category struct {
 	OmitFromPie bool
 }
 
+func (c *Category) IsInterest() bool {
+	return (c.ID == 34)
+}
+
+func (c *Category) IsMortgageInterest() bool {
+	return (c.ID == 35)
+}
+
 func (c *Category) IsInterestIncome() bool {
 	return (c.ID == 74)
+}
+
+func (c *Category) LoanPI() bool {
+	return (c.IsInterest() || c.IsMortgageInterest())
 }
 
 func (*CategoryType) List(db *gorm.DB) []CategoryType {

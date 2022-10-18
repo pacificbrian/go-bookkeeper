@@ -18,14 +18,6 @@ import (
 	"gorm.io/gorm/clause"
 )
 
-const (
-	UndefinedType uint = iota
-	Debit
-	Credit
-	DebitTransfer
-	CreditTransfer
-)
-
 type CashFlow struct {
 	gorm.Model
 	CashFlowTypeID uint `form:"cash_flow_type_id" gorm:"-:all"`
@@ -64,6 +56,14 @@ func (c CashFlow) GetTransnum() string {
 		return ""
 	}
 	return c.Transnum
+}
+
+func (c *CashFlow) IsCredit() bool {
+	return CashFlowTypeIsCredit(c.CashFlowTypeID)
+}
+
+func (c *CashFlow) IsDebit() bool {
+	return CashFlowTypeIsDebit(c.CashFlowTypeID)
 }
 
 func (c *CashFlow) ParentID() uint {
@@ -494,36 +494,61 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 	return err
 }
 
+func (c *CashFlow) repeatUpdateMap() map[string]interface{} {
+	return map[string]interface{}{"date": c.Date, "tax_year": c.TaxYear}
+}
+
+// map of fields that must be equivalent in Split/Parent
+// if Transfer, payee_id is pruned out later
 func (c *CashFlow) splitUpdateMap() map[string]interface{} {
-	// map of fields that must be equivalent in Split/Parent
-	// if Transfer, payee_id is pruned out later
 	return map[string]interface{}{"date": c.Date, "tax_year": c.TaxYear,
 				      "payee_id": c.PayeeID}
 }
 
 // update only selected fields in Splits from the given map
-func (repeat *CashFlow) updateSplits(db *gorm.DB, updates map[string]interface{}) {
-	if repeat.HasSplits() {
-		// for Transfers, copy map and remove payee_id
-		// wish there was cleaner way
-		transferUpdates := make(map[string]interface{})
-		for k,v := range updates {
-			transferUpdates[k] = v
-		}
-		delete(transferUpdates, "payee_id")
+func updateSplits(db *gorm.DB, splits []CashFlow, updates map[string]interface{},
+		  updateAmounts bool) {
+	// for Transfers, copy map and remove payee_id
+	// wish there was cleaner way
+	transferUpdates := make(map[string]interface{})
+	for k,v := range updates {
+		transferUpdates[k] = v
+	}
+	delete(transferUpdates, "payee_id")
 
-		splits, _ := repeat.ListSplit(db)
-		for i := 0; i < len(splits); i++ {
-			split := splits[i]
-			if split.Transfer {
-				db.Omit(clause.Associations).Model(split).
-				   Updates(transferUpdates)
-			} else {
-				db.Omit(clause.Associations).Model(split).
-				   Updates(updates)
-			}
+	for i := 0; i < len(splits); i++ {
+		split := splits[i]
+
+		if updateAmounts {
+			updates["amount"] = split.Amount
+			transferUpdates["amount"] = split.Amount
+		}
+		if split.Transfer {
+			db.Omit(clause.Associations).Model(split).
+			   Updates(transferUpdates)
+		} else {
+			db.Omit(clause.Associations).Model(split).
+			   Updates(updates)
 		}
 	}
+}
+
+func (c *CashFlow) updateSplits(db *gorm.DB, updates map[string]interface{}) {
+	if c.HasSplits() {
+		splits, _ := c.ListSplit(db)
+		updateSplits(db, splits, updates, false)
+	}
+}
+
+func (repeat *CashFlow) getMonthlyRate(db *gorm.DB) decimal.Decimal {
+	repeat.PreloadRepeat(db)
+	if repeat.RepeatInterval.RepeatIntervalType.Days != 30 {
+		return decimal.Zero
+	}
+
+	// returns decimal.Zero if not set
+	rate := &repeat.RepeatInterval.Rate
+	return rate.Div(decimal.NewFromInt32(12))
 }
 
 func (repeat *CashFlow) applyRate(db *gorm.DB) bool {
@@ -532,20 +557,96 @@ func (repeat *CashFlow) applyRate(db *gorm.DB) bool {
 		return false
 	}
 
-	repeat.PreloadRepeat(db)
-	if repeat.RepeatInterval.RepeatIntervalType.Days != 30 {
+	monthlyRate := repeat.getMonthlyRate(db)
+	if monthlyRate.IsZero() {
 		return false
 	}
 
-	rate := &repeat.RepeatInterval.Rate
-	if rate.Equal(decimal.Zero) {
-		return false
-	}
-
-	monthlyRate := rate.Div(decimal.NewFromInt32(12))
 	averageDailyBalance := repeat.Account.averageDailyBalance(db, repeat.Date)
 	repeat.Amount = averageDailyBalance.Mul(monthlyRate).RoundBank(2)
 	return true
+}
+
+func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
+	var paymentCF *CashFlow
+	var principleCF *CashFlow
+	var interestCF *CashFlow
+	var splits []CashFlow
+	var fees decimal.Decimal
+	debugPI := false
+	matched := 0
+
+	if !repeat.HasSplits() {
+		return splits, false
+	}
+
+	monthlyRate := repeat.getMonthlyRate(db)
+	if monthlyRate.IsZero() {
+		return splits, false
+	}
+
+	repeat.determineCashFlowType() // needed to calculate Principle correctly
+
+	// iterate over Splits to find P and I payments
+	updateAmounts := true
+	splits, _ = repeat.ListSplit(db)
+	for i := 0; i < len(splits); i++ {
+		split := splits[i]
+		split.Category.ID = split.CategoryID
+		if split.Transfer {
+			// need type of Transfer (Credit or Debit)
+			split.determineCashFlowType()
+			if split.IsCredit() {
+				/* both are Credits */
+				paymentCF = &split
+				principleCF = repeat
+			} else {
+				/* both are Debits, flip to Credit (reversed below) */
+				paymentCF = repeat
+				principleCF = &split
+				paymentCF.Amount = paymentCF.Amount.Neg()
+				principleCF.Amount = principleCF.Amount.Neg()
+			}
+			assert(principleCF.Amount.IsPositive(), "LoanPI: bad Principle Amount")
+			assert(paymentCF.Amount.IsPositive(), "LoanPI: bad Payment Amount")
+			matched += 1
+		} else if split.Category.LoanPI() {
+			interestCF = &split
+			interestCF.Account.cloneVerified(&repeat.Account)
+			matched += 1
+		} else {
+			// other fixed fees
+			fees = fees.Add(split.Amount)
+		}
+	}
+
+	if (matched != 2 || principleCF == nil || interestCF == nil) {
+		updateAmounts = false
+		// cannot return as may have to flip Credits back to Debits
+	}
+
+	// we have valid ScheduledCashFlow for determining P and I
+	if updateAmounts {
+		averageDailyBalance := interestCF.Account.averageDailyBalance(db, repeat.Date)
+		// record new Amounts in returned SplitCashFlows,
+		// takes affect as applied next in caller's main logic
+		interestCF.Amount = averageDailyBalance.Mul(monthlyRate).RoundBank(2)
+		assert(interestCF.Amount.IsNegative(), "LoanPI: bad Interest Amount")
+		principleCF.Amount = paymentCF.Amount.Add(fees).Add(interestCF.Amount)
+		if debugPI {
+			log.Printf("[MODEL] CPI INTEREST CASHFLOW(%d) (%f)", interestCF.ID,
+				   interestCF.Amount.InexactFloat64())
+			log.Printf("[MODEL] CPI PRINCIPLE CASHFLOW(%d) (%f)", principleCF.ID,
+				   principleCF.Amount.InexactFloat64())
+		}
+	}
+
+	// ensure Amount is positive (Credits) or negative (Debits)
+	if principleCF != nil {
+		paymentCF.applyCashFlowType()
+		principleCF.applyCashFlowType()
+	}
+	return splits, updateAmounts
 }
 
 // returns true if advanced date is still less than time.Now
@@ -592,37 +693,53 @@ func (repeat *CashFlow) advance(db *gorm.DB, updateAmount bool) bool {
 	}
 	repeat.TaxYear = repeat.Date.Year()
 
-	updates := map[string]interface{}{"date": repeat.Date, "tax_year": repeat.TaxYear}
+	updates := repeat.repeatUpdateMap()
 	if updateAmount {
 		updates["amount"] = repeat.Amount
 	}
 	db.Omit(clause.Associations).Model(repeat).Updates(updates)
 	log.Printf("[MODEL] ADVANCE SCHEDULED CASHFLOW(%d) to %s", repeat.ID,
 		   repeat.Date.Format("2006-01-02"))
-	repeat.updateSplits(db, updates)
 
 	return time.Now().After(repeat.Date)
 }
 
 func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
+	var splits []CashFlow
 	var err error
+
 	c := new(CashFlow)
 	for {
-		var newAmount bool
+		var newAmount, newSplitAmounts bool
+
+		// below handles when ScheduledCashFlow has RepeatInterval.Rate
+		// no need to extend use of Rate for Splits
 		if !c.Split {
-			// no need to extend for Splits,
-			// this uses repeat.Account.Balance
+			// logic here requires repeat.Account.Balance
 			newAmount = repeat.applyRate(db)
+			if newAmount {
+				log.Printf("[MODEL] INTEREST RATE APPLIED")
+			} else {
+				splits, newSplitAmounts = repeat.calculateLoanPI(db)
+				if newSplitAmounts {
+					newAmount = true
+					log.Printf("[MODEL] CALCULATE PI APPLIED (%d)",
+						   len(splits))
+				}
+			}
 		}
 		c.cloneScheduled(repeat)
 
+		// add scheduled CashFlow
 		err = c.insertCashFlow(db)
 		if err != nil || c.Split {
 			break
 		}
 
-		// handle Splits
-		splits, _ := repeat.ListSplit(db)
+		// now add SplitCashFlows
+		if len(splits) == 0 {
+			splits, _ = repeat.ListSplit(db)
+		}
 		for i := 0; i < len(splits); i++ {
 			split := splits[i]
 			split.SplitFrom = c.ID
@@ -630,7 +747,13 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 			split.tryInsertRepeatCashFlow(db)
 		}
 
+		// advance Date in Repeat CashFlow and Splits, but reuse
+		// array of Splits we already queried
 		canRepeat := repeat.advance(db, newAmount)
+		if len(splits) > 0 {
+			updateSplits(db, splits, repeat.repeatUpdateMap(),
+				     newSplitAmounts)
+		}
 		if !canRepeat {
 			break
 		}
