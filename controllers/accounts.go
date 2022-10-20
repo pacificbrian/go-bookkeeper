@@ -77,6 +77,7 @@ func GetAccount(c echo.Context) error {
 	log.Printf("GET ACCOUNT(%d)", id)
 	db := gormdb.DbManager()
 	get_json := false
+	debugAB := false
 
 	// should be in Model
 	entry := new(model.Account)
@@ -100,6 +101,10 @@ func GetAccount(c echo.Context) error {
 				entry.TotalPortfolio(securities)
 			}
 			cashflows = new(model.CashFlow).ListMerge(db, entry, cashflows)
+		}
+
+		if debugAB {
+			entry.SetAverageDailyBalance(db)
 		}
 
 		dh := new(helpers.DateHelper)

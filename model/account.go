@@ -28,6 +28,7 @@ type Account struct {
 	Number string `form:"account.Number"`
 	Routing int `form:"account.Routing"`
 	Balance decimal.Decimal
+	AverageBalance decimal.Decimal `gorm:"-:all"`
 	Taxable bool `form:"account.Taxable"`
 	Hidden bool `form:"account.Hidden"`
 	HasScheduled bool
@@ -169,7 +170,8 @@ func (a *Account) Init() *Account {
 }
 
 // Average Balance for last 30 days prior to end date; uses/requires a.Balance.
-// We need to handle case where Account age < 30 days, but currently cannot.
+// If Account is less than 30 days old, this will add Zeros for those days which
+// gives the correct behavior for Interest calculations.
 func (a *Account) averageDailyBalance(db *gorm.DB, endDate time.Time) decimal.Decimal {
 	var total decimal.Decimal
 	var daysLeft int32 = 30
@@ -209,13 +211,25 @@ func (a *Account) averageDailyBalance(db *gorm.DB, endDate time.Time) decimal.De
 	}
 
 	if daysLeft > 0 {
-		total = total.Add(lastBalance.Mul(decimal.NewFromInt32(daysLeft)))
+		balanceBeforeFirstCashFlow := lastBalance.Mul(decimal.NewFromInt32(daysLeft))
+		log.Printf("[MODEL] ACCOUNT(%d) BALANCE ACTIVE ($%f) IDLE ($%f DAYS:%d)",
+			   a.ID, total.InexactFloat64(),
+			   balanceBeforeFirstCashFlow.InexactFloat64(), daysLeft)
+		total = total.Add(balanceBeforeFirstCashFlow)
 	}
 
 	balance := total.DivRound(decimal.NewFromInt32(30), 2)
-	log.Printf("[MODEL] ACCOUNT 30-DAY AVERAGE BALANCE (%d: $%f from %d/%d entries)",
+	log.Printf("[MODEL] ACCOUNT(%d) 30-DAY AVERAGE BALANCE ($%f from %d/%d entries)",
 		   a.ID, balance.InexactFloat64(), validEntries, len(entries))
 	return balance
+}
+
+func (a Account) HasAverageDailyBalance() bool {
+	return !a.AverageBalance.IsZero()
+}
+
+func (a *Account) SetAverageDailyBalance(db *gorm.DB) {
+	a.AverageBalance = a.averageDailyBalance(db, time.Now())
 }
 
 func (a *Account) addScheduled(db *gorm.DB) {

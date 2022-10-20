@@ -12,6 +12,11 @@
 <tr>
 <td>Balance:
 <td>{{ account.Currency(account.Balance) }}
+{% if account.HasAverageDailyBalance() -%}
+<tr>
+<td>ADB (30 days):
+<td>{{ account.Currency(account.AverageBalance) }}
+{% endif -%}
 </tr>
 </table>
 
