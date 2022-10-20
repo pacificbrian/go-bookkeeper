@@ -590,20 +590,21 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 	// iterate over Splits to find P and I payments
 	updateAmounts := true
 	splits, _ = repeat.ListSplit(db)
+	splitsPtr := &splits
 	for i := 0; i < len(splits); i++ {
-		split := splits[i]
+		var split *CashFlow = &(*splitsPtr)[i]
 		split.Category.ID = split.CategoryID
 		if split.Transfer {
 			// need type of Transfer (Credit or Debit)
 			split.determineCashFlowType()
 			if split.IsCredit() {
 				/* both are Credits */
-				paymentCF = &split
+				paymentCF = split
 				principleCF = repeat
 			} else {
 				/* both are Debits, flip to Credit (reversed below) */
 				paymentCF = repeat
-				principleCF = &split
+				principleCF = split
 				paymentCF.Amount = paymentCF.Amount.Neg()
 				principleCF.Amount = principleCF.Amount.Neg()
 			}
@@ -611,7 +612,7 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 			assert(paymentCF.Amount.IsPositive(), "LoanPI: bad Payment Amount")
 			matched += 1
 		} else if split.Category.LoanPI() {
-			interestCF = &split
+			interestCF = split
 			interestCF.Account.cloneVerified(&repeat.Account)
 			matched += 1
 		} else {
