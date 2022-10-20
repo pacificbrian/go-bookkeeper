@@ -47,6 +47,15 @@
 {% endif -%}
 </tr>
 {% endfor -%}
+{% if total_amount -%}
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td class="currency"> {{ total_amount }}</td>
+<td></td>
+<td></td>
+{% endif -%}
 </tbody>
 </table>
 </div>

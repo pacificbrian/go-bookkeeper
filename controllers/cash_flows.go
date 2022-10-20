@@ -117,6 +117,8 @@ func UpdateCashFlow(c echo.Context) error {
 	c.Bind(entry)
 	c.Bind(&entry.RepeatInterval)
 	entry.Date = getFormDate(c)
+	// special case RepeatsLeft so that unset from user equals SQL NULL value
+	entry.RepeatInterval.SetRepeatsLeft(c.FormValue("repeats_left"))
 	entry.Update(db)
 
 	// possibly can clean this up with Sessions

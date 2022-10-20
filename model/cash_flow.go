@@ -547,7 +547,8 @@ func (repeat *CashFlow) getMonthlyRate(db *gorm.DB) decimal.Decimal {
 	}
 
 	// returns decimal.Zero if not set
-	rate := &repeat.RepeatInterval.Rate
+	rate := repeat.RepeatInterval.Rate
+	rate = rate.Div(decimal.NewFromInt32(100))
 	return rate.Div(decimal.NewFromInt32(12))
 }
 
@@ -558,7 +559,7 @@ func (repeat *CashFlow) applyRate(db *gorm.DB) bool {
 	}
 
 	monthlyRate := repeat.getMonthlyRate(db)
-	if monthlyRate.IsZero() {
+	if !monthlyRate.IsPositive() { // positive Rates only
 		return false
 	}
 
@@ -581,7 +582,7 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 	}
 
 	monthlyRate := repeat.getMonthlyRate(db)
-	if monthlyRate.IsZero() {
+	if !monthlyRate.IsPositive() { // positive Rates only
 		return splits, false
 	}
 

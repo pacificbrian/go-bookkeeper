@@ -32,7 +32,7 @@
 <td>Repeats:</td>
 <td><input type="text" name="repeats" value="{{cash_flow.RepeatInterval.GetRepeatsLeft()}}"/></td>
 <tr>
-<td>Rate:</td>
+<td>Rate (Perentage): </td>
 <td><input type="text" name="rate" value="{{cash_flow.RepeatInterval.GetRate()}}"/></td>
 </table>
 <table>
@@ -94,8 +94,12 @@
 
 <ul id="footmenu" data-controller="cashflow">
 <li><a href=/accounts/{{cash_flow.AccountID}}>Back To Account</a></li>
+{% if cash_flow.IsScheduled() -%}
+<li><a href=/accounts/{{cash_flow.AccountID}}/scheduled>Back to Scheduled CashFlows</a></li>
+{% else -%}
 {% if not cash_flow.Transfer -%}
 <li><a href=/payees/{{cash_flow.PayeeID}}>Back to Payee</a></li>
+{% endif -%}
 {% endif -%}
 {% if cash_flow.ParentID > 0 -%}
 <li><a href=/cash_flows/{{ cash_flow.ParentID }}/edit>Edit Parent CashFlow</a></li>

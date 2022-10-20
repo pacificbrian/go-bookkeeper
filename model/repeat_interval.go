@@ -52,6 +52,19 @@ func (r RepeatInterval) HasRepeatsLeft() bool {
 	return (r.RepeatsLeft > 0)
 }
 
+func (r *RepeatInterval) SetRepeatsLeft(repeats string) {
+	repeatsLeft, _ := strconv.Atoi(repeats)
+	r.RepeatsLeft = uint(repeatsLeft)
+
+	// for special handling to allow RepeatsLeft = NULL (unset)
+	// in Update()
+	if repeats != "" { // set
+		r.RepeatsLeftPtr = &r.RepeatsLeft
+	} else { // unset
+		r.RepeatsLeftPtr = nil
+	}
+}
+
 func (r *RepeatInterval) Preload(db *gorm.DB) {
 	//db.Preload("RepeatIntervalType").First(&r)
 	db.First(&r)
@@ -59,7 +72,7 @@ func (r *RepeatInterval) Preload(db *gorm.DB) {
 	// special handling for RepeatsLeft == NULL (not set)
 	nullTest := new(RepeatInterval)
 	db.Where("repeats_left IS NOT NULL").First(&nullTest, r.ID)
-	if nullTest.ID == r.ID {
+	if nullTest.ID == r.ID { // NOT NULL (set)
 		r.RepeatsLeftPtr = &r.RepeatsLeft
 	}
 
@@ -79,7 +92,9 @@ func (r *RepeatInterval) advance(db *gorm.DB) int {
 		db.Omit(clause.Associations).Model(r).
 		   Select("repeats_left").Updates(updates)
 	}
-	if r.RepeatsLeft == 0 {
+
+	// use helper, can't test r.RepeatsLeft because unset/NULL == 0
+	if !r.HasRepeatsLeft() {
 		days = 0 // hit when looping until final Repeat
 	}
 
@@ -107,6 +122,11 @@ func (r *RepeatInterval) Create(db *gorm.DB, c *CashFlow) error {
 func (r *RepeatInterval) Update(db *gorm.DB, c *CashFlow) error {
 	r.StartDay = c.Date.Day()
 	result := db.Omit(clause.Associations).Save(r)
+	if result.Error == nil && r.GetRepeatsLeft() == "" {
+		updates := map[string]interface{}{"repeats_left": nil}
+		result = db.Omit(clause.Associations).Model(r).
+			     Select("repeats_left").Updates(updates)
+	}
 	log.Printf("[MODEL] UPDATE REPEAT_INTERVAL(%d) FOR CASHFLOW(%d)",
 		   r.ID, r.CashFlowID)
 	return result.Error
