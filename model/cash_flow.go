@@ -591,9 +591,8 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 	// iterate over Splits to find P and I payments
 	updateAmounts := true
 	splits, _ = repeat.ListSplit(db)
-	splitsPtr := &splits
 	for i := 0; i < len(splits); i++ {
-		var split *CashFlow = &(*splitsPtr)[i]
+		var split *CashFlow = &splits[i]
 		split.Category.ID = split.CategoryID
 		if split.Transfer {
 			// need type of Transfer (Credit or Debit)
@@ -628,8 +627,14 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 	}
 
 	// we have valid ScheduledCashFlow for determining P and I
-	if updateAmounts {
+	for updateAmounts {
 		averageDailyBalance := interestCF.Account.averageDailyBalance(db, repeat.Date)
+		// This is loan, so we should return if loan amount is somehow non-negative
+		if !averageDailyBalance.IsNegative() {
+			updateAmounts = false
+			break
+		}
+
 		// record new Amounts in returned SplitCashFlows,
 		// takes affect as applied next in caller's main logic
 		interestCF.Amount = averageDailyBalance.Mul(monthlyRate).RoundBank(2)
@@ -641,6 +646,7 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 			log.Printf("[MODEL] CPI PRINCIPLE CASHFLOW(%d) (%f)", principleCF.ID,
 				   principleCF.Amount.InexactFloat64())
 		}
+		break
 	}
 
 	// ensure Amount is positive (Credits) or negative (Debits)

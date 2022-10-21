@@ -293,6 +293,8 @@ func (a *Account) HaveAccessPermission() bool {
 // Show, Edit, Delete, Update use Get
 // a.UserID unset, need to load
 func (a *Account) Get(db *gorm.DB, preload bool) *Account {
+	enableScheduledCashFlow := true
+
 	// Load and Verify we have access to Account
 	if preload {
 		// Get (Show)
@@ -305,13 +307,13 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 		return nil
 	}
 
-	if preload {
+	if preload && enableScheduledCashFlow {
 		spewModel(a)
 
 		// test if any ScheduledCashFlows need to post
 		scheduled := a.ListScheduled(db, true)
 		for i := 0; i < len(scheduled); i++ {
-			repeat := &scheduled[i]
+			var repeat *CashFlow = &scheduled[i]
 			repeat.Account.cloneVerified(a)
 			repeat.tryInsertRepeatCashFlow(db)
 		}
