@@ -1,5 +1,9 @@
 [db]
+# choices are "sqlite" or "mysql"
+db = "sqlite"
+# name is path to Database file (sqlite) or Database name (mysql)
+name = "db/gobook_test.db"
+# below only used with mysql
 password = "passwd"
 host = "127.0.0.1"
-port = "3306"
-name = "db/gobook_test.db"
+port = 3306

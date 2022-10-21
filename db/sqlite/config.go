@@ -13,7 +13,7 @@ import (
 
 type Configuration struct {
 	DB struct {
-		Name     string `toml:"name" env:"DB_NAME" env-default:"db/gobook_test.db"`
+		Name     string `toml:"name" env:"GOBOOK_DB_NAME" env-default:"db/gobook_test.db"`
 	} `toml:"db"`
 }
 

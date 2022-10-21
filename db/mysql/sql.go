@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
-package sql
+package mysql
 
 import (
 	"fmt"
@@ -17,7 +17,7 @@ func Open() gorm.Dialector {
 	dsn := fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?charset=utf8&parseTime=True&loc=Local",
 			   c.DB.User, c.DB.Password,
 			   c.DB.Host, c.DB.Port, c.DB.Name)
-	return mysql.Open(dsn))
+	return mysql.Open(dsn)
 }
 
 func OpenMaria() gorm.Dialector {
