@@ -25,13 +25,13 @@ type Model struct {
 
 var useSpew bool = false
 
-func ForceSpewModel(data any) {
+func forceSpewModel(data any) {
 	spew.Dump(data)
 }
 
 func spewModel(data any) {
 	if useSpew {
-		ForceSpewModel(data)
+		forceSpewModel(data)
 	}
 }
 

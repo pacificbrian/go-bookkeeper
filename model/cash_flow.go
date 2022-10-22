@@ -32,6 +32,7 @@ type CashFlow struct {
 	PayeeID uint `gorm:"not null"` // also serves as Pair.AccountID (Transfers)
 	CategoryID uint `form:"category_id"` // also serves as Pair.ID (Transfers)
 	oldPairID uint `gorm:"-:all"`
+	ImportID uint
 	RepeatIntervalID uint
 	SplitFrom uint
 	Split bool
@@ -371,6 +372,8 @@ func (c *CashFlow) applyCashFlowType() {
 	case CreditTransfer:
 		c.Transfer = true
 	}
+	// ensure monetary amounts are 2 decimal places
+	c.Amount = c.Amount.Round(2)
 }
 
 func (c *CashFlow) cloneScheduled(src *CashFlow) {
@@ -420,6 +423,7 @@ func (c *CashFlow) pairFrom(src *CashFlow) {
 
 // prepare CashFlow to write to DB (used by both Create and Update)
 //   - update Amount and Transfer based on CashFlowType
+//   -- (above done earlier (moved to Create/Update functions))
 //   - create Payee if needed
 //   - lookup Account (error if not found/accessible)
 //   - return Pair cashflow (for other Account) if this is a Transfer
@@ -800,6 +804,11 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 	return err
 }
 
+// defaults for DB fields not set during Create (are Edit only)
+func (c *CashFlow) setDefaults() {
+	c.TaxYear = c.Date.Year()
+}
+
 func (c *CashFlow) Create(db *gorm.DB) error {
 	// Verify we have access to Account
 	if !c.Account.Verified {
@@ -812,7 +821,7 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 
 	c.applyCashFlowType()
 	// defaults for DB fields not set during Create (are Edit only)
-	c.TaxYear = c.Date.Year()
+	c.setDefaults()
 
 	err := c.insertCashFlow(db)
 	if err == nil && c.IsScheduledParent() {
@@ -947,7 +956,7 @@ func (c *CashFlow) Put(db *gorm.DB, request map[string]interface{}) error {
 	// need better way if expanded with more fields/types
 	if request["amount"] != nil {
 		newAmount, _ := strconv.ParseFloat(request["amount"].(string), 2)
-		c.Amount = decimal.NewFromFloat(newAmount)
+		c.Amount = decimal.NewFromFloatWithExponent(newAmount, -2)
 		if c.Amount.Equal(c.oldAmount) {
 			// ignore non-update
 			delete(request, "amount")

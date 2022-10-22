@@ -31,6 +31,7 @@ func CreateImportedCashFlows(c echo.Context) error {
 		log.Println(err)
 		return c.NoContent(http.StatusNoContent)
 	}
+	defer importFile.FileData.Close()
 
 	entry := new(model.Import)
 	entry.AccountID = uint(id)
