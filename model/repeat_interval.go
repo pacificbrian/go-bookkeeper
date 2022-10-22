@@ -66,8 +66,9 @@ func (r *RepeatInterval) SetRepeatsLeft(repeats string) {
 }
 
 func (r *RepeatInterval) Preload(db *gorm.DB) {
-	//db.Preload("RepeatIntervalType").First(&r)
-	db.First(&r)
+	if r.CashFlowID == 0 {
+		db.Preload("RepeatIntervalType").First(&r)
+	}
 
 	// special handling for RepeatsLeft == NULL (not set)
 	nullTest := new(RepeatInterval)
@@ -76,9 +77,11 @@ func (r *RepeatInterval) Preload(db *gorm.DB) {
 		r.RepeatsLeftPtr = &r.RepeatsLeft
 	}
 
-	// need userCache lookup
-	r.RepeatIntervalType.ID = r.RepeatIntervalTypeID
-	db.First(&r.RepeatIntervalType)
+	if r.RepeatIntervalType.Name == "" {
+		// need userCache lookup
+		r.RepeatIntervalType.ID = r.RepeatIntervalTypeID
+		db.First(&r.RepeatIntervalType)
+	}
 }
 
 // r should already been Preloaded

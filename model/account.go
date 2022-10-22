@@ -60,6 +60,12 @@ func (a *Account) TotalPortfolio(securities []Security) {
 	}
 }
 
+func cacheAccounts(u *User, accounts []Account) {
+	for i := 0; i < len(accounts); i++ {
+		u.cacheAccount(&accounts[i])
+	}
+}
+
 func ListAccounts(db *gorm.DB, all bool) []Account {
 	u := GetCurrentUser()
 	entries := []Account{}
@@ -78,6 +84,8 @@ func ListAccounts(db *gorm.DB, all bool) []Account {
 	   Where(hidden_clause).
 	   Where(&Account{UserID: u.ID}).Find(&entries)
 	log.Printf("[MODEL] LIST ACCOUNTS(%d)", len(entries))
+
+	cacheAccounts(u, entries)
 	return entries
 }
 
@@ -105,10 +113,14 @@ func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlo
 					     Where("repeat_interval_id > 0").
 					     Joins("RepeatInterval").Find(&entries, query)
 		} else {
-			db.Order("date asc").Where("repeat_interval_id > 0").
-					     Find(&entries, query)
+			db.Order("date asc").Preload("RepeatInterval.RepeatIntervalType").
+					     Preload("Payee").
+					     Where("repeat_interval_id > 0").
+					     Joins("RepeatInterval").Find(&entries, query)
 			for i := 0; i < len(entries); i++ {
 				repeat := &entries[i]
+				// for Preload access to Account.User.Cache
+				repeat.Account.cloneVerified(account)
 				// for #Show
 				repeat.Preload(db)
 			}
@@ -275,7 +287,9 @@ func (a *Account) Create(db *gorm.DB) error {
 
 func (a *Account) cloneVerified(src *Account) {
 	a.ID = src.ID
-	a.User = src.User
+	a.User.ID = src.User.ID
+	a.User.Cache = src.User.Cache
+	a.User.UserSettings = src.User.UserSettings
 	a.Balance = src.Balance
 	a.Verified = src.Verified
 }

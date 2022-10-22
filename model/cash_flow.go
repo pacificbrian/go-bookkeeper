@@ -159,22 +159,41 @@ func (c *CashFlow) EditPreload(db *gorm.DB, fullPreload bool) {
 	}
 
 	if c.Transfer {
-		a := new(Account)
-		db.First(&a, c.PayeeID)
-		c.PayeeName = a.Name
+		if c.Account.Verified {
+			c.PayeeName = c.Account.User.lookupAccount(c.PayeeID)
+		}
+		if c.PayeeName == "" {
+			a := new(Account)
+			db.First(&a, c.PayeeID)
+			c.PayeeName = a.Name
+			if c.Account.Verified {
+				c.Account.User.cacheAccount(a)
+			}
+		}
 		c.CategoryName = "Transfer"
 	} else {
-		c.Payee.ID = c.PayeeID
-		db.First(&c.Payee)
+		c.PayeeName = c.Payee.Name
+		if c.PayeeName == "" {
+			c.Payee.ID = c.PayeeID
+			db.First(&c.Payee)
+		}
 		c.PayeeName = c.Payee.Name
 
 		if c.HasSplits() {
 			c.CategoryName = "Split"
 		} else if c.CategoryID > 0 {
-			// need userCache lookup
-			c.Category.ID = c.CategoryID
-			db.First(&c.Category)
 			c.CategoryName = c.Category.Name
+			if c.CategoryName == "" && c.Account.Verified {
+				c.CategoryName = c.Account.User.lookupCategory(c.CategoryID)
+			}
+			if c.CategoryName == "" {
+				c.Category.ID = c.CategoryID
+				db.First(&c.Category)
+				if c.Account.Verified {
+					c.Account.User.cacheCategory(&c.Category)
+				}
+				c.CategoryName = c.Category.Name
+			}
 		}
 	}
 
@@ -187,11 +206,17 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 	c.EditPreload(db, false)
 }
 
-func mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
-		    balance decimal.Decimal, limit int) []CashFlow {
+func (ca *Account) mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
+				  limit int) []CashFlow {
 	totalEntries := len(A) + len(B)
+	balance := ca.Balance
+	logTime := false
 	var mergedEntries []CashFlow
 	var a, b, c *CashFlow
+
+	if logTime {
+		log.Printf("[MODEL] ACCOUNT(%d) CASHFLOW MERGE/PRELOAD START", ca.ID)
+	}
 
 	entries := &A
 	if len(A) == 0 || len(B) == 0 {
@@ -203,6 +228,7 @@ func mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
 			c = &(*entries)[i]
 			c.Balance = balance
 			balance = balance.Sub(c.Amount)
+			c.Account.cloneVerified(ca)
 			c.Preload(db)
 		}
 	} else {
@@ -230,10 +256,14 @@ func mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
 
 			c.Balance = balance
 			balance = balance.Sub(c.Amount)
+			c.Account.cloneVerified(ca)
 			c.Preload(db)
 			mergedEntries[i] = *c
 		}
 		entries = &mergedEntries
+	}
+	if logTime {
+		log.Printf("[MODEL] ACCOUNT(%d) CASHFLOW MERGE/PRELOAD STOP", ca.ID)
 	}
 
 	if limit <= 0 || limit > totalEntries {
@@ -252,7 +282,7 @@ func (c *CashFlow) Count(db *gorm.DB, account *Account) int64 {
 // Account access already verified by caller
 func (*CashFlow) ListMergeByDate(db *gorm.DB, account *Account, other []CashFlow,
 				 date *time.Time) []CashFlow {
-	entries := []CashFlow{}
+	var entries []CashFlow
 	if !account.Verified {
 		return entries
 	}
@@ -263,7 +293,7 @@ func (*CashFlow) ListMergeByDate(db *gorm.DB, account *Account, other []CashFlow
 	// db.Order("date desc").Find(&entries, &CashFlow{AccountID: account.IDl})
 	// use map to support NULL string
 	query := map[string]interface{}{"account_id": account.ID, "type": nil}
-	queryPrefix := db.Order("date desc")
+	queryPrefix := db.Order("date desc").Preload("Payee").Preload("Category")
 	if date != nil {
 		queryPrefix = queryPrefix.Where("date >= ?", date)
 		limit = -1
@@ -273,7 +303,7 @@ func (*CashFlow) ListMergeByDate(db *gorm.DB, account *Account, other []CashFlow
 	queryPrefix.Find(&entries, query)
 
 	// merge if multiple CashFlow sets, update Balances
-	entries = mergeCashFlows(db, entries, other, account.Balance, limit)
+	entries = account.mergeCashFlows(db, entries, other, limit)
 
 	log.Printf("[MODEL] LIST CASHFLOWS ACCOUNT(%d:%d)", account.ID, len(entries))
 	return entries
@@ -804,7 +834,12 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 // Edit, Delete, Update use Get
 // c.Account needs to be preloaded
 func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
-	db.Preload("Account").First(&c)
+	if edit {
+		db.Preload("Payee").Preload("Category").Preload("Account").First(&c)
+	} else {
+		db.Preload("Account").First(&c)
+	}
+
 	// Verify we have access to CashFlow
 	if !c.HaveAccessPermission() {
 		return nil
@@ -820,6 +855,7 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 	}
 
 	if edit {
+		// some Preloads done above at start of Get()
 		c.EditPreload(db, true)
 
 		// #Edit wants Amount to be always positive; safe to
