@@ -48,7 +48,7 @@ func (tg *TradeGain) recordGain(db *gorm.DB, sell *Trade, buy *Trade,
 	tg.Basis = buy.Amount.Sub(buy.Basis)
 	if !buyRemain.Equal(tg.Shares) {
 		// must calculate using Basis per share
-		tg.Basis = tg.Basis.Div(buyRemain).Mul(tg.Shares).RoundBank(2)
+		tg.Basis = tg.Basis.Div(buyRemain).Mul(tg.Shares).Round(2)
 	}
 	// [sell,buy].Basis is updated in caller
 

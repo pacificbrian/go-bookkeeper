@@ -222,6 +222,9 @@ func (t *Trade) securityGetBySymbol(db *gorm.DB) *Security {
 }
 
 func (t *Trade) validateInputs() error {
+	// ensure monetary amounts are 2 decimal places
+	t.Amount = t.Amount.Round(2)
+
 	if t.IsSell() || t.IsBuy() {
 		if t.Amount.IsZero() || t.Price.IsZero() || t.Shares.IsZero() {
 			return errors.New("Invalid Trade Entered (Buy/Sell)")
