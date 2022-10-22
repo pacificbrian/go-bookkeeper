@@ -19,22 +19,22 @@ import (
 type Account struct {
 	gorm.Model
 	UserID uint `gorm:"not null"`
-	User User
 	AccountTypeID uint `form:"account.account_type_id"`
-	AccountType AccountType
 	CurrencyTypeID uint `form:"account.currency_type_id"`
-	CurrencyType CurrencyType
+	AverageBalance decimal.Decimal `gorm:"-:all"`
+	Balance decimal.Decimal
+	Portfolio SecurityValue `gorm:"-:all"`
+	Routing int `form:"account.Routing"`
 	Name string `form:"account.Name"`
 	Number string `form:"account.Number"`
-	Routing int `form:"account.Routing"`
-	Balance decimal.Decimal
-	AverageBalance decimal.Decimal `gorm:"-:all"`
-	Taxable bool `form:"account.Taxable"`
-	Hidden bool `form:"account.Hidden"`
 	HasScheduled bool
+	Hidden bool `form:"account.Hidden"`
+	Taxable bool `form:"account.Taxable"`
 	Verified bool `gorm:"-:all"`
+	AccountType AccountType
+	CurrencyType CurrencyType
+	User User
 	CashFlows []CashFlow
-	Portfolio SecurityValue `gorm:"-:all"`
 }
 
 func (Account) Currency(value decimal.Decimal) string {

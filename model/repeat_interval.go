@@ -23,12 +23,12 @@ type RepeatIntervalType struct {
 type RepeatInterval struct {
 	Model
 	CashFlowID uint
+	Rate decimal.Decimal `form:"rate"`
 	RepeatIntervalTypeID uint `form:"repeat_interval_type_id"`
-	RepeatIntervalType RepeatIntervalType
 	RepeatsLeft uint `form:"repeats" gorm:"default:NULL"`
 	RepeatsLeftPtr *uint `gorm:"-:all"`
-	Rate decimal.Decimal `form:"rate"`
 	StartDay int
+	RepeatIntervalType RepeatIntervalType
 }
 
 func (r RepeatInterval) GetRate() string {

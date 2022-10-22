@@ -22,13 +22,13 @@ type SecurityValue struct {
 
 type Security struct {
 	Model
-	Company Company
 	CompanyID uint `gorm:"not null"`
 	SecurityBasisTypeID uint `form:"security_basis_type_id"`
 	SecurityTypeID uint `form:"security_type_id"`
 	AccountID uint `gorm:"not null"`
-	Account Account
 	SecurityValue
+	Account Account
+	Company Company
 }
 
 func (Security) Currency(value decimal.Decimal) string {

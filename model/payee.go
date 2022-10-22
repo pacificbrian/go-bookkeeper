@@ -14,12 +14,12 @@ import (
 type Payee struct {
 	Model
 	UserID uint `gorm:"not null"`
-	User User
 	CategoryID uint `form:"payee.category_id"`
-	Category Category
 	Name string `form:"payee.Name"`
 	Address string
 	SkipOnImport bool `form:"payee.SkipOnImport"`
+	User User
+	Category Category
 }
 
 func (*Payee) List(db *gorm.DB) []Payee {

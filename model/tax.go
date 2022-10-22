@@ -68,12 +68,12 @@ type TaxEntry struct {
 	TaxRegionID uint `form:"tax_region_id"`
 	TaxTypeID uint `form:"tax_type_id"`
 	UserID uint
+	Amount decimal.Decimal `form:"amount" gorm:"not null"`
+	Memo string `form:"memo"`
 	TaxItem TaxItem
 	TaxRegion TaxRegion
 	TaxType TaxType
 	User User
-	Amount decimal.Decimal `form:"amount" gorm:"not null"`
-	Memo string `form:"memo"`
 }
 
 //db.Table("tax_users")
@@ -82,8 +82,6 @@ type TaxReturn struct {
 	FilingStatus uint `form:"tax_filing_status"`
 	TaxRegionID uint `form:"tax_region_id"`
 	UserID uint
-	TaxRegion TaxRegion
-	User User
 	Year int `form:"year"`
 	Exemptions int32 `form:"exemptions"`
 	Income decimal.Decimal
@@ -101,6 +99,8 @@ type TaxReturn struct {
 	OwedTax decimal.Decimal
 	UnpaidTax decimal.Decimal
 	LongCapgainIncome decimal.Decimal
+	TaxRegion TaxRegion
+	User User
 }
 
 func (TaxEntry) Currency(value decimal.Decimal) string {

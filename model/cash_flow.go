@@ -23,28 +23,28 @@ type CashFlow struct {
 	CashFlowTypeID uint `form:"cash_flow_type_id" gorm:"-:all"`
 	AccountID uint `gorm:"not null"`
 	oldAccountID uint `gorm:"-:all"`
-	Account Account
+	TaxYear int `form:"tax_year"`
 	Date time.Time
 	oldDate time.Time
-	TaxYear int `form:"tax_year"`
 	Amount decimal.Decimal `form:"amount" gorm:"not null"`
 	oldAmount decimal.Decimal `gorm:"-:all"`
 	Balance decimal.Decimal `gorm:"-:all"`
+	PayeeID uint `gorm:"not null"` // also serves as Pair.AccountID (Transfers)
+	CategoryID uint `form:"category_id"` // also serves as Pair.ID (Transfers)
+	oldPairID uint `gorm:"-:all"`
+	RepeatIntervalID uint
 	SplitFrom uint
 	Split bool
 	Transfer bool
-	Transnum string `form:"transnum"`
-	Memo string `form:"memo"`
-	PayeeID uint `gorm:"not null"` // also serves as Pair.AccountID (Transfers)
-	Payee Payee
 	PayeeName string `form:"payee_name" gorm:"-:all"`
-	CategoryID uint `form:"category_id"` // also serves as Pair.ID (Transfers)
-	oldPairID uint `gorm:"-:all"`
-	Category Category
 	CategoryName string `gorm:"-:all"`
-	RepeatIntervalID uint
-	RepeatInterval RepeatInterval
+	Memo string `form:"memo"`
+	Transnum string `form:"transnum"`
 	Type string `gorm:"default:NULL"`
+	Account Account
+	Category Category
+	Payee Payee
+	RepeatInterval RepeatInterval
 }
 
 func (CashFlow) Currency(value decimal.Decimal) string {

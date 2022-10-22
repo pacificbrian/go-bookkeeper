@@ -32,10 +32,10 @@ type User struct {
 	Email string
 	//Password string `gorm:"->:false;<-"`
 	CashflowLimit int
-	Categories []Category
-	Payees []Payee
 	Cache *UserCache `gorm:"-:all"`
 	UserSettings UserSettings
+	Categories []Category
+	Payees []Payee
 }
 
 type Session struct {

@@ -18,12 +18,9 @@ import (
 type Trade struct {
 	gorm.Model
 	TradeTypeID uint `form:"trade_type_id"`
-	TradeType TradeType
 	AccountID uint `gorm:"not null"`
 	oldAccountID uint `gorm:"-:all"`
-	Account Account
 	SecurityID uint `gorm:"not null"`
-	Security Security
 	Symbol string `form:"Symbol" gorm:"-:all"`
 	Date time.Time
 	TaxYear int `form:"tax_year"`
@@ -38,6 +35,9 @@ type Trade struct {
 	// for Sells: the Gain (Loss) then is: Amount - Basis
 	Basis decimal.Decimal
 	Closed bool
+	TradeType TradeType
+	Account Account
+	Security Security
 }
 
 func (Trade) Currency(value decimal.Decimal) string {

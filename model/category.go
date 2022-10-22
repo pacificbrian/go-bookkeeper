@@ -18,11 +18,11 @@ type CategoryType struct {
 type Category struct {
 	Model
 	UserID uint
-	User User
 	CategoryTypeID uint `form:"category.category_type_id"`
-	CategoryType CategoryType
 	Name string `form:"category.Name"`
 	OmitFromPie bool
+	CategoryType CategoryType
+	User User
 }
 
 func (c *Category) IsInterest() bool {
