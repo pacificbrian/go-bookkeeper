@@ -9,26 +9,8 @@ package db
 import (
 	"log"
 	"database/sql"
-	"gorm.io/gorm"
 	"github.com/rubenv/sql-migrate"
-	"go-bookkeeper/model"
 )
-
-func autoMigrate(db *gorm.DB) {
-	db.AutoMigrate(&model.AccountType{})
-	db.AutoMigrate(&model.CategoryType{})
-	db.AutoMigrate(&model.CashFlowType{})
-	db.AutoMigrate(&model.Payee{})
-	db.AutoMigrate(&model.Category{})
-	db.AutoMigrate(&model.TradeType{})
-	//db.AutoMigrate(&model.RepeatIntervalType{})
-	//db.AutoMigrate(&model.RepeatInterval{})
-	//db.AutoMigrate(&model.CurrencyType{})
-	//db.AutoMigrate(&model.User{})
-	//db.Debug().AutoMigrate(&model.Account{})
-	//db.Debug().AutoMigrate(&model.CashFlow{})
-}
-
 
 func sqlMigrate(db *sql.DB, name string) {
 	var migrations *migrate.FileMigrationSource

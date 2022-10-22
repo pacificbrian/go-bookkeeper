@@ -20,6 +20,7 @@ func getFormDate(c echo.Context) time.Time {
 	dateStr := c.FormValue("date_month") + "/" +
 		c.FormValue("date_day") + "/" +
 		c.FormValue("date_year")
-	date, _ := time.Parse("1/2/2006", dateStr)
-	return date
+	// local TZ and add 8 hours for sanity
+	date, _ := time.ParseInLocation("1/2/2006", dateStr, time.Local)
+	return date.Add(time.Hour * 8)
 }
