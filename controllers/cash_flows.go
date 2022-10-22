@@ -12,9 +12,9 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
-	gormdb "go-bookkeeper/db"
-	"go-bookkeeper/model"
-	"go-bookkeeper/helpers"
+	gormdb "github.com/pacificbrian/go-bookkeeper/db"
+	"github.com/pacificbrian/go-bookkeeper/model"
+	"github.com/pacificbrian/go-bookkeeper/helpers"
 )
 
 // For http.Status, see:

@@ -14,8 +14,8 @@ import (
 	"github.com/ilyakaznacheev/cleanenv"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"go-bookkeeper/db/mysql"
-	"go-bookkeeper/db/sqlite"
+	"github.com/pacificbrian/go-bookkeeper/db/mysql"
+	"github.com/pacificbrian/go-bookkeeper/db/sqlite"
 )
 
 type Configuration struct {

@@ -10,7 +10,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/mayowa/echo-pongo2"
-	"go-bookkeeper/controllers"
+	"github.com/pacificbrian/go-bookkeeper/controllers"
 )
 
 func usePongo2(e *echo.Echo) echo.Renderer {

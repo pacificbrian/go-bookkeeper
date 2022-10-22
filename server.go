@@ -7,7 +7,7 @@
 package main
 
 import (
-	"go-bookkeeper/route"
+	"github.com/pacificbrian/go-bookkeeper/route"
 )
 
 func main() {
