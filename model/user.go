@@ -8,6 +8,7 @@ package model
 
 import (
 	"log"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -30,6 +31,7 @@ type User struct {
 	gorm.Model
 	Login string
 	Email string
+	PasswordDigest string
 	//Password string `gorm:"->:false;<-"`
 	CashflowLimit int
 	Cache *UserCache `gorm:"-:all"`
@@ -83,9 +85,32 @@ func init() {
 	currentSession = new(Session)
 	currentSession.Cache.init()
 	currentSession.User.init(&currentSession.Cache)
-	log.Printf("SET CURRENT USER(%d)", GetCurrentUser().ID)
+
+	// example of using bcrypt for passwords
+	// overwrite u.PasswordDigest just for testing
+	password := "Gopher"
+	GetCurrentUser().setPassword(password)
+	validPassword := GetCurrentUser().Authenticate(password)
+
+	log.Printf("SET CURRENT USER(%d) AUTH(%t)", GetCurrentUser().ID,
+		   validPassword)
 }
 
 func GetCurrentUser() *User {
 	return &currentSession.User
+}
+
+func (u *User) setPassword(password string) error {
+	hPassword, err := bcrypt.GenerateFromPassword([]byte(password),
+						      bcrypt.DefaultCost)
+	if err == nil {
+		u.PasswordDigest = string(hPassword)
+	}
+	return err
+}
+
+func (u *User) Authenticate(password string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(u.PasswordDigest),
+					     []byte(password))
+	return err == nil
 }
