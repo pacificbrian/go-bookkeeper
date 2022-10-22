@@ -93,6 +93,14 @@ func (*Account) List(db *gorm.DB, all bool) []Account {
 	return ListAccounts(db, all)
 }
 
+func (account *Account) ListImports(db *gorm.DB) []Import {
+	entries := []Import{}
+	if !account.Verified {
+		account.Get(db, false)
+	}
+	return entries
+}
+
 func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlow {
 	entries := []CashFlow{}
 	if !account.Verified {

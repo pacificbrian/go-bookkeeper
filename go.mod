@@ -3,6 +3,7 @@ module go-bookkeeper
 go 1.18
 
 require (
+	github.com/aclindsa/ofxgo v0.1.3
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ilyakaznacheev/cleanenv v1.3.0
 	github.com/labstack/echo/v4 v4.9.0
@@ -16,6 +17,7 @@ require (
 
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
+	github.com/aclindsa/xml v0.0.0-20201125035057-bbd5c9ec99ac // indirect
 	github.com/flosch/pongo2/v4 v4.0.2 // indirect
 	github.com/go-gorp/gorp/v3 v3.0.2 // indirect
 	github.com/go-sql-driver/mysql v1.6.0 // indirect

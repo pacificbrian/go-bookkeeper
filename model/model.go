@@ -8,10 +8,16 @@ package model
 
 import (
 	"log"
+	"mime/multipart"
 	"time"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
 )
+
+type HttpFile struct {
+	FileName string
+	FileData multipart.File
+}
 
 type Model struct {
         ID        uint `gorm:"primaryKey"`
@@ -19,9 +25,13 @@ type Model struct {
 
 var useSpew bool = false
 
+func ForceSpewModel(data any) {
+	spew.Dump(data)
+}
+
 func spewModel(data any) {
 	if useSpew {
-		spew.Dump(data)
+		ForceSpewModel(data)
 	}
 }
 

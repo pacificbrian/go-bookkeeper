@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block content -%}
+
+<div class="listing">
+<h2>{{ account.Name }} - Imported Transactions</h2>
+
+<table>
+<form method="POST" action="/accounts/{{account.ID}}/imported" enctype="multipart/form-data" accept-charset="UTF-8">
+<tr>
+<td><label for="dump_file"> Select a QFX File: </label></td>
+<td><input type="file" name="filename"/></td>
+<td><input type="submit" value="{{button_text}}"/></td>
+</form>
+</table>
+</div>
+
+<ul id="footmenu">
+<li><a href=/accounts/{{account.ID}}>Back To Account</a></li>
+</ul>
+
+{% endblock -%}
