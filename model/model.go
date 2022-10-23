@@ -41,6 +41,11 @@ func assert(assertion bool, panicString string) {
 	}
 }
 
+func compareDates(dx *time.Time, dy *time.Time) bool {
+	return dx.Format("2006-01-02 08:00:00 -0700") ==
+	       dy.Format("2006-01-02 08:00:00 -0700")
+}
+
 func currency(value decimal.Decimal) string {
 	return  "$" + value.StringFixedBank(2)
 }

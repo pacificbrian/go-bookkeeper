@@ -31,6 +31,7 @@ type CashFlow struct {
 	Balance decimal.Decimal `gorm:"-:all"`
 	PayeeID uint `gorm:"not null"` // also serves as Pair.AccountID (Transfers)
 	CategoryID uint `form:"category_id"` // also serves as Pair.ID (Transfers)
+	oldPayeeID uint `gorm:"-:all"`
 	PairID uint `gorm:"-:all"`
 	ImportID uint
 	RepeatIntervalID uint
@@ -535,10 +536,21 @@ func (c *CashFlow) repeatUpdateMap() map[string]interface{} {
 }
 
 // map of fields that must be equivalent in Split/Parent
-// if Transfer, payee_id is pruned out later
+// when applied to split.Transfer, payee_id is pruned out later
 func (c *CashFlow) splitUpdateMap() map[string]interface{} {
-	return map[string]interface{}{"date": c.Date, "tax_year": c.TaxYear,
+	updates := map[string]interface{}{"date": c.Date, "tax_year": c.TaxYear,
 				      "payee_id": c.PayeeID}
+	// prune if not changed
+	if compareDates(&c.oldDate, &c.Date) {
+		delete(updates, "date")
+		delete(updates, "tax_year")
+	}
+	if c.oldPayeeID == c.PayeeID {
+		delete(updates, "payee_id")
+	}
+
+	log.Printf("[MODEL] CASHFLOW(%d) SPLIT UPDATES MAP LEN(%d)", c.ID, len(updates))
+	return updates
 }
 
 // update only selected fields in Splits from the given map
@@ -559,10 +571,10 @@ func updateSplits(db *gorm.DB, splits []CashFlow, updates map[string]interface{}
 			updates["amount"] = split.Amount
 			transferUpdates["amount"] = split.Amount
 		}
-		if split.Transfer {
+		if split.Transfer && len(transferUpdates) > 0 {
 			db.Omit(clause.Associations).Model(split).
 			   Updates(transferUpdates)
-		} else {
+		} else if len(updates) > 0 {
 			db.Omit(clause.Associations).Model(split).
 			   Updates(updates)
 		}
@@ -570,7 +582,7 @@ func updateSplits(db *gorm.DB, splits []CashFlow, updates map[string]interface{}
 }
 
 func (c *CashFlow) updateSplits(db *gorm.DB, updates map[string]interface{}) {
-	if c.HasSplits() {
+	if c.HasSplits() && len(updates) > 0 {
 		splits, _ := c.ListSplit(db)
 		updateSplits(db, splits, updates, false)
 	}
@@ -859,6 +871,7 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 	c.determineCashFlowType() // Edit only?
 	c.oldAmount = c.Amount
 	c.oldDate = c.Date
+	c.oldPayeeID = c.PayeeID
 	if c.Transfer {
 		// backup CategoryID as cleared by Bind
 		c.PairID = c.CategoryID // Peer Cashflow (Transfers)
@@ -1011,7 +1024,6 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 			spewModel(c)
 			c.Account.updateBalance(db, c)
 			if c.HasSplits() {
-				// TODO use BeforeUpdate hook to test if these fields changed
 				c.updateSplits(db, c.splitUpdateMap())
 			}
 			if c.IsScheduled() {

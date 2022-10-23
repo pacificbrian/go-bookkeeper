@@ -55,7 +55,7 @@ func (*Category) List(db *gorm.DB) []Category {
 	sub_entries := []Category{}
 
 	// Expenses
-	db.Debug().Order("Name").Where("(category_type_id < 2 OR category_type_id = 3)").
+	db.Order("Name").Where("(category_type_id < 2 OR category_type_id = 3)").
 			 Find(&sub_entries)
 	entries = append(entries, sub_entries...)
 
