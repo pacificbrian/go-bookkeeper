@@ -30,6 +30,9 @@ func Init() *echo.Echo {
 	e.Static("/", "public")
 	e.Renderer = usePongo2(e)
 
+	// Login (or default)
+	e.GET("/", controllers.Login)
+
 	// Account
 	e.GET("/accounts", controllers.ListAccounts)   // Index/List
 	e.POST("/accounts", controllers.CreateAccount) // Create
