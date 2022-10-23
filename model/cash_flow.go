@@ -985,7 +985,7 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 
 	err, pair := c.prepareInsertCashFlow(db)
 	if err == nil {
-		result := db.Omit(clause.Associations).Save(c)
+		result := db.Omit(clause.Associations).Omit("type").Save(c)
 		err = result.Error
 	}
 	if err == nil {
@@ -1016,7 +1016,7 @@ func (c *CashFlow) Update(db *gorm.DB) error {
 				   Update("CategoryID", pair.ID)
 				log.Printf("[MODEL] CREATE PAIR CASHFLOW(%d)", pair.ID)
 			} else {
-				db.Omit(clause.Associations).Save(pair)
+				db.Omit(clause.Associations).Omit("type").Save(pair)
 				log.Printf("[MODEL] UPDATE PAIR CASHFLOW(%d)", pair.ID)
 			}
 
