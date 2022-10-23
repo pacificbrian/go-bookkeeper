@@ -67,6 +67,7 @@ func (c *CashFlow) IsDebit() bool {
 	return CashFlowTypeIsDebit(c.CashFlowTypeID)
 }
 
+// if SplitCashFlow, get parent CashFlow.ID
 func (c *CashFlow) ParentID() uint {
 	if !c.Split {
 		return 0
@@ -74,11 +75,16 @@ func (c *CashFlow) ParentID() uint {
 	return c.SplitFrom
 }
 
+// get ScheduledCashFlow.ID that is assocated with object
 func (c *CashFlow) RepeatParentID() uint {
 	if c.IsScheduled() {
 		return 0
 	}
-	return c.RepeatInterval.CashFlowID
+
+	// For applied CashFlows, RepeatIntervalID is ID of the
+	// origin ScheduledCashFlow; it is not a RepeatInterval.ID.
+	// See cloneScheduled().
+	return c.RepeatIntervalID
 }
 
 func (c *CashFlow) CanSplit() bool {
@@ -154,7 +160,7 @@ func (c *CashFlow) PreloadRepeat(db *gorm.DB) {
 	}
 }
 
-func (c *CashFlow) EditPreload(db *gorm.DB, fullPreload bool) {
+func (c *CashFlow) Preload(db *gorm.DB) {
 	if c.IsTrade() {
 		return
 	}
@@ -198,13 +204,9 @@ func (c *CashFlow) EditPreload(db *gorm.DB, fullPreload bool) {
 		}
 	}
 
-	if c.IsScheduledParent() || fullPreload {
+	if c.IsScheduledParent() {
 		c.PreloadRepeat(db)
 	}
-}
-
-func (c *CashFlow) Preload(db *gorm.DB) {
-	c.EditPreload(db, false)
 }
 
 func (ca *Account) mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
@@ -381,7 +383,7 @@ func (c *CashFlow) cloneScheduled(src *CashFlow) {
 	if src.Split {
 		c.setSplit(src.SplitFrom)
 	}
-	c.RepeatIntervalID = src.RepeatIntervalID
+	c.RepeatIntervalID = src.ID
 	c.Date = src.Date
 	c.TaxYear = c.Date.Year()
 	c.Memo = src.Memo
@@ -865,7 +867,7 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 
 	if edit {
 		// some Preloads done above at start of Get()
-		c.EditPreload(db, true)
+		c.Preload(db)
 
 		// #Edit wants Amount to be always positive; safe to
 		// modify here because Delete doen't use, and Update overwrites
