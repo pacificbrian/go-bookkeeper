@@ -17,9 +17,9 @@
 <tbody data-controller="cashflow">
 {% for c in cash_flows -%}
 {% if (forloop.Counter0 % 2) == 0 -%}
-<tr id="{{ c.ID }}" data-cashflow-target="cashflowTableRow" data-cashflow-id="{{ c.ID }}">
+<tr id="{{ c.ID }}" data-cashflow-target="cashflowTableRow" data-cashflow-id="{{ c.ID }}" data-cashflow-date="{{ c.Date.Format("2006-01-02") }}">
 {% else -%}
-<tr id="{{ c.ID }}" class="even" data-cashflow-target="cashflowTableRow" data-cashflow-id="{{ c.ID }}">
+<tr id="{{ c.ID }}" class="even" data-cashflow-target="cashflowTableRow" data-cashflow-id="{{ c.ID }}" data-cashflow-date="{{ c.Date.Format("2006-01-02") }}">
 {% endif -%}
 <td>{{ c.Date.Format("2006-01-02") }}</td>
 <td>{{ c.GetTransnum() }}</td>
@@ -36,7 +36,7 @@
 <input hidden type="text" name="amount" value="{{c.Amount}}" data-cashflow-target="cashflowNewAmount" data-cashflow-id="{{ c.ID }}" data-action="keydown->cashflow#actionPutNewAmount"/>
 </td>
 {% if !total_amount -%}
-<td class="currency">{{ c.Currency(c.Balance) }}</td>
+<td class="currency" data-cashflow-target="cashflowTableRowBalance" data-cashflow-id="{{ c.ID }}">{{ c.Currency(c.Balance) }}</td>
 {% endif -%}
 {% if c.ID > 0 -%}
 <td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>

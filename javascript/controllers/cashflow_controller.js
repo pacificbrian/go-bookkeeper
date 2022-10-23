@@ -10,7 +10,8 @@ import { ajax } from 'rxjs/ajax';
 import { distinctUntilChanged, map, switchMap } from 'rxjs/operators';
 
 export default class extends Controller {
-  static targets = [ "cashflowTableRow", "cashflowAmount", "cashflowNewAmount" ]
+  static targets = [ "cashflowTableRow", "cashflowTableRowBalance",
+                     "cashflowAmount", "cashflowNewAmount" ]
 
   cashflowDelete$ = new Subject();
   cashflowPut$ = new Subject();
@@ -58,7 +59,7 @@ export default class extends Controller {
         })
       )
       .subscribe((response) => {
-        console.log(response)
+        console.log("RXJS[CASHFLOW]:ajax:PUT reply: " + response)
         // for GETs:
         //this.someDivClass.innerHTML = response;
       })
@@ -76,6 +77,10 @@ export default class extends Controller {
     event.preventDefault()
     // add to RXJS stream processed with cashflowPut.pipe above
     this.cashflowPut$.next([cashflowID, "apply", "1"]);
+  }
+
+  actionCreate(event) {
+    console.log("Stimulus[CASHFLOW]: actionCreate")
   }
 
   actionDelete(event) {
@@ -112,6 +117,7 @@ export default class extends Controller {
       if (id == cashflowID) {
         inputAmounts[i].hidden = 0
         inputAmounts[i].autofocus = 1
+        break
       }
     }
   }
@@ -132,6 +138,8 @@ export default class extends Controller {
     let inputAmount = event.currentTarget
     let cashflowID = inputAmount.getAttribute('data-cashflow-id')
     let newAmount = inputAmount.value
+    let adjustAmount
+    let tableIdx
     inputAmount.hidden = 1
 
     if (send_amount) {
@@ -140,14 +148,42 @@ export default class extends Controller {
 
     // unhide and update value in table (if changed)
     const displayAmounts = this.cashflowAmountTargets;
+    const cashflowRows = this.cashflowTableRowTargets;
     for (let i in displayAmounts) {
       let id = displayAmounts[i].getAttribute('data-cashflow-id')
+
       if (id == cashflowID) {
         if (send_amount) {
+          let oldAmountHTML = displayAmounts[i].innerHTML
+          let amountStart = oldAmountHTML.search(/[$]/)
+          let oldAmount = oldAmountHTML.slice(amountStart+1)
+          tableIdx = i
+          // store adjust needed for Balance column
+          adjustAmount = parseFloat(newAmount) - parseFloat(oldAmount)
+          // overwrite c.Amount
           displayAmounts[i].innerHTML = "$"+(parseFloat(newAmount).toFixed(2))
         }
         displayAmounts[i].hidden = 0
+        break
       }
+    }
+
+    if (send_amount) {
+      // iterate and fixup Balance amounts until we pass modified row
+      const cashflowBalances = this.cashflowTableRowBalanceTargets;
+      for (let i in cashflowBalances) {
+        if (i > tableIdx) {
+          break
+        }
+        let oldAmountHTML = cashflowBalances[i].innerHTML
+        let amountStart = oldAmountHTML.search(/[$]/)
+        let oldBalance = parseFloat(oldAmountHTML.slice(amountStart+1))
+        let newBalance = oldBalance + adjustAmount
+        // overwrite c.Balance
+        cashflowBalances[i].innerHTML = "$"+(newBalance.toFixed(2))
+      }
+
+      console.log("Stimulus[CASHFLOW]: [%d] adjustAmount: %f", tableIdx, adjustAmount)
     }
 
     // add to RXJS stream processed with cashflowPut.pipe
