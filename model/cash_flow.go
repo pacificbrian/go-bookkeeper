@@ -31,7 +31,7 @@ type CashFlow struct {
 	Balance decimal.Decimal `gorm:"-:all"`
 	PayeeID uint `gorm:"not null"` // also serves as Pair.AccountID (Transfers)
 	CategoryID uint `form:"category_id"` // also serves as Pair.ID (Transfers)
-	oldPairID uint `gorm:"-:all"`
+	PairID uint `gorm:"-:all"`
 	ImportID uint
 	RepeatIntervalID uint
 	SplitFrom uint
@@ -415,7 +415,7 @@ func (c *CashFlow) cloneTransfer(src *CashFlow) {
 // don't store this!)
 func (c *CashFlow) pairFrom(src *CashFlow) {
 	c.Transfer = true
-	c.ID = src.oldPairID
+	c.ID = src.PairID
 	// keep split details accurate, and decrement SplitCount in Parent (Delete)
 	c.setSplit(src.SplitFrom)
 	c.AccountID = src.PayeeID
@@ -446,9 +446,9 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 		if a != nil && !c.IsScheduled() {
 			// create pair CashFlow
 			pair = new(CashFlow)
-			if c.oldPairID > 0 {
+			if c.PairID > 0 {
 				// #UPDATE: use existing pair CashFlow
-				c.CategoryID = c.oldPairID
+				c.CategoryID = c.PairID
 				pair.pairFrom(c)
 			}
 
@@ -461,7 +461,7 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 		}
 	} else {
 		// #UPDATE: if Transfer type True->False, delete pair CashFlow
-		if c.oldPairID > 0 {
+		if c.PairID > 0 {
 			oldPair := new(CashFlow)
 			oldPair.pairFrom(c)
 			oldPair.deletePair(db)
@@ -861,7 +861,7 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 	c.oldDate = c.Date
 	if c.Transfer {
 		// backup CategoryID as cleared by Bind
-		c.oldPairID = c.CategoryID // Peer Cashflow (Transfers)
+		c.PairID = c.CategoryID // Peer Cashflow (Transfers)
 		c.CategoryID = 0
 	}
 
@@ -963,6 +963,18 @@ func (c *CashFlow) Put(db *gorm.DB, request map[string]interface{}) error {
 			// ignore non-update
 			delete(request, "amount")
 		} else {
+			if c.Transfer {
+				pair := new(CashFlow)
+				pair.pairFrom(c)
+				pair.Amount = c.Amount.Neg()
+				pair.Account.ID = pair.AccountID
+				pair.Account.updateBalance(db, pair)
+
+				// change type in map for db.Update to succeed
+				request["amount"] = pair.Amount
+				db.Omit(clause.Associations).Model(pair).Updates(request)
+			}
+
 			c.Account.updateBalance(db, c)
 			// change type in map for db.Update to succeed
 			request["amount"] = c.Amount

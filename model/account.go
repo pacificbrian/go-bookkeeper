@@ -261,12 +261,14 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 		return
 	}
 
-	if c.oldAmount.IsZero() {
+	if c.oldAmount.IsZero() || a.Balance.IsZero() {
 		// Create, Scheduled CashFlows
+		// Put Update (Transfer) (don't know Account Balance)
+		adjustAmount := c.Amount.Sub(c.oldAmount)
 		log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): +%f",
-			   a.ID, c.ID, c.Amount.InexactFloat64())
+			   a.ID, c.ID, adjustAmount.InexactFloat64())
 		db.Omit(clause.Associations).Model(a).
-		   Update("Balance", gorm.Expr("balance + ?", c.Amount))
+		   Update("Balance", gorm.Expr("balance + ?", adjustAmount))
 	} else {
 		// Update
 		newBalance := (a.Balance.Sub(c.oldAmount)).Add(c.Amount)
