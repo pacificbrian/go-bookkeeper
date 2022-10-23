@@ -75,7 +75,7 @@ func ListAccounts(db *gorm.DB, all bool) []Account {
 	}
 
 	if !all {
-		hidden_clause = "hidden != 1"
+		hidden_clause = "(hidden = 0 OR hidden IS NULL)"
 	}
 
 	// Find Accounts for CurrentUser()

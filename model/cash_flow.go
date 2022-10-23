@@ -520,7 +520,7 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 		pair.CategoryID = c.ID
 		db.Omit(clause.Associations).Create(pair)
 		c.CategoryID = pair.ID
-		db.Model(c).Update("CategoryID", pair.ID)
+		db.Omit(clause.Associations).Model(c).Update("CategoryID", pair.ID)
 		log.Printf("[MODEL] CREATE PAIR CASHFLOW(%d)", pair.ID)
 
 		pair.Account.ID = pair.AccountID
@@ -902,7 +902,8 @@ func (c *CashFlow) delete(db *gorm.DB) {
 		// decrement split count in parent
 		parent := new(CashFlow)
 		parent.ID = c.SplitFrom
-		db.Model(parent).Update("split_from", gorm.Expr("split_from - ?", 1))
+		db.Omit(clause.Associations).Model(parent).
+		   Update("split_from", gorm.Expr("split_from - ?", 1))
 
 		db.Delete(c)
 		c.deleteTransfer(db)

@@ -115,7 +115,7 @@ func (s *Security) ListTrades(db *gorm.DB, openOnly bool) []Trade {
 	if s.Account.Verified {
 		dbQuery := db.Order("date asc")
 		if openOnly {
-			dbQuery = dbQuery.Where("closed == 0").
+			dbQuery = dbQuery.Where("closed = 0").
 					  Where(TradeTypeQueries[Buy])
 		}
 		// Find Trades for Security
