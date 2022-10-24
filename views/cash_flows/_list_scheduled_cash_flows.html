@@ -34,7 +34,7 @@
 <div data-cashflow-target="cashflowAmount" data-cashflow-id="{{ c.ID }}" data-action="click->cashflow#actionEditAmount">
 {{ c.Currency(c.Amount) }}
 </div>
-<input hidden type="text" name="amount" value="{{c.Amount}}" data-cashflow-target="cashflowNewAmount" data-cashflow-id="{{ c.ID }}" data-action="keydown->cashflow#actionPutNewAmount"/>
+<input hidden autofocus type="text" name="amount" value="{{c.Amount}}" data-cashflow-target="cashflowNewAmount" data-cashflow-id="{{ c.ID }}" data-action="keydown->cashflow#actionPutNewAmount"/>
 </td>
 <td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
 <td><a href=/cash_flows/{{ c.ID }} data-cashflow-id="{{ c.ID }}" data-action="cashflow#actionApply">Enter Now</a></td>

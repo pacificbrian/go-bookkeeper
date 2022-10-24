@@ -4,6 +4,9 @@
  * SPDX-License-Identifier: MPL-2.0
  */
 
+// For DOM manipulation API reference, see:
+//   https://developer.mozilla.org/en-US/docs/Web/API/HTML_DOM_API
+
 import { Controller } from '@hotwired/stimulus';
 import { Subject } from 'rxjs';
 import { ajax } from 'rxjs/ajax';
@@ -116,7 +119,8 @@ export default class extends Controller {
       let id = inputAmounts[i].getAttribute('data-cashflow-id')
       if (id == cashflowID) {
         inputAmounts[i].hidden = 0
-        inputAmounts[i].autofocus = 1
+        inputAmounts[i].focus()
+        inputAmounts[i].select()
         break
       }
     }
@@ -141,6 +145,7 @@ export default class extends Controller {
     let adjustAmount
     let tableIdx
     inputAmount.hidden = 1
+    inputAmount.blur()
 
     if (send_amount) {
       console.log("Stimulus[CASHFLOW]: actionPutNewAmount", cashflowID, newAmount)
@@ -154,14 +159,21 @@ export default class extends Controller {
 
       if (id == cashflowID) {
         if (send_amount) {
+          tableIdx = i
+
           let oldAmountHTML = displayAmounts[i].innerHTML
           let amountStart = oldAmountHTML.search(/[$]/)
           let oldAmount = oldAmountHTML.slice(amountStart+1)
-          tableIdx = i
           // store adjust needed for Balance column
           adjustAmount = parseFloat(newAmount) - parseFloat(oldAmount)
-          // overwrite c.Amount
-          displayAmounts[i].innerHTML = "$"+(parseFloat(newAmount).toFixed(2))
+
+          // test if c.Amount actually changed or not
+          if (adjustAmount == 0) {
+            send_amount = 0
+          } else {
+            // overwrite c.Amount
+            displayAmounts[i].innerHTML = "$"+(parseFloat(newAmount).toFixed(2))
+          }
         }
         displayAmounts[i].hidden = 0
         break
@@ -184,9 +196,9 @@ export default class extends Controller {
       }
 
       console.log("Stimulus[CASHFLOW]: [%d] adjustAmount: %f", tableIdx, adjustAmount)
-    }
 
-    // add to RXJS stream processed with cashflowPut.pipe
-    this.cashflowPut$.next([cashflowID, "amount", newAmount]);
+      // add to RXJS stream processed with cashflowPut.pipe
+      this.cashflowPut$.next([cashflowID, "amount", newAmount]);
+    }
   }
 }
