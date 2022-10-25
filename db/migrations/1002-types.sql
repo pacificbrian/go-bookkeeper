@@ -72,11 +72,11 @@ INSERT INTO `security_basis_types` VALUES
 
 INSERT INTO `security_types` VALUES
    (1,'Stock'),(2,'Mutual Fund'),(3,'Bond'),(4,'Bond Fund'),
-   (5,'Money Market'),(6,'Foreign Currency'),(7,'Foreign Stock'),
+   (5,'Money Market'),(6,'Currency'),(7,'Foreign Stock'),
    (8,'Foreign Stock Fund'),(9,'Foreign Bond'),(10,'Foreign Bond Fund'),
-   (11,'Short Stock'),(12,'Short Fund'),(13,'Commodity Stock'),
-   (14,'Commodity Fund'),(15,'Commodities'),(16,'Precious Metal'),
-   (17,'Real Estate'),(18,'Trusts'),(19,'Options');
+   (11,'Short Stock'),(12,'Short Fund'),(13,'Other Stock'),
+   (14,'Other Funds'),(15,'Commodities'),(16,'Precious Metal'),
+   (17,'Real Estate'),(18,'Other'),(19,'Options'),(20,'Cryptocurrency');
 
 INSERT INTO `trade_types` VALUES
   (1,'Buy'),(2,'Sell'),(3,'Dividend'),(4,'Distribution'),

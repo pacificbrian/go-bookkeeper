@@ -10,6 +10,37 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	UndefinedSecurityBasisType uint = iota
+	BasisFIFO
+	BasisAverage
+)
+
+const (
+	UndefinedSecurityType uint = iota
+	Stock
+	MutualFund
+	Bond
+	BondFund
+	MoneyMarket
+	Currency
+	ForeignStock
+	ForeignStockFund
+	ForeignBond
+	ForeignBondFund
+	// skip 2
+	OtherStock = iota + 2
+	OtherFunds
+	Commodities
+	PreciousMetal
+	RealEstate
+	Other
+	Options
+	Cryptocurrency
+)
+
+var SecurityTypeIsPriceFetchable = [20]bool{true,true,false,true}
+
 type SecurityBasisType struct {
 	Model
 	Name string `form:"security_basis_type.Name"`

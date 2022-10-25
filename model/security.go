@@ -9,6 +9,7 @@ package model
 import (
 	"errors"
 	"log"
+	"time"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -27,6 +28,7 @@ type Security struct {
 	SecurityTypeID uint `form:"security_type_id"`
 	AccountID uint `gorm:"not null"`
 	SecurityValue
+	lastQuoteUpdate time.Time
 	Account Account
 	Company Company
 }
@@ -192,13 +194,20 @@ func (s *Security) HaveAccessPermission() bool {
 	return s.Account.Verified
 }
 
-// Edit, Delete, Update use Get
+// controllers(Get, Edit, Delete, Update) use Get
 func (s *Security) Get(db *gorm.DB) *Security {
-	db.Preload("Account").First(&s)
+	db.Preload("Company").Preload("Account").First(&s)
 	// Verify we have access to Security
 	if !s.HaveAccessPermission() {
 		return nil
 	}
+
+	log.Printf("[MODEL] GET SECURITY(%d:%s)", s.ID, s.Company.Symbol)
+
+	// TESTING (this isn't where fetchPrice will be done)
+	// we don't want to fetch here, but query cached values in memory;
+	// we will use goroutine/timer to fetchPrices into session Cache
+	//s.fetchPrice(&s.lastQuoteUpdate, false)
 	return s
 }
 
