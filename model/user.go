@@ -43,9 +43,11 @@ type User struct {
 type Session struct {
 	User User
 	Cache UserCache
+	Quotes *SecurityQuoteCache
 }
 
 var currentSession *Session
+var quotes *SecurityQuoteCache
 
 func (u *User) cacheAccount(a *Account) {
 	u.Cache.AccountNames[a.ID] = a.Name
@@ -81,10 +83,14 @@ func (u *User) init(userCache *UserCache) {
 }
 
 func init() {
+	quotes = new(SecurityQuoteCache)
+	quotes.init()
+
 	// replace when adding User login
 	currentSession = new(Session)
 	currentSession.Cache.init()
 	currentSession.User.init(&currentSession.Cache)
+	currentSession.Quotes = quotes
 
 	// example of using bcrypt for passwords
 	// overwrite u.PasswordDigest just for testing
@@ -98,6 +104,10 @@ func init() {
 
 func GetCurrentUser() *User {
 	return &currentSession.User
+}
+
+func GetQuoteCache() *SecurityQuoteCache {
+	return currentSession.Quotes
 }
 
 func (u *User) setPassword(password string) error {

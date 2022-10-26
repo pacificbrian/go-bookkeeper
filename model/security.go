@@ -53,6 +53,11 @@ func (s Security) BasisPrice() decimal.Decimal {
 	}
 }
 
+func (s *Security) setValue(price decimal.Decimal) decimal.Decimal {
+	s.Value = s.Shares.Mul(price).Round(2)
+	return s.Value
+}
+
 func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 	updates := make(map[string]interface{})
 	if trade.IsSell() {
@@ -77,13 +82,27 @@ func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 	} else if !trade.Price.IsPositive() {
 		return
 	}
-	if trade.Price.IsPositive() || s.Shares.IsZero() {
-		s.Value = s.Shares.Mul(trade.Price).Round(2)
-		updates["value"] = s.Value
+
+	// update Security Value when:
+	// if we sold all Shares, update Value to Zero
+	// if trade.Date is newer than last time we pushed a Quote to database
+	if s.Shares.IsZero() ||
+	   trade.Price.IsPositive() && trade.Date.After(s.lastQuoteUpdate) {
+		updates["value"] = s.setValue(trade.Price)
 	}
 	db.Omit(clause.Associations).Model(s).Updates(updates)
 	log.Printf("[MODEL] SECURITY(%d) ADD TRADE (%d) TYPE(%d)",
 		   s.ID, trade.ID, trade.TradeTypeID)
+}
+
+// goroutine: this fetches latest Price and updates cached Quotes.
+// It should not access the database.
+func updateSecurities(securities []Security) {
+	for i := 0; i < len(securities); i++ {
+		if securities[i].Shares.IsPositive() {
+			securities[i].fetchPrice(false)
+		}
+	}
 }
 
 // with account argument, Account access already verified by caller
@@ -95,19 +114,25 @@ func (s *Security) List(db *gorm.DB, account *Account, openPositions bool) []Sec
 		s.Account.ID = s.AccountID
 		account = s.Account.Get(db, false)
 	}
-	if account != nil && account.Verified && account.IsInvestment() {
-		// Find Securities for Account
-		if (openPositions) {
-			db.Preload("Company").
-			   Where("shares > 0 AND account_id = ?", account.ID).
-			   Find(&entries)
-		} else {
-			db.Preload("Company").
-			   Where(&Security{AccountID: account.ID}).
-			   Find(&entries)
-		}
-		log.Printf("[MODEL] LIST SECURITIES ACCOUNT(%d:%d)", account.ID, len(entries))
+	if account == nil || !account.Verified || !account.IsInvestment() {
+		return entries
 	}
+
+	// Find Securities for Account
+	if (openPositions) {
+		db.Preload("Company").
+		   Where("shares > 0 AND account_id = ?", account.ID).
+		   Find(&entries)
+	} else {
+		db.Preload("Company").
+		   Where(&Security{AccountID: account.ID}).
+		   Find(&entries)
+	}
+
+	// initiate fetching of Security Quotes
+	go updateSecurities(entries)
+
+	log.Printf("[MODEL] LIST SECURITIES ACCOUNT(%d:%d)", account.ID, len(entries))
 	return entries
 }
 
@@ -194,6 +219,24 @@ func (s *Security) HaveAccessPermission() bool {
 	return s.Account.Verified
 }
 
+func (s *Security) updateValue() {
+	// don't update when no Shares
+	if s.Company.Symbol == "" || s.Shares.IsZero() ||
+	   GetQuoteCache() == nil {
+		return
+	}
+
+	quote := GetQuoteCache().Get(s.Company.Symbol)
+	if quote.Price.IsPositive() {
+		s.setValue(quote.Price)
+	}
+	if false {
+		log.Printf("[MODEL] SECURITY(%d:%s) UPDATE VALUE(%f) (%f)",
+			   s.ID, s.Company.Symbol,
+			   s.Value.InexactFloat64(), quote.Price.InexactFloat64())
+	}
+}
+
 // controllers(Get, Edit, Delete, Update) use Get
 func (s *Security) Get(db *gorm.DB) *Security {
 	db.Preload("Company").Preload("Account").First(&s)
@@ -202,12 +245,10 @@ func (s *Security) Get(db *gorm.DB) *Security {
 		return nil
 	}
 
-	log.Printf("[MODEL] GET SECURITY(%d:%s)", s.ID, s.Company.Symbol)
+	// updates s.Value (if have Shares) from latest Quote
+	s.updateValue()
 
-	// TESTING (this isn't where fetchPrice will be done)
-	// we don't want to fetch here, but query cached values in memory;
-	// we will use goroutine/timer to fetchPrices into session Cache
-	//s.fetchPrice(&s.lastQuoteUpdate, false)
+	log.Printf("[MODEL] GET SECURITY(%d:%s)", s.ID, s.Company.Symbol)
 	return s
 }
 
