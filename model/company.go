@@ -17,7 +17,7 @@ type Company struct {
 	Symbol string `form:"Symbol"`
 }
 
-func (co *Company) CompanyName() string {
+func (co Company) GetName() string {
 	if co.Name != "" {
 		return co.Name
 	}

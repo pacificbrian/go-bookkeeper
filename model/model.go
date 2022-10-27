@@ -82,6 +82,10 @@ func daysBetweenDates(from *time.Time, to *time.Time, onlyBusinessDays bool) int
 	return days
 }
 
+func decimalToPercentage(num decimal.Decimal) decimal.Decimal {
+	return num.Mul(decimal.NewFromInt32(100))
+}
+
 func durationDays(d time.Duration) int32 {
 	return int32(d.Hours()) / 24
 }

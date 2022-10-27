@@ -31,6 +31,7 @@ type Security struct {
 	lastQuoteUpdate time.Time
 	Account Account
 	Company Company
+	SecurityType SecurityType
 }
 
 func (Security) Currency(value decimal.Decimal) string {
@@ -51,6 +52,14 @@ func (s Security) BasisPrice() decimal.Decimal {
 	} else {
 		return s.Basis.DivRound(s.Shares, 2)
 	}
+}
+
+func (s Security) TotalReturn() decimal.Decimal {
+	if s.Basis.IsZero() {
+		return decimal.Zero
+	}
+	simpleReturn := s.Value.Sub(s.Basis).DivRound(s.Basis, 4)
+	return decimalToPercentage(simpleReturn)
 }
 
 func (s *Security) setValue(price decimal.Decimal) decimal.Decimal {
@@ -239,7 +248,7 @@ func (s *Security) updateValue() {
 
 // controllers(Get, Edit, Delete, Update) use Get
 func (s *Security) Get(db *gorm.DB) *Security {
-	db.Preload("Company").Preload("Account").First(&s)
+	db.Preload("SecurityType").Preload("Company").Preload("Account").First(&s)
 	// Verify we have access to Security
 	if !s.HaveAccessPermission() {
 		return nil

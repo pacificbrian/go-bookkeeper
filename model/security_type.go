@@ -39,7 +39,8 @@ const (
 	Cryptocurrency
 )
 
-var SecurityTypeIsPriceFetchable = [20]bool{true,true,false,true}
+var SecurityBasisName = [3]string{"","FIFO","Average"}
+var SecurityTypeIsPriceFetchable = [21]bool{false,true,true,false,true}
 
 type SecurityBasisType struct {
 	Model

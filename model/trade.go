@@ -141,7 +141,7 @@ func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
 			t := entries[i]
 			cf := t.toCashFlow()
 			if cf != nil {
-				cf.PayeeName = t.Security.Company.CompanyName()
+				cf.PayeeName = t.Security.Company.GetName()
 				cf.CategoryName = t.TradeType.Name
 				cf_entries = append(cf_entries, *cf)
 			}

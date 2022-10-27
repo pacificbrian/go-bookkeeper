@@ -2,7 +2,7 @@
 {% block content -%}
 
 <div class="show">
-<h2>{{ security.Company.name }}</h2>
+<h2>{{ security.Company.GetName() }}</h2>
 <table>
 <tr>
 <td>Type:
@@ -15,7 +15,7 @@
 <td>{{ security.Currency(security.Value) }}
 <tr>
 <td>Return:
-<td>{{ security.TotalReturn }}
+<td>{{ security.TotalReturn() }}%
 </table>
 
 {% if (trades|length > 0) -%}
