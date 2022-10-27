@@ -8,12 +8,15 @@ package model
 
 import (
 	"log"
+	"time"
+	"github.com/golang-jwt/jwt"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
 const (
 	DefaultCashFlowLimit = 200
+	TOKEN_EXPIRY_DAYS = 3
 )
 
 type UserCache struct {
@@ -117,6 +120,23 @@ func (u *User) setPassword(password string) error {
 		u.PasswordDigest = string(hPassword)
 	}
 	return err
+}
+
+func (u *User) createToken() string {
+	// Create token
+	token := jwt.New(jwt.SigningMethodHS256)
+
+	// Set claims
+	claims := token.Claims.(jwt.MapClaims)
+	claims["id"] = u.ID
+	claims["exp"] = time.Now().Add(time.Hour * 24 * TOKEN_EXPIRY_DAYS).Unix()
+
+	// Generate encoded token to be sent as a response
+	signedToken, err := token.SignedString([]byte("Gopher"))
+	if err != nil {
+		return ""
+	}
+	return signedToken
 }
 
 func (u *User) Authenticate(password string) bool {

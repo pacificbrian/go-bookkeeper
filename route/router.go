@@ -27,6 +27,16 @@ func Init() *echo.Echo {
 	e.Use(middleware.Logger())    // log request info
 	e.Use(middleware.Recover())   // auto recover from any panic
 	e.Use(middleware.RequestID()) // log request info with id
+	e.Use(middleware.JWTWithConfig(middleware.JWTConfig{
+		SigningKey: []byte("Gopher"),
+		Skipper: func(c echo.Context) bool {
+			// Skip authentication for signup and login requests
+			if c.Path() == "/login" || c.Path() == "/signup" {
+				return true
+			}
+			return false
+		},
+	}))
 	e.Static("/", "public")
 	e.Renderer = usePongo2(e)
 
