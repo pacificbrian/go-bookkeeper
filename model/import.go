@@ -49,16 +49,17 @@ func (im *Import) create(db *gorm.DB) error {
 	return result.Error
 }
 
-func (im *Import) ImportFile(db *gorm.DB, importFile HttpFile) error {
+func (im *Import) ImportFile(session *Session, importFile HttpFile) error {
 	var ofxTran []ofxgo.Transaction
 	var entries []CashFlow
 	fileName := importFile.FileName
+	db := session.DebugDB
 	count := 0
 
 	// Verify we have access to Account
 	if !im.Account.Verified {
 		im.Account.ID = im.AccountID
-		account := im.Account.Get(db, false)
+		account := im.Account.Get(session, false)
 		if account == nil {
 			return errors.New("Permission Denied")
 		}

@@ -115,13 +115,14 @@ func updateSecurities(securities []Security) {
 }
 
 // with account argument, Account access already verified by caller
-func (s *Security) List(db *gorm.DB, account *Account, openPositions bool) []Security {
+func (s *Security) List(session *Session, account *Account, openPositions bool) []Security {
 	entries := []Security{}
+	db := session.DB
 
 	if account == nil {
 		// Verify we have access to Account
 		s.Account.ID = s.AccountID
-		account = s.Account.Get(db, false)
+		account = s.Account.Get(session, false)
 	}
 	if account == nil || !account.Verified || !account.IsInvestment() {
 		return entries
@@ -201,11 +202,12 @@ func (s *Security) init() {
 	s.SecurityBasisTypeID = 1 // Default is FIFO
 }
 
-func (s *Security) Create(db *gorm.DB) error {
+func (s *Security) Create(session *Session) error {
+	db := session.DB
 	// Verify we have access to Account
 	s.Account.ID = s.AccountID
 	s.init()
-	account := s.Account.Get(db, false)
+	account := s.Account.Get(session, false)
 	if account != nil {
 		spewModel(s)
 		result := db.Omit(clause.Associations).Create(s)
@@ -219,11 +221,12 @@ func (s *Security) Create(db *gorm.DB) error {
 }
 
 // s.Account must be preloaded
-func (s *Security) HaveAccessPermission() bool {
-	u := GetCurrentUser()
+func (s *Security) HaveAccessPermission(session *Session) bool {
+	u := session.GetCurrentUser()
 	s.Account.Verified = !(u == nil || s.Account.ID == 0 || u.ID != s.Account.UserID)
 	if s.Account.Verified {
 		s.Account.User = *u
+		s.Account.Session = session
 	}
 	return s.Account.Verified
 }
@@ -247,10 +250,11 @@ func (s *Security) updateValue() {
 }
 
 // controllers(Get, Edit, Delete, Update) use Get
-func (s *Security) Get(db *gorm.DB) *Security {
+func (s *Security) Get(session *Session) *Security {
+	db := session.DB
 	db.Preload("SecurityType").Preload("Company").Preload("Account").First(&s)
 	// Verify we have access to Security
-	if !s.HaveAccessPermission() {
+	if !s.HaveAccessPermission(session) {
 		return nil
 	}
 
@@ -261,9 +265,10 @@ func (s *Security) Get(db *gorm.DB) *Security {
 	return s
 }
 
-func (s *Security) Delete(db *gorm.DB) error {
+func (s *Security) Delete(session *Session) error {
+	db := session.DB
 	// Verify we have access to Security
-	s = s.Get(db)
+	s = s.Get(session)
 	if s != nil {
 		spewModel(s)
 		db.Delete(s)
@@ -273,7 +278,8 @@ func (s *Security) Delete(db *gorm.DB) error {
 }
 
 // Security access already verified with Get
-func (s *Security) Update(db *gorm.DB) error {
+func (s *Security) Update(session *Session) error {
+	db := session.DB
 	spewModel(s)
 	result := db.Save(s)
 	return result.Error

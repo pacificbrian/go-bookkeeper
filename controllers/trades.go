@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
-	gormdb "github.com/pacificbrian/go-bookkeeper/db"
 	"github.com/pacificbrian/go-bookkeeper/model"
 )
 
@@ -24,14 +23,14 @@ func CreateTrade(c echo.Context) error {
 	security_id, _ := strconv.Atoi(c.Param("security_id"))
 	log.Printf("CREATE TRADE ACCOUNT(%d) SECURITY(%d)",
 		   account_id, security_id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Trade)
 	c.Bind(entry)
 	entry.AccountID = uint(account_id)
 	entry.SecurityID = uint(security_id)
 	entry.Date = getFormDate(c)
-	entry.Create(db)
+	entry.Create(session)
 
 	if security_id > 0 {
 		return c.Redirect(http.StatusSeeOther,
@@ -48,11 +47,11 @@ func CreateTrade(c echo.Context) error {
 func DeleteTrade(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("DELETE TRADE(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Trade)
 	entry.ID = uint(id)
-	if entry.Delete(db) != nil {
+	if entry.Delete(session) != nil {
 		return c.NoContent(http.StatusUnauthorized)
 	} else {
 		return c.NoContent(http.StatusAccepted)
@@ -63,17 +62,17 @@ func UpdateTrade(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	security_id, _ := strconv.Atoi(c.Param("security_id"))
 	log.Printf("UPDATE TRADE(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Trade)
 	entry.ID = uint(id)
-	entry = entry.Get(db)
+	entry = entry.Get(session)
 	if entry == nil {
 		return c.NoContent(http.StatusUnauthorized)
 	}
 
 	c.Bind(entry)
-	entry.Update(db)
+	entry.Update(session)
 	a_id := entry.AccountID
 	s_id := entry.SecurityID
 	if security_id > 0 {
@@ -88,13 +87,13 @@ func UpdateTrade(c echo.Context) error {
 func EditTrade(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("EDIT TRADE(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Trade)
 	entry.ID = uint(id)
-	entry = entry.Get(db)
+	entry = entry.Get(session)
 
 	data := map[string]any{ "trade": entry,
-				"trade_types": new(model.TradeType).List(db) }
+				"trade_types": new(model.TradeType).List(session.DB) }
 	return c.Render(http.StatusOK, "trade/edit.html", data)
 }

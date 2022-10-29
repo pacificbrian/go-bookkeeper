@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
-	gormdb "github.com/pacificbrian/go-bookkeeper/db"
 	"github.com/pacificbrian/go-bookkeeper/model"
 	"github.com/pacificbrian/go-bookkeeper/helpers"
 )
@@ -23,7 +22,7 @@ import (
 func ListSecurities(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Println("LIST SECURITIES")
-	db := gormdb.DbManager()
+	session := getSession(c)
 	get_json := false
 
 	// need flag for all or open
@@ -32,13 +31,13 @@ func ListSecurities(c echo.Context) error {
 	var entries []model.Security
 	entry := new(model.Security)
 	entry.AccountID = uint(id)
-	entries = entry.List(db, nil, openOnly)
+	entries = entry.List(session, nil, openOnly)
 
 	if get_json {
 		return c.JSON(http.StatusOK, entries)
 	} else {
-		data := map[string]any{ "securities":entries,
-					"account":&entry.Account }
+		data := map[string]any{ "securities": entries,
+					"account": &entry.Account }
 		return c.Render(http.StatusOK, "securities/index.html", data)
 	}
 }
@@ -46,12 +45,12 @@ func ListSecurities(c echo.Context) error {
 func CreateSecurity(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Println("CREATE SECURITY")
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Security)
 	c.Bind(entry)
 	entry.AccountID = uint(id)
-	entry.Create(db)
+	entry.Create(session)
 
 	// http.StatusCreated
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
@@ -60,11 +59,11 @@ func CreateSecurity(c echo.Context) error {
 func DeleteSecurity(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("DELETE SECURITY(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Security)
 	entry.ID = uint(id)
-	if entry.Delete(db) != nil {
+	if entry.Delete(session) != nil {
 		return c.NoContent(http.StatusUnauthorized)
 	} else {
 		return c.NoContent(http.StatusAccepted)
@@ -75,12 +74,12 @@ func GetSecurity(c echo.Context) error {
 	accountID, _ := strconv.Atoi(c.Param("account_id"))
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("GET ACCOUNT(%d) SECURITY(%d)", accountID, id)
-	db := gormdb.DebugDbManager()
+	session := getSession(c)
 	get_json := false
 
 	entry := new(model.Security)
 	entry.ID = uint(id)
-	entry = entry.Get(db)
+	entry = entry.Get(session)
 	// set status based on if Get failed
 
 	if get_json {
@@ -88,6 +87,7 @@ func GetSecurity(c echo.Context) error {
 	} else {
 		var trades []model.Trade
 		var account *model.Account
+		db := session.DB
 
 		if entry != nil {
 			account = &entry.Account
@@ -109,17 +109,17 @@ func GetSecurity(c echo.Context) error {
 func UpdateSecurity(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("UPDATE SECURITY(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Security)
 	entry.ID = uint(id)
-	entry = entry.Get(db)
+	entry = entry.Get(session)
 	if entry == nil {
 		return c.NoContent(http.StatusUnauthorized)
 	}
 
 	c.Bind(entry)
-	entry.Update(db)
+	entry.Update(session)
 	a_id := entry.AccountID
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", a_id))
 	//return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/security/%d", id))
@@ -128,13 +128,13 @@ func UpdateSecurity(c echo.Context) error {
 func EditSecurity(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("EDIT SECURITY(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Security)
 	entry.ID = uint(id)
-	entry = entry.Get(db)
+	entry = entry.Get(session)
 
 	data := map[string]any{ "security": entry,
-				"security_types": new(model.SecurityType).List(db) }
+				"security_types": new(model.SecurityType).List(session.DB) }
 	return c.Render(http.StatusOK, "security/edit.html", data)
 }

@@ -8,7 +8,6 @@ package model
 
 import (
 	"errors"
-	"gorm.io/gorm"
 )
 
 type Payee struct {
@@ -22,23 +21,25 @@ type Payee struct {
 	Category Category
 }
 
-func (*Payee) List(db *gorm.DB) []Payee {
-	u := GetCurrentUser()
+func (*Payee) List(session *Session) []Payee {
+	u := session.GetCurrentUser()
 	entries := []Payee{}
 	if u == nil {
 		return entries
 	}
+	db := session.DB
 
 	// Find Payees for CurrentUser()
 	db.Where(&Payee{UserID: u.ID}).Find(&entries)
 	return entries
 }
 
-func payeeGetByName(db *gorm.DB, name string) *Payee {
-	u := GetCurrentUser()
+func payeeGetByName(session *Session, name string) *Payee {
+	u := session.GetCurrentUser()
 	if u == nil {
 		return nil
 	}
+	db := session.DB
 
 	payee := new(Payee)
 	payee.Name = name
@@ -54,8 +55,9 @@ func payeeGetByName(db *gorm.DB, name string) *Payee {
 	return payee
 }
 
-func (p *Payee) Create(db *gorm.DB) error {
-	u := GetCurrentUser()
+func (p *Payee) Create(session *Session) error {
+	db := session.DB
+	u := session.GetCurrentUser()
 	if u != nil {
 		// Payee.User is set to CurrentUser()
 		p.UserID = u.ID
@@ -66,24 +68,26 @@ func (p *Payee) Create(db *gorm.DB) error {
 	return errors.New("Permission Denied")
 }
 
-func (p *Payee) HaveAccessPermission() bool {
-	u := GetCurrentUser()
+func (p *Payee) HaveAccessPermission(session *Session) bool {
+	u := session.GetCurrentUser()
 	return !(u == nil || u.ID != p.UserID)
 }
 
 // Edit, Delete, Update use Get
-func (p *Payee) Get(db *gorm.DB) *Payee {
+func (p *Payee) Get(session *Session) *Payee {
+	db := session.DB
 	db.Preload("User").First(&p)
 	// Verify we have access to Payee
-	if !p.HaveAccessPermission() {
+	if !p.HaveAccessPermission(session) {
 		return nil
 	}
 	return p
 }
 
-func (p *Payee) Delete(db *gorm.DB) error {
+func (p *Payee) Delete(session *Session) error {
+	db := session.DB
 	// Verify we have access to Payee
-	p = p.Get(db)
+	p = p.Get(session)
 	if p != nil {
 		spewModel(p)
 		db.Delete(p)
@@ -93,7 +97,8 @@ func (p *Payee) Delete(db *gorm.DB) error {
 }
 
 // Payee access already verified with Get
-func (p *Payee) Update(db *gorm.DB) error {
+func (p *Payee) Update(session *Session) error {
+	db := session.DB
 	spewModel(p)
 	result := db.Save(p)
 	return result.Error

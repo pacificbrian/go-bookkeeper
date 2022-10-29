@@ -150,8 +150,9 @@ func (*TaxType) List(db *gorm.DB) []TaxType {
 	return entries
 }
 
-func (*TaxEntry) List(db *gorm.DB) []TaxEntry {
-	u := GetCurrentUser()
+func (*TaxEntry) List(session *Session) []TaxEntry {
+	db := session.DB
+	u := session.GetCurrentUser()
 	entries := []TaxEntry{}
 	db.Preload("TaxRegion").
 	   Preload("TaxType").
@@ -163,8 +164,9 @@ func (*TaxEntry) List(db *gorm.DB) []TaxEntry {
 	return entries
 }
 
-func (t *TaxEntry) Create(db *gorm.DB) error {
-	u := GetCurrentUser()
+func (t *TaxEntry) Create(session *Session) error {
+	db := session.DB
+	u := session.GetCurrentUser()
 	if u != nil {
 		t.UserID = u.ID
 		t.Year = time.Date(t.DateYear, 1, 1, 0, 0, 0, 0, time.UTC)
@@ -175,8 +177,9 @@ func (t *TaxEntry) Create(db *gorm.DB) error {
 	return errors.New("Permission Denied")
 }
 
-func (*TaxReturn) List(db *gorm.DB) []TaxReturn {
-	u := GetCurrentUser()
+func (*TaxReturn) List(session *Session) []TaxReturn {
+	db := session.DB
+	u := session.GetCurrentUser()
 	entries := []TaxReturn{}
 	db.Preload("TaxRegion").
 	   Table("tax_users").
@@ -186,8 +189,9 @@ func (*TaxReturn) List(db *gorm.DB) []TaxReturn {
 	return entries
 }
 
-func (t *TaxReturn) Create(db *gorm.DB) error {
-	u := GetCurrentUser()
+func (t *TaxReturn) Create(session *Session) error {
+	db := session.DB
+	u := session.GetCurrentUser()
 	if u != nil {
 		t.UserID = u.ID
 		spewModel(t)
@@ -297,24 +301,26 @@ func (r *TaxReturn) calculate(db *gorm.DB) {
 	r.UnpaidTax = r.OwedTax.Sub(r.Payments)
 }
 
-func (r *TaxReturn) HaveAccessPermission() bool {
-	u := GetCurrentUser()
+func (r *TaxReturn) HaveAccessPermission(session *Session) bool {
+	u := session.GetCurrentUser()
 	return !(u == nil || u.ID != r.UserID)
 }
 
-func (r *TaxReturn) Get(db *gorm.DB) *TaxReturn {
+func (r *TaxReturn) Get(session *Session) *TaxReturn {
+	db := session.DB
 	db.Table("tax_users").First(&r)
-	if !r.HaveAccessPermission() {
+	if !r.HaveAccessPermission(session) {
 		return nil
 	}
 	return r
 }
 
-func (r *TaxReturn) Recalculate(db *gorm.DB) error {
-	r = r.Get(db)
+func (r *TaxReturn) Recalculate(session *Session) error {
+	r = r.Get(session)
 	if r == nil {
 		return errors.New("Permission Denied")
 	}
+	db := session.DB
 
 	log.Printf("[MODEL] RECALCULATE TAX RETURN(%d) REGION(%d)", r.ID, r.TaxRegionID)
 	if (r.TaxRegionID == 1) {
@@ -324,11 +330,12 @@ func (r *TaxReturn) Recalculate(db *gorm.DB) error {
 	return nil
 }
 
-func (r *TaxReturn) Delete(db *gorm.DB) error {
-	r = r.Get(db)
+func (r *TaxReturn) Delete(session *Session) error {
+	r = r.Get(session)
 	if r == nil {
 		return errors.New("Permission Denied")
 	}
+	db := session.DB
 
 	log.Printf("[MODEL] DELETE TAX RETURN(%d)", r.ID)
 	db.Table("tax_users").Delete(r)

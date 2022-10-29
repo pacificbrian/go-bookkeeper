@@ -123,12 +123,19 @@ func (c *CashFlow) mustUpdateBalance() bool {
 	return (c.Type ==  "" || c.IsTrade())
 }
 
+func (c *CashFlow) getSession() *Session {
+	if !c.Account.Verified {
+		return nil
+	}
+	return c.Account.Session
+}
+
 // Used with CreateSplitCashFlow. Controller calls to get common CashFlow
 // fields first, and before Bind (which can/will override other fields).
-func NewSplitCashFlow(db *gorm.DB, SplitFrom uint) (*CashFlow, int) {
+func NewSplitCashFlow(session *Session, SplitFrom uint) (*CashFlow, int) {
 	c := new(CashFlow)
 	c.ID = SplitFrom
-	c = c.Get(db, false)
+	c = c.Get(session, false)
 	if c == nil {
 		return nil, http.StatusUnauthorized
 	}
@@ -341,11 +348,12 @@ func (c *CashFlow) ListSplit(db *gorm.DB) ([]CashFlow, string) {
 }
 
 // c.Account must be preloaded
-func (c *CashFlow) HaveAccessPermission() bool {
-	u := GetCurrentUser()
+func (c *CashFlow) HaveAccessPermission(session *Session) bool {
+	u := session.GetCurrentUser()
 	c.Account.Verified = !(u == nil || c.Account.ID == 0 || u.ID != c.Account.UserID)
 	if c.Account.Verified {
 		c.Account.User = *u
+		c.Account.Session = session
 	}
 	return c.Account.Verified
 }
@@ -438,7 +446,7 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 		var a *Account
 
 		if c.PayeeName != "" {
-			a = accountGetByName(db, c.PayeeName)
+			a = accountGetByName(c.getSession(), c.PayeeName)
 			if a == nil {
 				return errors.New("Account.Name Invalid"), nil
 			}
@@ -470,7 +478,7 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 
 		if !c.Split && c.PayeeName != "" {
 			// creates Payee if none exists
-			p := payeeGetByName(db, c.PayeeName)
+			p := payeeGetByName(c.getSession(), c.PayeeName)
 			c.PayeeID = p.ID
 		}
 	}
@@ -823,11 +831,12 @@ func (c *CashFlow) setDefaults() {
 	c.TaxYear = c.Date.Year()
 }
 
-func (c *CashFlow) Create(db *gorm.DB) error {
+func (c *CashFlow) Create(session *Session) error {
+	db := session.DebugDB
 	// Verify we have access to Account
 	if !c.Account.Verified {
 		c.Account.ID = c.AccountID
-		account := c.Account.Get(db, false)
+		account := c.Account.Get(session, false)
 		if account == nil {
 			return errors.New("Permission Denied")
 		}
@@ -856,7 +865,8 @@ func (c *CashFlow) Create(db *gorm.DB) error {
 
 // Edit, Delete, Update use Get
 // c.Account needs to be preloaded
-func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
+func (c *CashFlow) Get(session *Session, edit bool) *CashFlow {
+	db := session.DB
 	if edit {
 		db.Preload("Payee").Preload("Category").Preload("Account").First(&c)
 	} else {
@@ -864,7 +874,7 @@ func (c *CashFlow) Get(db *gorm.DB, edit bool) *CashFlow {
 	}
 
 	// Verify we have access to CashFlow
-	if !c.HaveAccessPermission() {
+	if !c.HaveAccessPermission(session) {
 		return nil
 	}
 
@@ -940,9 +950,10 @@ func (c *CashFlow) delete(db *gorm.DB) {
 	}
 }
 
-func (c *CashFlow) Delete(db *gorm.DB) error {
+func (c *CashFlow) Delete(session *Session) error {
+	db := session.DB
 	// Verify we have access to CashFlow
-	c = c.Get(db, false)
+	c = c.Get(session, false)
 	if c == nil {
 		return errors.New("Permission Denied")
 	}
@@ -951,9 +962,10 @@ func (c *CashFlow) Delete(db *gorm.DB) error {
 	return nil
 }
 
-func (c *CashFlow) Put(db *gorm.DB, request map[string]interface{}) error {
+func (c *CashFlow) Put(session *Session, request map[string]interface{}) error {
+	db := session.DB
 	// Verify we have access to CashFlow
-	c = c.Get(db, false)
+	c = c.Get(session, false)
 	if c == nil {
 		return errors.New("Permission Denied")
 	}
@@ -1002,7 +1014,8 @@ func (c *CashFlow) Put(db *gorm.DB, request map[string]interface{}) error {
 }
 
 // CashFlow access already verified with Get
-func (c *CashFlow) Update(db *gorm.DB) error {
+func (c *CashFlow) Update(session *Session) error {
+	db := session.DebugDB
 	c.applyCashFlowType()
 	if c.Split {
 		// don't let Splits mess with date

@@ -31,6 +31,7 @@ type Account struct {
 	Hidden bool `form:"account.Hidden"`
 	Taxable bool `form:"account.Taxable"`
 	Verified bool `gorm:"-:all"`
+	Session *Session `gorm:"-:all"`
 	AccountType AccountType
 	CurrencyType CurrencyType
 	User User
@@ -66,8 +67,9 @@ func cacheAccounts(u *User, accounts []Account) {
 	}
 }
 
-func ListAccounts(db *gorm.DB, all bool) []Account {
-	u := GetCurrentUser()
+func ListAccounts(session *Session, all bool) []Account {
+	db := session.DB
+	u := session.GetCurrentUser()
 	entries := []Account{}
 	hidden_clause := ""
 	if u == nil {
@@ -89,28 +91,30 @@ func ListAccounts(db *gorm.DB, all bool) []Account {
 	return entries
 }
 
-func (*Account) List(db *gorm.DB, all bool) []Account {
-	return ListAccounts(db, all)
+func (*Account) List(session *Session, all bool) []Account {
+	return ListAccounts(session, all)
 }
 
-func (account *Account) ListImports(db *gorm.DB) []Import {
+func (account *Account) ListImports(session *Session) []Import {
 	entries := []Import{}
 	if !account.Verified {
-		account.Get(db, false)
+		account.Get(session, false)
 	}
 	return entries
 }
 
-func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlow {
+func (account *Account) ListScheduled(session *Session, canRecordOnly bool) []CashFlow {
 	entries := []CashFlow{}
 	if !account.Verified {
-		account.Get(db, false)
+		account.Get(session, false)
 	}
+
 	if account.Verified {
 		if !account.HasScheduled {
 			return entries
 		}
 
+		db := session.DB
 		query := map[string]interface{}{"account_id": account.ID,
 					        "type": "RCashFlow", "split": false}
 		if canRecordOnly {
@@ -139,8 +143,9 @@ func (account *Account) ListScheduled(db *gorm.DB, canRecordOnly bool) []CashFlo
 	return entries
 }
 
-func accountGetByName(db *gorm.DB, name string) *Account {
-	u := GetCurrentUser()
+func accountGetByName(session *Session, name string) *Account {
+	db := session.DB
+	u := session.GetCurrentUser()
 	if u == nil {
 		return nil
 	}
@@ -151,14 +156,15 @@ func accountGetByName(db *gorm.DB, name string) *Account {
 	// need Where because these are not primary keys
 	db.Where(&a).First(&a)
 
-	if a.ID == 0 || !a.HaveAccessPermission() {
+	if a.ID == 0 || !a.HaveAccessPermission(session) {
 		return nil
 	}
 	return a
 }
 
-func (a *Account) securityGetBySymbol(db *gorm.DB, symbol string) *Security {
+func (a *Account) securityGetBySymbol(session *Session, symbol string) *Security {
 	security := new(Security)
+	db := session.DB
 	c := companyGetBySymbol(db, symbol)
 	security.CompanyID = c.ID
 	security.AccountID = a.ID
@@ -169,12 +175,12 @@ func (a *Account) securityGetBySymbol(db *gorm.DB, symbol string) *Security {
 	if security.ID > 0 {
 		// verify Account
 		security.Account.ID = security.AccountID
-		account := security.Account.Get(db, false)
+		account := security.Account.Get(session, false)
 		if account == nil {
 			return nil
 		}
 	} else { // security.ID == 0
-		err := security.Create(db)
+		err := security.Create(session)
 		if err != nil {
 			return nil
 		}
@@ -248,8 +254,8 @@ func (a Account) HasAverageDailyBalance() bool {
 	return !a.AverageBalance.IsZero()
 }
 
-func (a *Account) SetAverageDailyBalance(db *gorm.DB) {
-	a.AverageBalance = a.averageDailyBalance(db, time.Now())
+func (a *Account) SetAverageDailyBalance(session *Session) {
+	a.AverageBalance = a.averageDailyBalance(session.DB, time.Now())
 }
 
 func (a *Account) addScheduled(db *gorm.DB) {
@@ -283,8 +289,9 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 	}
 }
 
-func (a *Account) Create(db *gorm.DB) error {
-	u := GetCurrentUser()
+func (a *Account) Create(session *Session) error {
+	db := session.DB
+	u := session.GetCurrentUser()
 	if u != nil {
 		// Account.User is set to CurrentUser()
 		a.UserID = u.ID
@@ -300,23 +307,26 @@ func (a *Account) cloneVerified(src *Account) {
 	a.User.ID = src.User.ID
 	a.User.Cache = src.User.Cache
 	a.User.UserSettings = src.User.UserSettings
+	a.Session = src.Session
 	a.Balance = src.Balance
 	a.Verified = src.Verified
 }
 
-func (a *Account) HaveAccessPermission() bool {
-	u := GetCurrentUser()
+func (a *Account) HaveAccessPermission(session *Session) bool {
+	u := session.GetCurrentUser()
 	// store in a.Verified if this Account is trusted
 	a.Verified = !(u == nil || u.ID != a.UserID)
 	if a.Verified {
 		a.User = *u
+		a.Session = session
 	}
 	return a.Verified
 }
 
 // Show, Edit, Delete, Update use Get
 // a.UserID unset, need to load
-func (a *Account) Get(db *gorm.DB, preload bool) *Account {
+func (a *Account) Get(session *Session, preload bool) *Account {
+	db := session.DB
 	enableScheduledCashFlow := true
 
 	// Load and Verify we have access to Account
@@ -327,7 +337,7 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 		// Edit, Delete, Update
 		db.First(&a)
 	}
-	if !a.HaveAccessPermission() {
+	if !a.HaveAccessPermission(session) {
 		return nil
 	}
 
@@ -335,7 +345,7 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 		spewModel(a)
 
 		// test if any ScheduledCashFlows need to post
-		scheduled := a.ListScheduled(db, true)
+		scheduled := a.ListScheduled(session, true)
 		for i := 0; i < len(scheduled); i++ {
 			var repeat *CashFlow = &scheduled[i]
 			repeat.Account.cloneVerified(a)
@@ -345,12 +355,13 @@ func (a *Account) Get(db *gorm.DB, preload bool) *Account {
 	return a
 }
 
-func (a *Account) Delete(db *gorm.DB) error {
+func (a *Account) Delete(session *Session) error {
 	// Verify we have access to Account
-	a = a.Get(db, false)
+	a = a.Get(session, false)
 	if a == nil {
 		return errors.New("Permission Denied")
 	}
+	db := session.DB
 
 	// on first delete, we only make Hidden
 	if !a.Hidden {
@@ -368,7 +379,8 @@ func (a *Account) Delete(db *gorm.DB) error {
 }
 
 // Account access already verified with Get
-func (a *Account) Update(db *gorm.DB) error {
+func (a *Account) Update(session *Session) error {
+	db := session.DB
 	spewModel(a)
 	result := db.Omit(clause.Associations).Save(a)
 	return result.Error

@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
-	gormdb "github.com/pacificbrian/go-bookkeeper/db"
 	"github.com/pacificbrian/go-bookkeeper/model"
 	"github.com/pacificbrian/go-bookkeeper/helpers"
 )
@@ -23,13 +22,13 @@ import (
 func CreateCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("CREATE CASHFLOW (ACCOUNT:%d)", id)
-	db := gormdb.DebugDbManager()
+	session := getSession(c)
 
 	entry := new(model.CashFlow)
 	c.Bind(entry)
 	entry.AccountID = uint(id)
 	entry.Date = getFormDate(c)
-	entry.Create(db)
+	entry.Create(session)
 
 	// http.StatusCreated
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
@@ -38,7 +37,7 @@ func CreateCashFlow(c echo.Context) error {
 func CreateScheduledCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("CREATE SCHEDULED CASHFLOW (FROM:%d)", id)
-	db := gormdb.DebugDbManager()
+	session := getSession(c)
 
 	entry := new(model.CashFlow)
 	c.Bind(entry)
@@ -46,7 +45,7 @@ func CreateScheduledCashFlow(c echo.Context) error {
 	entry.AccountID = uint(id)
 	entry.Date = getFormDate(c)
 	entry.Type = "RCashFlow"
-	entry.Create(db)
+	entry.Create(session)
 
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d/scheduled", id))
 }
@@ -54,23 +53,23 @@ func CreateScheduledCashFlow(c echo.Context) error {
 func CreateSplitCashFlow(c echo.Context) error {
 	split_from, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("CREATE SPLIT CASHFLOW (PARENT:%d)", split_from)
-	db := gormdb.DebugDbManager()
+	session := getSession(c)
 
-	entry, httpStatus := model.NewSplitCashFlow(db, uint(split_from))
+	entry, httpStatus := model.NewSplitCashFlow(session, uint(split_from))
 	if entry == nil {
 		return c.NoContent(httpStatus)
 	}
 
 	// from NewSplitCashFlow, we already have: AccountID, Date, Payee
 	c.Bind(entry)
-	entry.Create(db)
+	entry.Create(session)
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/cash_flows/%d/edit", split_from))
 }
 
 func PutCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("PUT CASHFLOW(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
@@ -81,7 +80,7 @@ func PutCashFlow(c echo.Context) error {
 	putRequest[kv.Key] = kv.Value
 
 	// Put will verify if have CashFlow access
-	if entry.Put(db, putRequest) != nil {
+	if entry.Put(session, putRequest) != nil {
 		return c.NoContent(http.StatusUnauthorized)
 	} else {
 		return c.NoContent(http.StatusAccepted)
@@ -91,11 +90,11 @@ func PutCashFlow(c echo.Context) error {
 func DeleteCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("DELETE CASHFLOW(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
-	if entry.Delete(db) != nil {
+	if entry.Delete(session) != nil {
 		return c.NoContent(http.StatusUnauthorized)
 	} else {
 		return c.NoContent(http.StatusAccepted)
@@ -105,11 +104,11 @@ func DeleteCashFlow(c echo.Context) error {
 func UpdateCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("UPDATE CASHFLOW(%d)", id)
-	db := gormdb.DebugDbManager()
+	session := getSession(c)
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
-	entry = entry.Get(db, false)
+	entry = entry.Get(session, false)
 	if entry == nil {
 		return c.NoContent(http.StatusUnauthorized)
 	}
@@ -119,7 +118,7 @@ func UpdateCashFlow(c echo.Context) error {
 	entry.Date = getFormDate(c)
 	// special case RepeatsLeft so that unset from user equals SQL NULL value
 	entry.RepeatInterval.SetRepeatsLeft(c.FormValue("repeats"))
-	entry.Update(db)
+	entry.Update(session)
 
 	// possibly can clean this up with Sessions
 	if entry.Split {
@@ -137,14 +136,15 @@ func UpdateCashFlow(c echo.Context) error {
 func EditCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("EDIT CASHFLOW(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
+	db := session.DB
 
 	var repeat_interval_types []model.RepeatIntervalType
 	var cash_flows []model.CashFlow
 	var cash_flow_total string
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
-	entry = entry.Get(db, true)
+	entry = entry.Get(session, true)
 	if entry != nil {
 		cash_flows, cash_flow_total = entry.ListSplit(db)
 		if entry.IsScheduled() {
@@ -169,7 +169,8 @@ func EditCashFlow(c echo.Context) error {
 func ListScheduledCashFlows(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("LIST SCHEDULED CASHFLOWS (ACCOUNT:%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
+	db := session.DB
 
 	var cash_flows []model.CashFlow
 	entry := new(model.CashFlow)
@@ -177,7 +178,7 @@ func ListScheduledCashFlows(c echo.Context) error {
 	entry.Type = "RCashFlow"
 
 	entry.Account.ID = entry.AccountID
-	cash_flows = entry.Account.ListScheduled(db, false)
+	cash_flows = entry.Account.ListScheduled(session, false)
 
 	dh := new(helpers.DateHelper)
 	dh.Init()

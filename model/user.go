@@ -9,6 +9,7 @@ package model
 import (
 	"log"
 	"golang.org/x/crypto/bcrypt"
+	gormdb "github.com/pacificbrian/go-bookkeeper/db"
 	"gorm.io/gorm"
 )
 
@@ -32,7 +33,6 @@ type User struct {
 	Login string
 	Email string
 	PasswordDigest string
-	//Password string `gorm:"->:false;<-"`
 	CashflowLimit int
 	Cache *UserCache `gorm:"-:all"`
 	UserSettings UserSettings
@@ -43,11 +43,9 @@ type User struct {
 type Session struct {
 	User User
 	Cache UserCache
-	Quotes *SecurityQuoteCache
+	DB *gorm.DB
+	DebugDB *gorm.DB
 }
-
-var currentSession *Session
-var quotes *SecurityQuoteCache
 
 func (u *User) cacheAccount(a *Account) {
 	u.Cache.AccountNames[a.ID] = a.Name
@@ -77,37 +75,35 @@ func (u *User) initSettings() {
 }
 
 func (u *User) init(userCache *UserCache) {
-	u.ID = 1
 	u.initSettings()
 	u.Cache = userCache
 }
 
-func init() {
-	quotes = new(SecurityQuoteCache)
-	quotes.init()
+func (sn *Session) init() {
+	sn.Cache.init()
+	sn.DebugDB = gormdb.DebugDbManager()
+	sn.DB = gormdb.DbManager()
+}
 
-	// replace when adding User login
-	currentSession = new(Session)
-	currentSession.Cache.init()
-	currentSession.User.init(&currentSession.Cache)
-	currentSession.Quotes = quotes
+func (session *Session) GetCurrentUser() *User {
+	return &session.User
+}
+
+func (u *User) NewSession() *Session {
+	newSession := new(Session)
+	newSession.init()
+	newSession.User.ID = u.ID
+	newSession.User.init(&newSession.Cache)
 
 	// example of using bcrypt for passwords
 	// overwrite u.PasswordDigest just for testing
 	password := "Gopher"
-	GetCurrentUser().setPassword(password)
-	validPassword := GetCurrentUser().Authenticate(password)
+	u.setPassword(password)
+	validPassword := u.Authenticate(password)
 
-	log.Printf("SET CURRENT USER(%d) AUTH(%t)", GetCurrentUser().ID,
+	log.Printf("[MODEL] NEW SESSION USER(%d) AUTH(%t)", u.ID,
 		   validPassword)
-}
-
-func GetCurrentUser() *User {
-	return &currentSession.User
-}
-
-func GetQuoteCache() *SecurityQuoteCache {
-	return currentSession.Quotes
+	return newSession
 }
 
 func (u *User) setPassword(password string) error {

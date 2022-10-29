@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
-	gormdb "github.com/pacificbrian/go-bookkeeper/db"
 	"github.com/pacificbrian/go-bookkeeper/helpers"
 	"github.com/pacificbrian/go-bookkeeper/model"
 )
@@ -23,10 +22,10 @@ import (
 func ListTaxes(c echo.Context) error {
 	year, _ := strconv.Atoi(c.Param("year"))
 	log.Printf("LIST TAXES (%d)", year)
-	db := gormdb.DbManager()
+	session := getSession(c)
 	get_json := false
 
-	returns := new(model.TaxReturn).List(db)
+	returns := new(model.TaxReturn).List(session)
 
 	dh := new(helpers.DateHelper)
 	dh.Init()
@@ -38,7 +37,8 @@ func ListTaxes(c echo.Context) error {
 		// TODO: add separate ListTaxEntries if needed
 		return c.JSON(http.StatusOK, returns)
 	} else {
-		entries := new(model.TaxEntry).List(db)
+		db := session.DB
+		entries := new(model.TaxEntry).List(session)
 		data := map[string]any{ "tax_returns": returns,
 					"tax_entries": entries,
 					"date_helper": dh,
@@ -54,11 +54,11 @@ func ListTaxes(c echo.Context) error {
 
 func CreateTaxEntry(c echo.Context) error {
 	log.Println("CREATE TAX ENTRY")
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.TaxEntry)
 	c.Bind(entry)
-	entry.Create(db)
+	entry.Create(session)
 
 	// http.StatusCreated
 	if entry.DateYear > 0 {
@@ -71,11 +71,11 @@ func CreateTaxEntry(c echo.Context) error {
 
 func CreateTaxes(c echo.Context) error {
 	log.Println("CREATE TAX RETURN")
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.TaxReturn)
 	c.Bind(entry)
-	entry.Create(db)
+	entry.Create(session)
 
 	// http.StatusCreated
 	if entry.Year > 0 {
@@ -89,13 +89,13 @@ func CreateTaxes(c echo.Context) error {
 func RecalculateTaxes(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("RECALCULATE TAX RETURN(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.TaxReturn)
 	entry.ID = uint(id)
 
 	// Recalculate will verify if have TaxReturn access
-	if entry.Recalculate(db) != nil {
+	if entry.Recalculate(session) != nil {
 		return c.NoContent(http.StatusUnauthorized)
 	} else {
 		return c.NoContent(http.StatusAccepted)
@@ -105,11 +105,11 @@ func RecalculateTaxes(c echo.Context) error {
 func DeleteTaxes(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("DELETE TAX RETURN(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.TaxReturn)
 	entry.ID = uint(id)
-	if entry.Delete(db) != nil {
+	if entry.Delete(session) != nil {
 		return c.NoContent(http.StatusUnauthorized)
 	} else {
 		return c.NoContent(http.StatusAccepted)

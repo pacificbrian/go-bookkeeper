@@ -205,14 +205,14 @@ func (t *Trade) recordSplit(db *gorm.DB, activeBuys []Trade) {
 }
 
 // Look up Security by symbol, creates Security if none exists
-func (t *Trade) securityGetBySymbol(db *gorm.DB) *Security {
+func (t *Trade) securityGetBySymbol(session *Session) *Security {
 	var security *Security
 
 	if t.Symbol != "" {
 		a := &t.Account
 		a.ID = t.AccountID
 		// verifies Account
-		security = a.securityGetBySymbol(db, t.Symbol)
+		security = a.securityGetBySymbol(session, t.Symbol)
 		if security != nil {
 			t.SecurityID = security.ID
 		}
@@ -241,18 +241,19 @@ func (t *Trade) validateInputs() error {
 	return nil
 }
 
-func (t *Trade) Create(db *gorm.DB) error {
+func (t *Trade) Create(session *Session) error {
 	var security *Security
 	var activeBuys []Trade
 	var err error
+	db := session.DB
 
 	if t.SecurityID > 0 {
 		// verify access to Security
 		t.Security.ID = t.SecurityID
-		security = t.Security.Get(db)
+		security = t.Security.Get(session)
 	} else {
 		// verifies Account, creates Security if none exists
-		security = t.securityGetBySymbol(db)
+		security = t.securityGetBySymbol(session)
 	}
 
 	if security == nil {
@@ -294,28 +295,31 @@ func (t *Trade) Create(db *gorm.DB) error {
 }
 
 // t.Account must be preloaded
-func (t *Trade) HaveAccessPermission() bool {
-	u := GetCurrentUser()
+func (t *Trade) HaveAccessPermission(session *Session) bool {
+	u := session.GetCurrentUser()
 	t.Account.Verified = !(u == nil || t.Account.ID == 0 || u.ID != t.Account.UserID)
 	if t.Account.Verified {
 		t.Account.User = *u
+		t.Account.Session = session
 	}
 	return t.Account.Verified
 }
 
 // Edit, Delete, Update use Get
-func (t *Trade) Get(db *gorm.DB) *Trade {
+func (t *Trade) Get(session *Session) *Trade {
+	db := session.DB
 	db.Preload("Account").First(&t)
 	// Verify we have access to Trade
-	if !t.HaveAccessPermission() {
+	if !t.HaveAccessPermission(session) {
 		return nil
 	}
 	return t
 }
 
-func (t *Trade) Delete(db *gorm.DB) error {
+func (t *Trade) Delete(session *Session) error {
+	db := session.DB
 	// Verify we have access to Trade
-	t = t.Get(db)
+	t = t.Get(session)
 	if t != nil {
 		spewModel(t)
 		db.Delete(t)
@@ -325,7 +329,8 @@ func (t *Trade) Delete(db *gorm.DB) error {
 }
 
 // Trade access already verified with Get
-func (t *Trade) Update(db *gorm.DB) error {
+func (t *Trade) Update(session *Session) error {
+	db := session.DB
 	spewModel(t)
 	result := db.Omit(clause.Associations).Save(t)
 	return result.Error

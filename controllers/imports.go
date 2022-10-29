@@ -12,13 +12,12 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
-	gormdb "github.com/pacificbrian/go-bookkeeper/db"
 	"github.com/pacificbrian/go-bookkeeper/model"
 )
 
 func CreateImportedCashFlows(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	db := gormdb.DebugDbManager()
+	session := getSession(c)
 	var importFile model.HttpFile
 
 	file, err := c.FormFile("filename")
@@ -35,7 +34,7 @@ func CreateImportedCashFlows(c echo.Context) error {
 
 	entry := new(model.Import)
 	entry.AccountID = uint(id)
-	err = entry.ImportFile(db, importFile)
+	err = entry.ImportFile(session, importFile)
 	if err != nil {
 		log.Println(err)
 		return c.NoContent(http.StatusNoContent)
@@ -47,12 +46,12 @@ func CreateImportedCashFlows(c echo.Context) error {
 func ListImportedCashFlows(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("LIST IMPORTED CASHFLOWS (ACCOUNT:%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	var imports []model.Import
 	entry := new(model.Account)
 	entry.ID = uint(id)
-	imports = entry.ListImports(db)
+	imports = entry.ListImports(session)
 
 	data := map[string]any{ "account": entry,
 				"button_text": "Import File",

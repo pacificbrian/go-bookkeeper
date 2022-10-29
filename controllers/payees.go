@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
-	gormdb "github.com/pacificbrian/go-bookkeeper/db"
 	"github.com/pacificbrian/go-bookkeeper/model"
 )
 
@@ -21,27 +20,28 @@ import (
 
 func ListPayees(c echo.Context) error {
 	log.Println("LIST PAYEES")
-	db := gormdb.DbManager()
+	session := getSession(c)
 	get_json := false
 
-	entries := new(model.Payee).List(db)
+	entries := new(model.Payee).List(session)
 
 	if get_json {
 		return c.JSON(http.StatusOK, entries)
 	} else {
-		data := map[string]any{ "payees":entries,
-					"account":nil }
+		data := map[string]any{ "payees": entries,
+					"account": nil,
+					"categories": new(model.Category).List(session.DB) }
 		return c.Render(http.StatusOK, "payees/index.html", data)
 	}
 }
 
 func CreatePayee(c echo.Context) error {
 	log.Println("CREATE PAYEE")
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Payee)
 	c.Bind(entry)
-	entry.Create(db)
+	entry.Create(session)
 
 	// http.StatusCreated
 	return c.Redirect(http.StatusSeeOther, "/payees")
@@ -50,11 +50,11 @@ func CreatePayee(c echo.Context) error {
 func DeletePayee(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("DELETE PAYEE(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Payee)
 	entry.ID = uint(id)
-	if entry.Delete(db) != nil {
+	if entry.Delete(session) != nil {
 		return c.NoContent(http.StatusUnauthorized)
 	} else {
 		return c.NoContent(http.StatusAccepted)
@@ -64,30 +64,30 @@ func DeletePayee(c echo.Context) error {
 func UpdatePayee(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("UPDATE PAYEE(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Payee)
 	entry.ID = uint(id)
-	entry = entry.Get(db)
+	entry = entry.Get(session)
 	if entry == nil {
 		return c.NoContent(http.StatusUnauthorized)
 	}
 
 	c.Bind(entry)
-	entry.Update(db)
+	entry.Update(session)
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/payee/%d", id))
 }
 
 func EditPayee(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("EDIT PAYEE(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Payee)
 	entry.ID = uint(id)
-	entry = entry.Get(db)
+	entry = entry.Get(session)
 
 	data := map[string]any{ "payee": entry,
-				"categories": new(model.CategoryType).List(db) }
+				"categories": new(model.Category).List(session.DB) }
 	return c.Render(http.StatusOK, "payee/edit.html", data)
 }

@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
-	gormdb "github.com/pacificbrian/go-bookkeeper/db"
 	"github.com/pacificbrian/go-bookkeeper/model"
 	"github.com/pacificbrian/go-bookkeeper/helpers"
 )
@@ -27,10 +26,10 @@ import (
 
 func ListAccounts(c echo.Context) error {
 	log.Println("LIST ACCOUNTS")
-	db := gormdb.DbManager()
+	session := getSession(c)
 	get_json := false
 
-	entries := model.ListAccounts(db, false)
+	entries := model.ListAccounts(session, false)
 
 	dh := new(helpers.DateHelper)
 	dh.Init()
@@ -48,11 +47,11 @@ func ListAccounts(c echo.Context) error {
 
 func CreateAccount(c echo.Context) error {
 	log.Println("CREATE ACCOUNT")
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Account)
 	c.Bind(entry)
-	entry.Create(db)
+	entry.Create(session)
 	// set status based on if Create failed
 
 	return c.Redirect(http.StatusSeeOther, "/accounts")
@@ -61,11 +60,11 @@ func CreateAccount(c echo.Context) error {
 func DeleteAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("DELETE ACCOUNT(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
-	if entry.Delete(db) != nil {
+	if entry.Delete(session) != nil {
 		return c.NoContent(http.StatusUnauthorized)
 	} else {
 		return c.NoContent(http.StatusAccepted)
@@ -75,14 +74,14 @@ func DeleteAccount(c echo.Context) error {
 func GetAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("GET ACCOUNT(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 	get_json := false
 	debugAB := false
 
 	// should be in Model
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
-	entry = entry.Get(db, true)
+	entry = entry.Get(session, true)
 	// set status based on if Get failed
 
 	if get_json {
@@ -91,11 +90,12 @@ func GetAccount(c echo.Context) error {
 		var cashflows []model.CashFlow
 		var securities []model.Security
 		var tradeTypes []model.TradeType
+		db := session.DB
 
 		if entry != nil {
 			// List will order returned results
 			if entry.IsInvestment() {
-				securities = new(model.Security).List(db, entry, true)
+				securities = new(model.Security).List(session, entry, true)
 				cashflows = new(model.Trade).ListCashFlows(db, entry)
 				tradeTypes = new(model.TradeType).List(db)
 				entry.TotalPortfolio(securities)
@@ -104,7 +104,7 @@ func GetAccount(c echo.Context) error {
 		}
 
 		if debugAB {
-			entry.SetAverageDailyBalance(db)
+			entry.SetAverageDailyBalance(session)
 		}
 
 		dh := new(helpers.DateHelper)
@@ -127,28 +127,29 @@ func GetAccount(c echo.Context) error {
 func UpdateAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("UPDATE ACCOUNT(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
 
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
-	entry = entry.Get(db, false)
+	entry = entry.Get(session, false)
 	if entry == nil {
 		return c.NoContent(http.StatusUnauthorized)
 	}
 
 	c.Bind(entry)
-	entry.Update(db)
+	entry.Update(session)
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
 }
 
 func EditAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	log.Printf("EDIT ACCOUNT(%d)", id)
-	db := gormdb.DbManager()
+	session := getSession(c)
+	db := session.DB
 
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
-	entry = entry.Get(db, false)
+	entry = entry.Get(session, false)
 	// handle no access (entry == nil)
 
 	data := map[string]any{ "account": entry,
@@ -161,7 +162,8 @@ func EditAccount(c echo.Context) error {
 
 func NewAccount(c echo.Context) error {
 	log.Println("NEW ACCOUNT")
-	db := gormdb.DbManager()
+	session := getSession(c)
+	db := session.DB
 
 	data := map[string]any{ "account": new(model.Account).Init(),
 				"button_text": "Create Account",

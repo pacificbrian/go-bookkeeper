@@ -22,8 +22,19 @@ type SecurityQuoteCache struct {
 	Quotes map[string]SecurityQuote
 }
 
+var quotes *SecurityQuoteCache
+
 func (sqc *SecurityQuoteCache) init() {
 	sqc.Quotes = make(map[string]SecurityQuote)
+}
+
+func init() {
+	quotes = new(SecurityQuoteCache)
+	quotes.init()
+}
+
+func GetQuoteCache() *SecurityQuoteCache {
+	return quotes
 }
 
 // Decide fetch policy, probably once per hour, if market is open.
