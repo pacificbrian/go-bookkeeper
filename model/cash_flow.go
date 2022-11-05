@@ -450,6 +450,11 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 			if a == nil {
 				return errors.New("Account.Name Invalid"), nil
 			}
+		} else if c.PayeeID > 0 {
+			// retrieve Account for scheduled CashFlows
+			a = new(Account)
+			a.ID = c.PayeeID
+			a = a.Get(c.getSession(), false)
 		}
 
 		if a != nil && !c.IsScheduled() {
@@ -907,7 +912,9 @@ func (c *CashFlow) Get(session *Session, edit bool) *CashFlow {
 func (c *CashFlow) deletePair(db *gorm.DB) {
 	// Clear Transfer flag so Pairs don't loop deleting each other
 	c.Transfer = false
-	c.delete(db)
+	if c.ID > 0 {
+		c.delete(db)
+	}
 }
 
 func (c *CashFlow) deleteTransfer(db *gorm.DB) {
@@ -1048,6 +1055,7 @@ func (c *CashFlow) Update(session *Session) error {
 		// Note, either side might be a Split
 		if pair != nil {
 			if pair.ID == 0 {
+				pair.CategoryID = c.ID
 				db.Omit(clause.Associations).Create(pair)
 				c.CategoryID = pair.ID
 				db.Omit(clause.Associations).Model(c).
