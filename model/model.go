@@ -89,3 +89,7 @@ func decimalToPercentage(num decimal.Decimal) decimal.Decimal {
 func durationDays(d time.Duration) int32 {
 	return int32(d.Hours()) / 24
 }
+
+func timeToString(dx *time.Time) string {
+	return dx.Format(timeFormatPrint)
+}
