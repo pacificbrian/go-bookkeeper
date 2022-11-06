@@ -341,7 +341,7 @@ func (c *CashFlow) ListSplit(db *gorm.DB) ([]CashFlow, string) {
 		db.Find(&entries, &CashFlow{AccountID: c.AccountID, SplitFrom: c.ID, Split: true})
 		for i := 0; i < len(entries); i++ {
 			split := &entries[i]
-			// sets CashFlowType, old values
+			// sets CashFlowType, old values, PairID (Transfers)
 			split.postQueryInit()
 			split.Account.cloneVerified(&c.Account)
 			split.Preload(db)
@@ -398,6 +398,13 @@ func (c *CashFlow) postQueryInit() {
 	c.oldDate = c.Date
 	c.oldPayeeID = c.PayeeID
 	c.determineCashFlowType()
+	if c.Transfer {
+		// backup CategoryID as cleared by Bind (during Update)
+		// and needed to find Pair during updateSplits
+		// ScheduledCashFlows don't have Pairs, so unused in that case
+		c.PairID = c.CategoryID // Peer Cashflow (Transfers)
+		c.CategoryID = 0
+	}
 }
 
 func (c *CashFlow) cloneScheduled(src *CashFlow) {
@@ -628,6 +635,16 @@ func updateSplits(db *gorm.DB, splits []CashFlow, updates map[string]interface{}
 		if split.Transfer && len(transferUpdates) > 0 {
 			db.Omit(clause.Associations).Model(split).
 			   Updates(transferUpdates)
+			if transferUpdates["date"] != nil && !split.IsScheduled() &&
+			   transferUpdates["type"] == nil {
+				assert(transferUpdates["amount"] == nil,
+				       "updateSplits: update split.Amount unexpected")
+				// update Pair.Date
+				pair := new(CashFlow)
+				pair.pairFrom(split)
+				db.Omit(clause.Associations).Model(pair).
+				   Updates(transferUpdates)
+			}
 		} else if len(updates) > 0 {
 			db.Omit(clause.Associations).Model(split).
 			   Updates(updates)
@@ -929,12 +946,8 @@ func (c *CashFlow) Get(session *Session, edit bool) *CashFlow {
 		return nil
 	}
 
+	// sets CashFlowType, old values, PairID (Transfers)
 	c.postQueryInit()
-	if c.Transfer {
-		// backup CategoryID as cleared by Bind
-		c.PairID = c.CategoryID // Peer Cashflow (Transfers)
-		c.CategoryID = 0
-	}
 
 	if edit {
 		// some Preloads done above at start of Get()
@@ -1088,6 +1101,7 @@ func (c *CashFlow) Update(session *Session) error {
 			c.Account.updateBalance(db, c)
 			if c.HasSplits() {
 				c.updateSplits(db, c.splitUpdateMap())
+				// above also updates Pair.Date (Transfers)
 			}
 			if c.IsScheduled() {
 				c.RepeatInterval.Update(db, c)
