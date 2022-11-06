@@ -135,6 +135,7 @@ func (c *CashFlow) getSession() *Session {
 func NewSplitCashFlow(session *Session, SplitFrom uint) (*CashFlow, int) {
 	c := new(CashFlow)
 	c.ID = SplitFrom
+	// Get will set Date, PayeeID, Type = RCashFlow
 	c = c.Get(session, false)
 	if c == nil {
 		return nil, http.StatusUnauthorized
@@ -447,9 +448,6 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 
 		if c.PayeeName != "" {
 			a = accountGetByName(c.getSession(), c.PayeeName)
-			if a == nil {
-				return errors.New("Account.Name Invalid"), nil
-			}
 		} else if c.PayeeID > 0 {
 			// retrieve Account for scheduled CashFlows
 			a = new(Account)
@@ -457,7 +455,14 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 			a = a.Get(c.getSession(), false)
 		}
 
-		if a != nil && !c.IsScheduled() {
+		if a == nil {
+			return errors.New("Account.Name Invalid"), nil
+		} else {
+			// store pair account.ID in PayeeID (aka TransferAccountID)
+			c.PayeeID = a.ID
+			c.CategoryID = 0
+		}
+		if !c.IsScheduled() {
 			// create pair CashFlow
 			pair = new(CashFlow)
 			if c.PairID > 0 {
@@ -465,9 +470,6 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 				c.CategoryID = c.PairID
 				pair.pairFrom(c)
 			}
-
-			// store pair account.ID in PayeeID (aka TransferAccountID)
-			c.PayeeID = a.ID
 
 			// fill in pair CashFlow with remaining details
 			pair.cloneTransfer(c)
@@ -503,7 +505,7 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
 		err = result.Error
 	}
 	if err != nil {
-		log.Fatalf("[MODEL] INSERT CASHFLOW ERROR: %s", err)
+		log.Printf("[MODEL] INSERT CASHFLOW ERROR: %s", err)
 		return err
 	}
 	// insert successful, no errors after this point
@@ -834,6 +836,10 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 // defaults for DB fields not set during Create (are Edit only)
 func (c *CashFlow) setDefaults() {
 	c.TaxYear = c.Date.Year()
+	if c.Transfer {
+		// set via PayeeName, clear for NewSplit+Create
+		c.PayeeID = 0
+	}
 }
 
 func (c *CashFlow) Create(session *Session) error {
@@ -868,7 +874,7 @@ func (c *CashFlow) Create(session *Session) error {
 	return err
 }
 
-// Edit, Delete, Update use Get
+// Edit, Delete, Update, NewSplit use Get
 // c.Account needs to be preloaded
 func (c *CashFlow) Get(session *Session, edit bool) *CashFlow {
 	db := session.DB

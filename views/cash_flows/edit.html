@@ -107,7 +107,7 @@
 {% if cash_flow.RepeatParentID > 0 -%}
 <li><a href=/cash_flows/{{ cash_flow.RepeatParentID }}/edit>Edit Scheduled CashFlow</a></li>
 {% endif -%}
-{% if cash_flow.Transfer -%}
+{% if cash_flow.PairID > 0 -%}
 <li><a href=/cash_flows/{{ cash_flow.PairID }}/edit>Edit Pair CashFlow</a></li>
 {% endif -%}
 <li><a href=/cash_flows/{{ cash_flow.ID }} data-cashflow-id="{{ cash_flow.ID }}" data-action="cashflow#actionDelete">Delete CashFlow</a></li>
