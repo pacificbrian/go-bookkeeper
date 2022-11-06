@@ -354,6 +354,26 @@ func (c *CashFlow) ListSplit(db *gorm.DB) ([]CashFlow, string) {
 	return entries, currency(total)
 }
 
+func (u *User) ListTaxCategory(db *gorm.DB, year int, taxCat *TaxCategory) ([]Account, decimal.Decimal) {
+	var total decimal.Decimal
+
+	if taxCat.CategoryID > 0 {
+		db.Preload("CashFlows",
+			   "type != ? AND tax_year = ? AND category_id = ?",
+			   "RCashFlow", year, taxCat.CategoryID).
+		   Find(&u.Accounts, &Account{UserID: u.ID, Taxable: true})
+		for i := 0; i < len(u.Accounts); i++ {
+			a := &u.Accounts[i]
+			for j := 0; j < len(a.CashFlows); j++ {
+				c := &a.CashFlows[j]
+				c.determineCashFlowType()
+				total = total.Add(c.Amount)
+			}
+		}
+	}
+	return u.Accounts, total
+}
+
 // c.Account must be preloaded
 func (c *CashFlow) HaveAccessPermission(session *Session) bool {
 	u := session.GetCurrentUser()

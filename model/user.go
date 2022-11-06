@@ -36,7 +36,7 @@ type User struct {
 	CashflowLimit int
 	Cache *UserCache `gorm:"-:all"`
 	UserSettings UserSettings
-	Categories []Category
+	Accounts []Account
 	Payees []Payee
 }
 

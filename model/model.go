@@ -93,3 +93,7 @@ func durationDays(d time.Duration) int32 {
 func timeToString(dx *time.Time) string {
 	return dx.Format(timeFormatPrint)
 }
+
+func yearToDate(year int) time.Time {
+	return time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+}

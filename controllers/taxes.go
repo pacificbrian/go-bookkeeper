@@ -25,7 +25,7 @@ func ListTaxes(c echo.Context) error {
 	session := getSession(c)
 	get_json := false
 
-	returns := new(model.TaxReturn).List(session)
+	returns := new(model.TaxReturn).List(session, year)
 
 	dh := new(helpers.DateHelper)
 	dh.Init()
@@ -38,7 +38,7 @@ func ListTaxes(c echo.Context) error {
 		return c.JSON(http.StatusOK, returns)
 	} else {
 		db := session.DB
-		entries := new(model.TaxEntry).List(session)
+		entries := new(model.TaxEntry).List(session, year)
 		data := map[string]any{ "tax_returns": returns,
 					"tax_entries": entries,
 					"date_helper": dh,

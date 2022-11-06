@@ -15,6 +15,14 @@ import (
 )
 
 var FilingStatusLabels = [5]string{"","S","MFJ","MFS","HH"}
+var TaxTypeNames = [9]string{"", "Income", "Income Capital Gain",
+			     "Deductions for AGI", "Deductions from AGI",
+			     "Itemized Deductions", "Tax", "Tax Credits",
+			     "Tax Payments"}
+// for ItemizedDeduction, Credits, Payments: entry.Amount will be set
+// from Debit CashFlows, but we expected TaxEntry to have Positive Amount
+var FlipAutomaticTaxEntries = [9]bool{false, false, false, false, false,
+				      true, false, true, true}
 
 const (
 	FilingStatusUndefined uint = iota
@@ -36,6 +44,14 @@ const (
 	TaxTypePayments
 )
 
+type TaxCategory struct {
+	Model
+	TaxItemID uint `form:"tax_category.tax_item_id"`
+	CategoryID uint `form:"tax_category.category_id"`
+	TradeTypeID uint `form:"tax_category.trade_type_id"`
+	TaxItem TaxItem
+}
+
 type TaxFilingStatus struct {
 	Model
 	Name string
@@ -45,8 +61,10 @@ type TaxFilingStatus struct {
 type TaxItem struct {
 	Model
 	TaxTypeID uint `form:"tax_item.tax_type_id"`
-	TaxCategoryID uint `form:"tax_item.tax_category_id"`
+	//TaxCategoryID uint `form:"tax_item.tax_category_id"
 	Name string `form:"tax_item.Name"`
+	Type string
+	TaxType TaxType
 }
 
 type TaxRegion struct {
@@ -122,6 +140,14 @@ func (t TaxReturn) FilingStatusLabel() string {
 	return label
 }
 
+func (*TaxCategory) List(db *gorm.DB) []TaxCategory {
+	entries := []TaxCategory{}
+	db.Preload("TaxItem").Order("tax_item_id").
+	   Order("category_id").Find(&entries)
+
+	return entries
+}
+
 func (*TaxFilingStatus) List(db *gorm.DB) []TaxFilingStatus {
 	entries := []TaxFilingStatus{}
 	db.Table("tax_filing_status").Find(&entries)
@@ -134,6 +160,29 @@ func (*TaxItem) List(db *gorm.DB) []TaxItem {
 	db.Find(&entries)
 
 	return entries
+}
+
+func (ti *TaxItem) setTaxType() {
+	switch ti.Type {
+	case "TaxIncomeItem":
+		ti.TaxType.ID = TaxTypeIncome
+	case "TaxIncomeCapitalGainItem":
+		ti.TaxType.ID = TaxTypeIncomeCapitalGain
+	case "TaxDeductionForAGIItem":
+		ti.TaxType.ID = TaxTypeDeductionsForAGI
+	case "TaxDeductionFromAGIItem":
+		ti.TaxType.ID = TaxTypeDeductionFromAGI
+	case "TaxDeductionItemizedItem":
+		ti.TaxType.ID = TaxTypeItemizedDeduction
+	case "TaxTaxItem":
+		ti.TaxType.ID = TaxTypeTax
+	case "TaxCreditItem":
+		ti.TaxType.ID = TaxTypeCredits
+	case "TaxPaymentItem":
+		ti.TaxType.ID = TaxTypePayments
+	}
+	ti.TaxTypeID = ti.TaxType.ID
+	ti.TaxType.Name = TaxTypeNames[ti.TaxTypeID]
 }
 
 func (*TaxRegion) List(db *gorm.DB) []TaxRegion {
@@ -150,18 +199,63 @@ func (*TaxType) List(db *gorm.DB) []TaxType {
 	return entries
 }
 
-func (*TaxEntry) List(session *Session) []TaxEntry {
+func (taxCat *TaxCategory) makeTaxEntry(session *Session, year int, total decimal.Decimal) *TaxEntry {
 	db := session.DB
 	u := session.GetCurrentUser()
+	entry := new(TaxEntry)
+	entry.Year = yearToDate(year)
+	entry.UserID = u.ID
+	entry.TaxItem = taxCat.TaxItem
+	entry.TaxItemID = entry.TaxItem.ID
+	entry.TaxItem.setTaxType()
+	entry.TaxType = entry.TaxItem.TaxType
+	entry.TaxTypeID = entry.TaxType.ID
+
+	// see comment for FlipAutomaticTaxEntries
+	if FlipAutomaticTaxEntries[entry.TaxTypeID] {
+		entry.Amount = total.Neg()
+	} else {
+		entry.Amount = total
+	}
+
+	c := new(CashFlow)
+	c.CategoryID = taxCat.CategoryID
+	c.Account.setSession(session)
+	c.setCategoryName(db)
+	entry.Memo = c.CategoryName
+	entry.TaxRegion.Name = "AUTO"
+
+	return entry
+}
+
+func (*TaxEntry) List(session *Session, year int) []TaxEntry {
+	db := session.DB
+	u := session.GetCurrentUser()
+	autoEntries := []TaxEntry{}
 	entries := []TaxEntry{}
 	db.Preload("TaxRegion").
 	   Preload("TaxType").
 	   Preload("TaxItem").
 	   Table("taxes").
+	   Where("DATE(year) >= ? AND DATE(year) < ?", yearToDate(year), yearToDate(year+1)).
 	   Where(&TaxEntry{UserID: u.ID}).Find(&entries)
 
-	log.Printf("[MODEL] LIST TAX ENTRIES(%d)", len(entries))
-	return entries
+	// Get "AUTO" entries
+	taxCategories := new(TaxCategory).List(db)
+	for i := 0; i < len(taxCategories); i++ {
+		taxCategory := &taxCategories[i]
+		if taxCategory.CategoryID > 0 {
+			_, total := u.ListTaxCategory(db, year, taxCategory)
+			if !total.IsZero() {
+				autoEntry := taxCategory.makeTaxEntry(session, year, total)
+				autoEntries = append(autoEntries, *autoEntry)
+			}
+		}
+	}
+
+	log.Printf("[MODEL] LIST TAX ENTRIES(AUTO:%d, USER:%d)",
+		   len(autoEntries), len(entries))
+	return append(autoEntries, entries...)
 }
 
 func (t *TaxEntry) Create(session *Session) error {
@@ -169,7 +263,7 @@ func (t *TaxEntry) Create(session *Session) error {
 	u := session.GetCurrentUser()
 	if u != nil {
 		t.UserID = u.ID
-		t.Year = time.Date(t.DateYear, 1, 1, 0, 0, 0, 0, time.UTC)
+		t.Year = yearToDate(t.DateYear)
 		spewModel(t)
 		result := db.Table("taxes").Create(t)
 		return result.Error
@@ -177,13 +271,13 @@ func (t *TaxEntry) Create(session *Session) error {
 	return errors.New("Permission Denied")
 }
 
-func (*TaxReturn) List(session *Session) []TaxReturn {
+func (*TaxReturn) List(session *Session, year int) []TaxReturn {
 	db := session.DB
 	u := session.GetCurrentUser()
 	entries := []TaxReturn{}
 	db.Preload("TaxRegion").
 	   Table("tax_users").
-	   Where(&TaxReturn{UserID: u.ID}).Find(&entries)
+	   Where(&TaxReturn{UserID: u.ID, Year: year}).Find(&entries)
 
 	log.Printf("[MODEL] LIST TAX RETURNS(%d)", len(entries))
 	return entries
@@ -214,7 +308,7 @@ func (item *TaxItem) GetByName(db *gorm.DB, name string) *TaxItem {
 	return item
 }
 
-// Some TaxTypes may need Mul(-1) of the CashFlows
+// Some TaxTypes may need Neg() of the CashFlows (handled in makeTaxEntry)
 // Possibly we should add Round(2) to be cautious
 func (*TaxType) Sum(db *gorm.DB, r *TaxReturn, taxType uint) decimal.Decimal {
 	var total decimal.Decimal
@@ -225,6 +319,8 @@ func (*TaxType) Sum(db *gorm.DB, r *TaxReturn, taxType uint) decimal.Decimal {
 	t.TaxRegionID = r.TaxRegionID
 	t.TaxTypeID = taxType
 	db.Table("taxes").Where(&t).Find(&entries)
+
+	// TODO: pull in AUTO taxEntries
 
 	for i := 0; i < len(entries); i++ {
 		t = &entries[i]
