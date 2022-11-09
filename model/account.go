@@ -312,10 +312,22 @@ func (a *Account) cloneVerified(src *Account) {
 	a.Verified = src.Verified
 }
 
+// Account.User is populated from Session
+func (a *Account) setSession(session *Session) bool {
+	u := session.GetCurrentUser()
+	a.Verified = (u != nil)
+	if a.Verified {
+		a.UserID = u.ID
+		a.User = *u
+		a.Session = session
+	}
+	return a.Verified
+}
+
 func (a *Account) HaveAccessPermission(session *Session) bool {
 	u := session.GetCurrentUser()
 	// store in a.Verified if this Account is trusted
-	a.Verified = !(u == nil || u.ID != a.UserID)
+	a.Verified = !(u == nil || a.ID == 0 || u.ID != a.UserID)
 	if a.Verified {
 		a.User = *u
 		a.Session = session

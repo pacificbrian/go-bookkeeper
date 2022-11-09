@@ -162,6 +162,25 @@ func (c *CashFlow) HasSplits() bool {
 	return c.SplitCount() > 0
 }
 
+func (c *CashFlow) setCategoryName(db *gorm.DB) {
+	if c.HasSplits() {
+		c.CategoryName = "Split"
+	} else if c.CategoryID > 0 {
+		c.CategoryName = c.Category.Name
+		if c.CategoryName == "" && c.Account.Verified {
+			c.CategoryName = c.Account.User.lookupCategory(c.CategoryID)
+		}
+		if c.CategoryName == "" {
+			c.Category.ID = c.CategoryID
+			db.First(&c.Category)
+			if c.Account.Verified {
+				c.Account.User.cacheCategory(&c.Category)
+			}
+			c.CategoryName = c.Category.Name
+		}
+	}
+}
+
 func (c *CashFlow) PreloadRepeat(db *gorm.DB) {
 	if c.RepeatIntervalID > 0 {
 		c.RepeatInterval.ID = c.RepeatIntervalID
@@ -194,23 +213,7 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 			db.First(&c.Payee)
 		}
 		c.PayeeName = c.Payee.Name
-
-		if c.HasSplits() {
-			c.CategoryName = "Split"
-		} else if c.CategoryID > 0 {
-			c.CategoryName = c.Category.Name
-			if c.CategoryName == "" && c.Account.Verified {
-				c.CategoryName = c.Account.User.lookupCategory(c.CategoryID)
-			}
-			if c.CategoryName == "" {
-				c.Category.ID = c.CategoryID
-				db.First(&c.Category)
-				if c.Account.Verified {
-					c.Account.User.cacheCategory(&c.Category)
-				}
-				c.CategoryName = c.Category.Name
-			}
-		}
+		c.setCategoryName(db)
 	}
 
 	if c.IsScheduledParent() {

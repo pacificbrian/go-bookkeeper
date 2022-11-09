@@ -53,6 +53,7 @@ func (u *User) cacheAccount(a *Account) {
 
 func (u *User) cacheCategory(c *Category) {
 	u.Cache.CategoryNames[c.ID] = c.Name
+	log.Printf("[CACHE] ADD CATEGORY(%d: %s)", c.ID, c.Name)
 }
 
 func (u *User) lookupAccount(id uint) string {
