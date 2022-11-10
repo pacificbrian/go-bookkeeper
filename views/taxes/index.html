@@ -29,9 +29,9 @@
 <td class="currency">{{ r.Currency(r.Payments) }}</td>
 <td class="currency">{{ r.Currency(r.UnpaidTax) }}</td>
 <td>
-<a href=/taxes/{{r.ID}} data-cashflow-id="{{ r.ID }}" data-action="tax#actionCalculate">Recalculate</a><br>
+<a href=/taxes/{{r.ID}} data-tax-id="{{ r.ID }}" data-action="tax#actionCalculate">Recalculate</a><br>
 <a href=/taxes/{{r.ID}}/edit>Edit</a><br>
-<a href=/taxes/{{r.ID}} data-cashflow-id="{{ r.ID }}" data-action="tax#actionDelete">Delete</a><br>
+<a href=/taxes/{{r.ID}} data-tax-id="{{ r.ID }}" data-action="tax#actionDelete">Delete</a><br>
 </td>
 </tr>
 {% endfor -%}

@@ -118,6 +118,7 @@ type TaxReturn struct {
 	OwedTax decimal.Decimal
 	UnpaidTax decimal.Decimal
 	LongCapgainIncome decimal.Decimal
+	Session *Session `gorm:"-:all"`
 	TaxRegion TaxRegion
 	User User
 }
@@ -141,11 +142,20 @@ func (t TaxReturn) FilingStatusLabel() string {
 	return label
 }
 
-func (*TaxCategory) List(db *gorm.DB) []TaxCategory {
+func (*TaxCategory) List(db *gorm.DB, taxType uint) []TaxCategory {
 	entries := []TaxCategory{}
-	db.Preload("TaxItem").Order("tax_item_id").
-	   Order("category_id").Find(&entries)
 
+	dbPrefix := db.Order("tax_item_id").Order("category_id")
+	if taxType > 0 {
+		dbPrefix = dbPrefix.Where("tax_type_id = ?", taxType).Joins("TaxItem")
+	} else {
+		dbPrefix = dbPrefix.Preload("TaxItem")
+	}
+	dbPrefix.Find(&entries)
+
+	if len(entries) > 0 {
+		log.Printf("[MODEL] LIST TAX CATEGORIES(%d: %d)", taxType, len(entries))
+	}
 	return entries
 }
 
@@ -200,6 +210,16 @@ func (*TaxType) List(db *gorm.DB) []TaxType {
 	return entries
 }
 
+// some TaxTypes expect to have Positive Amount
+// (see comment for FlipAutomaticTaxEntries)
+func (entry *TaxEntry) setAmount(total decimal.Decimal) {
+	if FlipAutomaticTaxEntries[entry.TaxTypeID] {
+		entry.Amount = total.Neg()
+	} else {
+		entry.Amount = total
+	}
+}
+
 func (taxCat *TaxCategory) makeTaxEntry(session *Session, year int, total decimal.Decimal) *TaxEntry {
 	db := session.DB
 	u := session.GetCurrentUser()
@@ -211,13 +231,7 @@ func (taxCat *TaxCategory) makeTaxEntry(session *Session, year int, total decima
 	entry.TaxItem.setTaxType()
 	entry.TaxType = entry.TaxItem.TaxType
 	entry.TaxTypeID = entry.TaxType.ID
-
-	// see comment for FlipAutomaticTaxEntries
-	if FlipAutomaticTaxEntries[entry.TaxTypeID] {
-		entry.Amount = total.Neg()
-	} else {
-		entry.Amount = total
-	}
+	entry.setAmount(total)
 
 	c := new(CashFlow)
 	c.CategoryID = taxCat.CategoryID
@@ -238,11 +252,11 @@ func (*TaxEntry) List(session *Session, year int) []TaxEntry {
 	   Preload("TaxType").
 	   Preload("TaxItem").
 	   Table("taxes").
-	   Where("DATE(year) >= ? AND DATE(year) < ?", yearToDate(year), yearToDate(year+1)).
+	   Where("year >= ? AND year < ?", yearToDate(year), yearToDate(year+1)).
 	   Where(&TaxEntry{UserID: u.ID}).Find(&entries)
 
 	// Get "AUTO" entries
-	taxCategories := new(TaxCategory).List(db)
+	taxCategories := new(TaxCategory).List(db, 0)
 	for i := 0; i < len(taxCategories); i++ {
 		taxCategory := &taxCategories[i]
 		if taxCategory.CategoryID > 0 {
@@ -319,13 +333,32 @@ func (*TaxType) Sum(db *gorm.DB, r *TaxReturn, taxType uint) decimal.Decimal {
 	t.UserID = r.UserID
 	t.TaxRegionID = r.TaxRegionID
 	t.TaxTypeID = taxType
-	db.Table("taxes").Where(&t).Find(&entries)
-
-	// TODO: pull in AUTO taxEntries
+	db.Table("taxes").Where(&t).
+	   Where("year >= ? AND year < ?", yearToDate(r.Year), yearToDate(r.Year+1)).
+	   Find(&entries)
 
 	for i := 0; i < len(entries); i++ {
 		t = &entries[i]
-		total.Add(t.Amount)
+		total = total.Add(t.Amount)
+	}
+
+	// Include "AUTO" entries
+	taxCategories := new(TaxCategory).List(db, taxType)
+	taxEntry := new(TaxEntry)
+	for i := 0; i < len(taxCategories); i++ {
+		taxCategory := &taxCategories[i]
+		if taxCategory.CategoryID > 0 {
+			_, categoryTotal := r.User.ListTaxCategory(db, r.Year, taxCategory)
+			if !categoryTotal.IsZero() {
+				taxEntry.TaxTypeID = taxType
+				taxEntry.setAmount(categoryTotal)
+				total = total.Add(taxEntry.Amount)
+			}
+		}
+	}
+
+	if len(entries) > 0 {
+		log.Printf("[MODEL] TAX TYPE(%d) SUM(%f)", taxType, total.InexactFloat64())
 	}
 	return total
 }
@@ -344,11 +377,17 @@ func (item *TaxItem) Sum(db *gorm.DB, r *TaxReturn, name string) decimal.Decimal
 	t.TaxRegionID = r.TaxRegionID
 	t.TaxTypeID = item.TaxTypeID
 	t.TaxItemID = item.ID
-	db.Table("taxes").Where(&t).Find(&entries)
+	db.Table("taxes").Where(&t).
+	   Where("year >= ? AND year < ?", yearToDate(r.Year), yearToDate(r.Year+1)).
+	   Find(&entries)
 
 	for i := 0; i < len(entries); i++ {
 		t = &entries[i]
-		total.Add(t.Amount)
+		total = total.Add(t.Amount)
+	}
+
+	if len(entries) > 0 {
+		log.Printf("[MODEL] TAX ITEM(%d) SUM(%d:%f)", item.ID, total.InexactFloat64())
 	}
 	return total
 }
@@ -400,7 +439,11 @@ func (r *TaxReturn) calculate(db *gorm.DB) {
 
 func (r *TaxReturn) HaveAccessPermission(session *Session) bool {
 	u := session.GetCurrentUser()
-	return !(u == nil || u.ID != r.UserID)
+	valid := !(u == nil || u.ID != r.UserID)
+	if valid {
+		r.Session = session
+	}
+	return valid
 }
 
 func (r *TaxReturn) Get(session *Session) *TaxReturn {
@@ -419,8 +462,9 @@ func (r *TaxReturn) Recalculate(session *Session) error {
 	}
 	db := session.DB
 
-	log.Printf("[MODEL] RECALCULATE TAX RETURN(%d) REGION(%d)", r.ID, r.TaxRegionID)
 	if (r.TaxRegionID == 1) {
+		log.Printf("[MODEL] RECALCULATE TAX RETURN(%d: %d) REGION(%d)",
+			   r.ID, r.Year, r.TaxRegionID)
 		r.calculate(db)
 		db.Omit(clause.Associations).Table("tax_users").Save(r)
 	}
