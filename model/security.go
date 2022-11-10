@@ -281,6 +281,6 @@ func (s *Security) Delete(session *Session) error {
 func (s *Security) Update(session *Session) error {
 	db := session.DB
 	spewModel(s)
-	result := db.Save(s)
+	result := db.Omit(clause.Associations).Save(s)
 	return result.Error
 }

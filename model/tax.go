@@ -12,6 +12,7 @@ import (
 	"time"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 var FilingStatusLabels = [5]string{"","S","MFJ","MFS","HH"}
@@ -265,7 +266,7 @@ func (t *TaxEntry) Create(session *Session) error {
 		t.UserID = u.ID
 		t.Year = yearToDate(t.DateYear)
 		spewModel(t)
-		result := db.Table("taxes").Create(t)
+		result := db.Omit(clause.Associations).Table("taxes").Create(t)
 		return result.Error
 	}
 	return errors.New("Permission Denied")
@@ -289,7 +290,7 @@ func (t *TaxReturn) Create(session *Session) error {
 	if u != nil {
 		t.UserID = u.ID
 		spewModel(t)
-		result := db.Table("tax_users").Create(t)
+		result := db.Omit(clause.Associations).Table("tax_users").Create(t)
 		if result.Error != nil {
 			log.Panic(result.Error)
 		}
@@ -421,7 +422,7 @@ func (r *TaxReturn) Recalculate(session *Session) error {
 	log.Printf("[MODEL] RECALCULATE TAX RETURN(%d) REGION(%d)", r.ID, r.TaxRegionID)
 	if (r.TaxRegionID == 1) {
 		r.calculate(db)
-		db.Table("tax_users").Save(r)
+		db.Omit(clause.Associations).Table("tax_users").Save(r)
 	}
 	return nil
 }

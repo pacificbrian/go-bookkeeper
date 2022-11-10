@@ -8,6 +8,7 @@ package model
 
 import (
 	"errors"
+	"gorm.io/gorm/clause"
 )
 
 type Payee struct {
@@ -48,7 +49,7 @@ func payeeGetByName(session *Session, name string) *Payee {
 	db.Where(&payee).First(&payee)
 
 	if payee.ID == 0 {
-		db.Create(payee)
+		db.Omit(clause.Associations).Create(payee)
 		spewModel(payee)
 	}
 
@@ -62,7 +63,7 @@ func (p *Payee) Create(session *Session) error {
 		// Payee.User is set to CurrentUser()
 		p.UserID = u.ID
 		spewModel(p)
-		result := db.Create(p)
+		result := db.Omit(clause.Associations).Create(p)
 		return result.Error
 	}
 	return errors.New("Permission Denied")
@@ -100,6 +101,6 @@ func (p *Payee) Delete(session *Session) error {
 func (p *Payee) Update(session *Session) error {
 	db := session.DB
 	spewModel(p)
-	result := db.Save(p)
+	result := db.Omit(clause.Associations).Save(p)
 	return result.Error
 }
