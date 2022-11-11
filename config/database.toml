@@ -1,3 +1,5 @@
+[global]
+sessions = true
 [db]
 # choices are "sqlite" or "mysql"
 db = "sqlite"

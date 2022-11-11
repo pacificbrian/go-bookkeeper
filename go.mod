@@ -4,6 +4,7 @@ go 1.19
 
 require (
 	github.com/aclindsa/ofxgo v0.1.3
+	github.com/alexedwards/scs/v2 v2.5.0
 	github.com/davecgh/go-spew v1.1.1
 	github.com/ilyakaznacheev/cleanenv v1.3.0
 	github.com/labstack/echo/v4 v4.9.0
@@ -11,6 +12,7 @@ require (
 	github.com/piquette/finance-go v1.0.0
 	github.com/rubenv/sql-migrate v1.2.0
 	github.com/shopspring/decimal v1.3.1
+	github.com/spazzymoto/echo-scs-session v1.0.0
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 	gorm.io/driver/mysql v1.3.4
 	gorm.io/driver/sqlite v1.3.6
