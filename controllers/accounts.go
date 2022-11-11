@@ -25,8 +25,11 @@ import (
 // Need Input Validation after Bind
 
 func ListAccounts(c echo.Context) error {
-	log.Println("LIST ACCOUNTS")
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Println("LIST ACCOUNTS")
 	get_json := false
 
 	entries := model.ListAccounts(session, false)
@@ -46,8 +49,11 @@ func ListAccounts(c echo.Context) error {
 }
 
 func CreateAccount(c echo.Context) error {
-	log.Println("CREATE ACCOUNT")
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Println("CREATE ACCOUNT")
 
 	entry := new(model.Account)
 	c.Bind(entry)
@@ -59,8 +65,11 @@ func CreateAccount(c echo.Context) error {
 
 func DeleteAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("DELETE ACCOUNT(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("DELETE ACCOUNT(%d)", id)
 
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
@@ -73,8 +82,11 @@ func DeleteAccount(c echo.Context) error {
 
 func GetAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("GET ACCOUNT(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("GET ACCOUNT(%d)", id)
 	get_json := false
 	debugAB := false
 
@@ -126,8 +138,11 @@ func GetAccount(c echo.Context) error {
 
 func UpdateAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("UPDATE ACCOUNT(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("UPDATE ACCOUNT(%d)", id)
 
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
@@ -143,8 +158,11 @@ func UpdateAccount(c echo.Context) error {
 
 func EditAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("EDIT ACCOUNT(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("EDIT ACCOUNT(%d)", id)
 	db := session.DB
 
 	entry := new(model.Account)
@@ -161,8 +179,11 @@ func EditAccount(c echo.Context) error {
 }
 
 func NewAccount(c echo.Context) error {
-	log.Println("NEW ACCOUNT")
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Println("NEW ACCOUNT")
 	db := session.DB
 
 	data := map[string]any{ "account": new(model.Account).Init(),

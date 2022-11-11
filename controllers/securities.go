@@ -21,8 +21,11 @@ import (
 
 func ListSecurities(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Println("LIST SECURITIES")
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Println("LIST SECURITIES")
 	get_json := false
 
 	// need flag for all or open
@@ -44,8 +47,11 @@ func ListSecurities(c echo.Context) error {
 
 func CreateSecurity(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Println("CREATE SECURITY")
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Println("CREATE SECURITY")
 
 	entry := new(model.Security)
 	c.Bind(entry)
@@ -58,8 +64,11 @@ func CreateSecurity(c echo.Context) error {
 
 func DeleteSecurity(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("DELETE SECURITY(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("DELETE SECURITY(%d)", id)
 
 	entry := new(model.Security)
 	entry.ID = uint(id)
@@ -73,8 +82,11 @@ func DeleteSecurity(c echo.Context) error {
 func GetSecurity(c echo.Context) error {
 	accountID, _ := strconv.Atoi(c.Param("account_id"))
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("GET ACCOUNT(%d) SECURITY(%d)", accountID, id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("GET ACCOUNT(%d) SECURITY(%d)", accountID, id)
 	get_json := false
 
 	entry := new(model.Security)
@@ -108,8 +120,11 @@ func GetSecurity(c echo.Context) error {
 
 func UpdateSecurity(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("UPDATE SECURITY(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("UPDATE SECURITY(%d)", id)
 
 	entry := new(model.Security)
 	entry.ID = uint(id)
@@ -127,8 +142,11 @@ func UpdateSecurity(c echo.Context) error {
 
 func EditSecurity(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("EDIT SECURITY(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("EDIT SECURITY(%d)", id)
 
 	entry := new(model.Security)
 	entry.ID = uint(id)

@@ -18,8 +18,11 @@ import (
 func CreateImportedCashFlows(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	session := getSession(c)
-	var importFile model.HttpFile
+	if session == nil {
+		return redirectToLogin(c)
+	}
 
+	var importFile model.HttpFile
 	file, err := c.FormFile("filename")
 	if err == nil {
 		log.Printf("IMPORT CASHFLOWS (ACCOUNT:%d) (FILE:%s)", id, file.Filename)
@@ -45,8 +48,11 @@ func CreateImportedCashFlows(c echo.Context) error {
 
 func ListImportedCashFlows(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("LIST IMPORTED CASHFLOWS (ACCOUNT:%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("LIST IMPORTED CASHFLOWS (ACCOUNT:%d)", id)
 
 	var imports []model.Import
 	entry := new(model.Account)

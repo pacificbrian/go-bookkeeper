@@ -89,7 +89,16 @@ func init() {
 	defaultSession = defaultUser.NewSession()
 }
 
+func redirectToLogin(c echo.Context) error {
+	return c.Redirect(http.StatusSeeOther, "/")
+}
+
 func Login(c echo.Context) error {
-	newSession(c, defaultSession.GetCurrentUser())
-	return c.Redirect(http.StatusSeeOther, "/accounts")
+	authenticated := true
+	if authenticated {
+		newSession(c, defaultSession.GetCurrentUser())
+		return c.Redirect(http.StatusSeeOther, "/accounts")
+	} else {
+		return c.NoContent(http.StatusUnauthorized)
+	}
 }

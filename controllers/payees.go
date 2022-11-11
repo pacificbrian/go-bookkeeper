@@ -19,8 +19,11 @@ import (
 // https://go.dev/src/net/http/status.go
 
 func ListPayees(c echo.Context) error {
-	log.Println("LIST PAYEES")
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Println("LIST PAYEES")
 	get_json := false
 
 	entries := new(model.Payee).List(session)
@@ -36,8 +39,11 @@ func ListPayees(c echo.Context) error {
 }
 
 func CreatePayee(c echo.Context) error {
-	log.Println("CREATE PAYEE")
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Println("CREATE PAYEE")
 
 	entry := new(model.Payee)
 	c.Bind(entry)
@@ -49,8 +55,11 @@ func CreatePayee(c echo.Context) error {
 
 func DeletePayee(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("DELETE PAYEE(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("DELETE PAYEE(%d)", id)
 
 	entry := new(model.Payee)
 	entry.ID = uint(id)
@@ -63,8 +72,11 @@ func DeletePayee(c echo.Context) error {
 
 func UpdatePayee(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("UPDATE PAYEE(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("UPDATE PAYEE(%d)", id)
 
 	entry := new(model.Payee)
 	entry.ID = uint(id)
@@ -80,8 +92,11 @@ func UpdatePayee(c echo.Context) error {
 
 func EditPayee(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("EDIT PAYEE(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("EDIT PAYEE(%d)", id)
 
 	entry := new(model.Payee)
 	entry.ID = uint(id)

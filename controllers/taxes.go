@@ -21,8 +21,11 @@ import (
 
 func ListTaxes(c echo.Context) error {
 	year, _ := strconv.Atoi(c.Param("year"))
-	log.Printf("LIST TAXES (%d)", year)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("LIST TAXES (%d)", year)
 	get_json := false
 
 	returns := new(model.TaxReturn).List(session, year)
@@ -53,8 +56,11 @@ func ListTaxes(c echo.Context) error {
 }
 
 func CreateTaxEntry(c echo.Context) error {
-	log.Println("CREATE TAX ENTRY")
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Println("CREATE TAX ENTRY")
 
 	entry := new(model.TaxEntry)
 	c.Bind(entry)
@@ -70,8 +76,11 @@ func CreateTaxEntry(c echo.Context) error {
 }
 
 func CreateTaxes(c echo.Context) error {
-	log.Println("CREATE TAX RETURN")
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Println("CREATE TAX RETURN")
 
 	entry := new(model.TaxReturn)
 	c.Bind(entry)
@@ -88,8 +97,11 @@ func CreateTaxes(c echo.Context) error {
 
 func RecalculateTaxes(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("RECALCULATE TAX RETURN(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("RECALCULATE TAX RETURN(%d)", id)
 
 	entry := new(model.TaxReturn)
 	entry.ID = uint(id)
@@ -104,8 +116,11 @@ func RecalculateTaxes(c echo.Context) error {
 
 func DeleteTaxes(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("DELETE TAX RETURN(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("DELETE TAX RETURN(%d)", id)
 
 	entry := new(model.TaxReturn)
 	entry.ID = uint(id)

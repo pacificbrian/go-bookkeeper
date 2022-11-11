@@ -21,9 +21,12 @@ import (
 func CreateTrade(c echo.Context) error {
 	account_id, _ := strconv.Atoi(c.Param("account_id"))
 	security_id, _ := strconv.Atoi(c.Param("security_id"))
+	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
 	log.Printf("CREATE TRADE ACCOUNT(%d) SECURITY(%d)",
 		   account_id, security_id)
-	session := getSession(c)
 
 	entry := new(model.Trade)
 	c.Bind(entry)
@@ -46,8 +49,11 @@ func CreateTrade(c echo.Context) error {
 
 func DeleteTrade(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("DELETE TRADE(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("DELETE TRADE(%d)", id)
 
 	entry := new(model.Trade)
 	entry.ID = uint(id)
@@ -61,8 +67,11 @@ func DeleteTrade(c echo.Context) error {
 func UpdateTrade(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
 	security_id, _ := strconv.Atoi(c.Param("security_id"))
-	log.Printf("UPDATE TRADE(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("UPDATE TRADE(%d)", id)
 
 	entry := new(model.Trade)
 	entry.ID = uint(id)
@@ -86,8 +95,11 @@ func UpdateTrade(c echo.Context) error {
 
 func EditTrade(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("EDIT TRADE(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("EDIT TRADE(%d)", id)
 
 	entry := new(model.Trade)
 	entry.ID = uint(id)

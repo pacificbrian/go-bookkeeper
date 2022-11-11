@@ -21,8 +21,11 @@ import (
 
 func CreateCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("CREATE CASHFLOW (ACCOUNT:%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("CREATE CASHFLOW (ACCOUNT:%d)", id)
 
 	entry := new(model.CashFlow)
 	c.Bind(entry)
@@ -36,8 +39,11 @@ func CreateCashFlow(c echo.Context) error {
 
 func CreateScheduledCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("CREATE SCHEDULED CASHFLOW (FROM:%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("CREATE SCHEDULED CASHFLOW (FROM:%d)", id)
 
 	entry := new(model.CashFlow)
 	c.Bind(entry)
@@ -52,8 +58,11 @@ func CreateScheduledCashFlow(c echo.Context) error {
 
 func CreateSplitCashFlow(c echo.Context) error {
 	split_from, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("CREATE SPLIT CASHFLOW (PARENT:%d)", split_from)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("CREATE SPLIT CASHFLOW (PARENT:%d)", split_from)
 
 	entry, httpStatus := model.NewSplitCashFlow(session, uint(split_from))
 	if entry == nil {
@@ -68,8 +77,11 @@ func CreateSplitCashFlow(c echo.Context) error {
 
 func PutCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("PUT CASHFLOW(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("PUT CASHFLOW(%d)", id)
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
@@ -89,8 +101,11 @@ func PutCashFlow(c echo.Context) error {
 
 func DeleteCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("DELETE CASHFLOW(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("DELETE CASHFLOW(%d)", id)
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
@@ -103,8 +118,11 @@ func DeleteCashFlow(c echo.Context) error {
 
 func UpdateCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("UPDATE CASHFLOW(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("UPDATE CASHFLOW(%d)", id)
 
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
@@ -135,8 +153,11 @@ func UpdateCashFlow(c echo.Context) error {
 
 func EditCashFlow(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("EDIT CASHFLOW(%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("EDIT CASHFLOW(%d)", id)
 	db := session.DB
 
 	var repeat_interval_types []model.RepeatIntervalType
@@ -168,8 +189,11 @@ func EditCashFlow(c echo.Context) error {
 
 func ListScheduledCashFlows(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
-	log.Printf("LIST SCHEDULED CASHFLOWS (ACCOUNT:%d)", id)
 	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("LIST SCHEDULED CASHFLOWS (ACCOUNT:%d)", id)
 	db := session.DB
 
 	var cash_flows []model.CashFlow
