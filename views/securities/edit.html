@@ -5,6 +5,7 @@
 <h2>Edit Security</h2>
 
 <form method="POST" action="/securities/{{security.ID}}">
+<fieldset>
 <table>
 <tr/>
 <td>Symbol:</td>
@@ -22,9 +23,12 @@
 <td>Basis:</td>
 <td><input type="text" name="amount" value="{{security.Basis}}"/></td>
 </table>
+</fieldset>
+<fieldset class="submit">
 <p>
 <input type="submit" value="Update Security"/>
 </p>
+</fieldset>
 </form>
 </div>
 

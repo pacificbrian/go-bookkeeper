@@ -118,6 +118,10 @@ func (c *CashFlow) IsTrade() bool {
 	return c.Type == "TradeCashFlow"
 }
 
+func (c CashFlow) ShowTradeLinks() bool {
+	return c.IsTrade()
+}
+
 func (c *CashFlow) mustUpdateBalance() bool {
 	// aka Base Type (!Split and !Repeat)
 	return (c.Type ==  "" || c.IsTrade())
@@ -401,6 +405,10 @@ func (c *CashFlow) applyCashFlowType() {
 	switch c.CashFlowTypeID {
 	case Debit:
 		c.Amount = c.Amount.Neg()
+		// either handle this here or in trade.toCashFlow()
+		if c.IsTrade() {
+			c.oldAmount = c.oldAmount.Neg()
+		}
 		c.Transfer = false
 	case Credit:
 		c.Transfer = false

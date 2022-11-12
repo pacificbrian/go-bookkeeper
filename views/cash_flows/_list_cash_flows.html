@@ -25,6 +25,8 @@
 <td>{{ c.GetTransnum() }}</td>
 {% if c.Transfer -%}
 <td><a href=/accounts/{{ c.PayeeID }}>{{ c.PayeeName }}</a></td>
+{% elif c.ShowTradeLinks() -%}
+<td><a href=/accounts/{{c.AccountID}}/securities/{{c.PayeeID}}>{{ c.PayeeName }}</a></td>
 {% else -%}
 <td>{{ c.PayeeName }}</td>
 {% endif -%}
@@ -41,6 +43,9 @@
 {% if c.ID > 0 -%}
 <td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
 <td><a href=/cash_flows/{{ c.ID }} data-cashflow-id="{{ c.ID }}" data-action="cashflow#actionDelete">Delete</a></td>
+{% elif c.ShowTradeLinks() -%}
+<td><a href=/trades/{{ c.ImportID }}/edit>Edit</a></td>
+<td></td>
 {% else -%}
 <td></td>
 <td></td>

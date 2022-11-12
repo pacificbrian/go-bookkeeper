@@ -123,15 +123,14 @@ a img {
 }
 
 #content fieldset {
-	margin:0 30px;
+	margin:0 22px;
 	border:none;
-	border-bottom:1px solid #e5e5e5;
-	padding:1.5em 0;
+	border-bottom:1px solid #bfbfbf;
+	padding:1.4em 0;
 }
 
 #content fieldset.first {
-	padding:1.5em 30px;
-	margin:0;
+	padding:0.2em 0;
 	border-bottom:none;
 }
 
@@ -140,6 +139,7 @@ a img {
 }
 
 #content fieldset.submit {
+	padding:1.2em 0;
 	border-bottom:none;
 }
 
@@ -148,14 +148,14 @@ a img {
 }
 
 #content fieldset.first input {
-	font-size:1.8em;
+	font-size:1.5em;
 	font-weight:bold;
 }
 
 #content label {
 	display:block;
 	margin:0 0 3px 2px;
-	font-size:1.1em;
+	font-size:1.05em;
 }
 
 #errorExplanation {

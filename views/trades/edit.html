@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="edit">
+<h2>Edit Trade Transaction</h2>
+
+<fieldset class="first">
+<table>
+<tr/>
+<td>Account: <strong>{{ trade.Account.Name }}</strong></td>
+<tr/>
+<td>Security: <strong>{{ trade.Security.Company.GetName() }}</strong></td>
+<tr/>
+<td>Type: <strong>{{ trade.TradeType.Name }}</strong></td>
+</table>
+</fieldset>
+
+<form method="POST" action="/securities/{{trade.SecurityID}}/trades/{{trade.ID}}">
+<fieldset>
+<table>
+<tr/>
+<td>
+<label>Date:</label>
+{{ form_date_select(date_helper) }}
+</td>
+<tr/>
+<td>
+<label>Shares:</label>
+<input type="text" name="shares" value="{{trade.Shares}}"/>
+</td>
+<tr/>
+<td>
+<label>Price:</label>
+<input type="text" name="price" value="{{trade.Price}}"/>
+</td>
+<tr/>
+<td>
+<label>Amount:</label>
+<input type="text" name="amount" value="{{trade.Amount}}"/>
+</td>
+<tr/>
+<td>
+<label>Basis:</label>
+<input type="text" name="basis" value="{{trade.Basis}}"/>
+</td>
+<tr/>
+<td>
+<label>Closed:</label>
+{{ form_checkbox("closed", trade.Closed) }}
+</td>
+<tr/>
+<td>
+<label>Tax Year:</label>
+<input type="text" name="tax_year" value="{{trade.TaxYear}}"/>
+</td>
+</table>
+</fieldset>
+<fieldset class="submit">
+<p>
+<input type="submit" value="Update Trade"/>
+</p>
+</fieldset>
+</form>
+</div>
+
+<ul id="footmenu">
+<li><a href=/accounts/{{trade.AccountID}}/securities/{{trade.SecurityID}}>Back To Security</a></li>
+<li><a href=/securities/{{trade.SecurityID}}/edit>Edit Security</a></li>
+<li><a href=/securities/{{trade.SecurityID}}>Delete Trade</a></li>
+</ul>
+
+{% endblock -%}

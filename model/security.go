@@ -69,6 +69,14 @@ func (s *Security) setValue(price decimal.Decimal) decimal.Decimal {
 
 func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 	updates := make(map[string]interface{})
+	price := s.Price()
+
+	// if trade.Date is newer than last time we pushed a Quote to database,
+	// use given Price, else use Price computed above
+	if trade.Price.IsPositive() && trade.Date.After(s.lastQuoteUpdate) {
+		price = trade.Price
+	}
+
 	if trade.IsSell() {
 		s.Basis = s.Basis.Sub(trade.Basis)
 		s.Shares = s.Shares.Sub(trade.Shares)
@@ -87,20 +95,59 @@ func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 		updates["shares"] = s.Shares
 	} else if trade.IsSplit() {
 		s.Shares = s.Shares.Mul(trade.Shares)
+		// value doesn't change for Split
+		price = decimal.Zero
 		updates["shares"] = s.Shares
 	} else if !trade.Price.IsPositive() {
 		return
 	}
 
-	// update Security Value when:
-	// if we sold all Shares, update Value to Zero
-	// if trade.Date is newer than last time we pushed a Quote to database
-	if s.Shares.IsZero() ||
-	   trade.Price.IsPositive() && trade.Date.After(s.lastQuoteUpdate) {
-		updates["value"] = s.setValue(trade.Price)
+	// update Security Value as Shares changed;
+	// if we sold all Shares, will update Value to Zero
+	if !price.IsZero() {
+		updates["value"] = s.setValue(price)
 	}
 	db.Omit(clause.Associations).Model(s).Updates(updates)
 	log.Printf("[MODEL] SECURITY(%d) ADD TRADE (%d) TYPE(%d)",
+		   s.ID, trade.ID, trade.TradeTypeID)
+}
+
+func (s *Security) updateTrade(db *gorm.DB, trade *Trade) {
+	updates := make(map[string]interface{})
+	price := s.Price()
+
+	if trade.IsBuy() {
+		s.Basis = s.Basis.Sub(trade.oldAmount)
+		s.Basis = s.Basis.Add(trade.Amount)
+		s.Shares = s.Shares.Sub(trade.oldShares)
+		s.Shares = s.Shares.Add(trade.Shares)
+		updates["basis"] = s.Basis
+		updates["shares"] = s.Shares
+	} else if trade.IsSharesIn() {
+		s.Shares = s.Shares.Sub(trade.oldShares)
+		s.Shares = s.Shares.Add(trade.Shares)
+		updates["shares"] = s.Shares
+	} else if trade.IsSharesOut() {
+		s.Shares = s.Shares.Add(trade.oldShares)
+		s.Shares = s.Shares.Sub(trade.Shares)
+		updates["shares"] = s.Shares
+	} else if trade.IsSplit() {
+		s.Shares = s.Shares.Div(trade.oldShares)
+		s.Shares = s.Shares.Mul(trade.Shares)
+		// value doesn't change for Split
+		price = decimal.Zero
+		updates["shares"] = s.Shares
+	} else {
+		return
+	}
+
+	// update Security Value as Shares changed;
+	// if we sold all Shares, will update Value to Zero
+	if !price.IsZero() {
+		updates["value"] = s.setValue(price)
+	}
+	db.Omit(clause.Associations).Model(s).Updates(updates)
+	log.Printf("[MODEL] SECURITY(%d) UPDATE TRADE (%d) TYPE(%d)",
 		   s.ID, trade.ID, trade.TradeTypeID)
 }
 
@@ -150,7 +197,7 @@ func (s *Security) List(session *Session, account *Account, openPositions bool) 
 func (s *Security) ListTrades(db *gorm.DB, openOnly bool) []Trade {
 	entries := []Trade{}
 	if s.Account.Verified {
-		dbQuery := db.Order("date asc")
+		dbQuery := db.Order("date asc").Preload("TradeType")
 		if openOnly {
 			dbQuery = dbQuery.Where("closed = 0").
 					  Where(TradeTypeQueries[Buy])
@@ -184,10 +231,20 @@ func (s *Security) validateSell(db *gorm.DB, trade *Trade) ([]Trade, error) {
 	return activeBuys, nil
 }
 
+// TODO validate there are no Sells or Splits on/after trade.Date
+func (s *Security) validateSplit(db *gorm.DB, trade *Trade) error {
+	return nil
+}
+
 func (s *Security) validateTrade(db *gorm.DB, trade *Trade) ([]Trade, error) {
 	if trade.IsSell() {
 		return s.validateSell(db, trade)
 	} else if trade.IsSplit() {
+		err := s.validateSplit(db, trade)
+		if err != nil {
+			return nil, err
+		}
+
 		activeBuys := s.ListTrades(db, true)
 		if len(activeBuys) == 0 {
 			return nil, errors.New("Ignoring Split (No Shares)")

@@ -23,6 +23,7 @@ type Trade struct {
 	SecurityID uint `gorm:"not null"`
 	Symbol string `form:"Symbol" gorm:"-:all"`
 	Date time.Time
+	oldDate time.Time `gorm:"-:all"`
 	TaxYear int `form:"tax_year"`
 	Amount decimal.Decimal `form:"amount" gorm:"not null"`
 	oldAmount decimal.Decimal `gorm:"-:all"`
@@ -34,6 +35,8 @@ type Trade struct {
 	// for Buys: remaining Basis is: Amount - Basis
 	// for Sells: the Gain (Loss) then is: Amount - Basis
 	Basis decimal.Decimal
+	oldShares decimal.Decimal `gorm:"-:all"`
+	oldBasis decimal.Decimal `gorm:"-:all"`
 	Closed bool
 	TradeType TradeType
 	Account Account
@@ -102,14 +105,17 @@ func (t *Trade) toCashFlow() *CashFlow {
 	c.AccountID = t.AccountID
 	c.CashFlowTypeID = cType
 	c.Amount = t.Amount
+	c.oldAmount = t.oldAmount
 	c.Date = t.Date
 	c.applyCashFlowType()
 	c.CategoryID = t.TradeTypeID
 	c.PayeeID = t.SecurityID
+	c.ImportID = t.ID
 	return c
 }
 
-// Account access already verified by caller
+// Account Trades, Account access already verified by caller
+// For Security Trades, use security.ListTrades
 func (*Trade) List(db *gorm.DB, account *Account) []Trade {
 	entries := []Trade{}
 	if account.Verified {
@@ -305,14 +311,27 @@ func (t *Trade) HaveAccessPermission(session *Session) bool {
 	return t.Account.Verified
 }
 
+func (t *Trade) postQueryInit() {
+	t.oldDate = t.Date
+	t.oldAmount = t.Amount
+	t.oldBasis = t.Basis
+	t.oldShares = t.Shares
+}
+
 // Edit, Delete, Update use Get
 func (t *Trade) Get(session *Session) *Trade {
 	db := session.DB
-	db.Preload("Account").First(&t)
+	db.Preload("TradeType").Preload("Account").
+	   Preload("Security.Company").Joins("Security").
+	   First(&t)
+
 	// Verify we have access to Trade
 	if !t.HaveAccessPermission(session) {
 		return nil
 	}
+
+	// for Update, store old values before overwritten
+	t.postQueryInit()
 	return t
 }
 
@@ -328,10 +347,66 @@ func (t *Trade) Delete(session *Session) error {
 	return errors.New("Permission Denied")
 }
 
+// TODO
+func (t *Trade) reverseGain(db *gorm.DB) ([]Trade, error) {
+	return nil, nil
+}
+
+// TODO
+func (t *Trade) reverseSplit(db *gorm.DB) ([]Trade, error) {
+	err := t.Security.validateSplit(db, t)
+	return nil, err
+}
+
 // Trade access already verified with Get
 func (t *Trade) Update(session *Session) error {
+	var activeBuys []Trade
+	var err error
 	db := session.DB
+
 	spewModel(t)
+	err = t.validateInputs()
+	if err != nil {
+		return err
+	}
+
+	if t.IsSell() {
+		activeBuys, err = t.reverseGain(db)
+		err = errors.New("Don't yet support Updating of Sell Trades!")
+	} else if t.IsBuy() && !t.oldBasis.IsZero() {
+		err = errors.New("Don't yet support Updating of Partially Sold Buy Trades!")
+	} else if t.IsBuy() && !t.oldShares.Equal(t.AdjustedShares) {
+		err = errors.New("Don't yet support Updating of Buy Trades affected by Splits!")
+	} else if t.IsSplit() {
+		activeBuys, err = t.reverseSplit(db)
+		err = errors.New("Don't yet support Updating of Splits!")
+	} else if t.IsBuy() {
+		// this becomes more complicated when/if removing above error cases
+		t.AdjustedShares = t.Shares
+	}
+	if err != nil {
+		log.Printf("[MODEL] UPDATE TRADE(%d) UNSUPPORTED: %v", t.ID, err)
+		return err
+	}
+
 	result := db.Omit(clause.Associations).Save(t)
-	return result.Error
+	err = result.Error
+	if err == nil {
+		if t.IsSell() && activeBuys != nil {
+			t.recordGain(db, activeBuys)
+		} else if t.IsSplit() && activeBuys != nil {
+			t.recordSplit(db, activeBuys)
+		}
+
+		t.Security.updateTrade(db, t)
+		c := t.toCashFlow()
+		if c != nil {
+			t.Account.updateBalance(db, c)
+		}
+
+		log.Printf("[MODEL] UPDATE TRADE(%d) SECURITY(%d) ACCOUNT(%d) TYPE(%d)",
+			   t.ID, t.SecurityID, t.AccountID, t.TradeTypeID)
+	}
+
+	return err
 }

@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"github.com/labstack/echo/v4"
 	"github.com/pacificbrian/go-bookkeeper/model"
+	"github.com/pacificbrian/go-bookkeeper/helpers"
 )
 
 // For http.Status, see:
@@ -81,6 +82,7 @@ func UpdateTrade(c echo.Context) error {
 	}
 
 	c.Bind(entry)
+	entry.Date = getFormDate(c)
 	entry.Update(session)
 	a_id := entry.AccountID
 	s_id := entry.SecurityID
@@ -105,7 +107,12 @@ func EditTrade(c echo.Context) error {
 	entry.ID = uint(id)
 	entry = entry.Get(session)
 
+	dh := new(helpers.DateHelper)
+	dh.Init()
+	dh.SetDate(entry.Date)
+
 	data := map[string]any{ "trade": entry,
+				"date_helper": dh,
 				"trade_types": new(model.TradeType).List(session.DB) }
-	return c.Render(http.StatusOK, "trade/edit.html", data)
+	return c.Render(http.StatusOK, "trades/edit.html", data)
 }
