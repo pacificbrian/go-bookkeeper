@@ -103,7 +103,7 @@ func GetSecurity(c echo.Context) error {
 
 		if entry != nil {
 			account = &entry.Account
-			trades = new(model.Trade).List(db, account)
+			trades = entry.ListTrades(db, false)
 		}
 
 		dh := new(helpers.DateHelper)
@@ -134,10 +134,11 @@ func UpdateSecurity(c echo.Context) error {
 	}
 
 	c.Bind(entry)
+	c.Bind(&entry.Company)
 	entry.Update(session)
 	a_id := entry.AccountID
-	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", a_id))
-	//return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/security/%d", id))
+	return c.Redirect(http.StatusSeeOther,
+			  fmt.Sprintf("/accounts/%d/securities/%d", a_id, id))
 }
 
 func EditSecurity(c echo.Context) error {
@@ -153,6 +154,7 @@ func EditSecurity(c echo.Context) error {
 	entry = entry.Get(session)
 
 	data := map[string]any{ "security": entry,
+				"security_basis_types": new(model.SecurityBasisType).List(session.DB),
 				"security_types": new(model.SecurityType).List(session.DB) }
-	return c.Render(http.StatusOK, "security/edit.html", data)
+	return c.Render(http.StatusOK, "securities/edit.html", data)
 }

@@ -258,6 +258,8 @@ func (s *Security) Get(session *Session) *Security {
 		return nil
 	}
 
+	s.Company.oldSymbol = s.Company.Symbol
+	s.Company.oldName = s.Company.Name
 	// updates s.Value (if have Shares) from latest Quote
 	s.updateValue()
 
@@ -281,6 +283,21 @@ func (s *Security) Delete(session *Session) error {
 func (s *Security) Update(session *Session) error {
 	db := session.DB
 	spewModel(s)
+
+	// test if Symbol changed, and must update CompanyID
+	updatedSymbol := s.Company.update(db)
+	if updatedSymbol {
+		s.CompanyID = s.Company.ID
+	}
 	result := db.Omit(clause.Associations).Save(s)
-	return result.Error
+	if result.Error != nil {
+		return result.Error
+	}
+	if !updatedSymbol {
+		// test if just Company.Name changed
+		s.Company.updateName(db)
+	}
+
+	log.Printf("[MODEL] UPDATE SECURITY(%d:%s)", s.ID, s.Company.Symbol)
+	return nil
 }

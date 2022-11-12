@@ -165,7 +165,7 @@ func accountGetByName(session *Session, name string) *Account {
 func (a *Account) securityGetBySymbol(session *Session, symbol string) *Security {
 	security := new(Security)
 	db := session.DB
-	c := companyGetBySymbol(db, symbol)
+	c := companyGetBySymbol(db, symbol, "")
 	security.CompanyID = c.ID
 	security.AccountID = a.ID
 	// need Where because these are not primary keys
