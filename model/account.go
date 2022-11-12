@@ -23,6 +23,7 @@ type Account struct {
 	CurrencyTypeID uint `form:"account.currency_type_id"`
 	AverageBalance decimal.Decimal `gorm:"-:all"`
 	Balance decimal.Decimal
+	CashBalance decimal.Decimal
 	Portfolio SecurityValue `gorm:"-:all"`
 	Routing int `form:"account.Routing"`
 	Name string `form:"account.Name"`
@@ -204,7 +205,7 @@ func (a *Account) averageDailyBalance(db *gorm.DB, endDate time.Time) decimal.De
 	var days int32
 	var validEntries uint
 
-	lastBalance := a.Balance
+	lastBalance := a.CashBalance
 	lastTime := endDate
 	thirtyDaysAgo := lastTime.AddDate(0, 0, int(-daysLeft))
 
@@ -267,24 +268,29 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 		return
 	}
 
-	if c.oldAmount.IsZero() || a.Balance.IsZero() {
+	adjustAmount := c.Amount.Sub(c.oldAmount)
+	if c.oldAmount.IsZero() || a.CashBalance.IsZero() {
 		// Create, Scheduled CashFlows
 		// Put Update (Transfer) (don't know Account Balance)
-		adjustAmount := c.Amount.Sub(c.oldAmount)
-		log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): +%f",
+		log.Printf("[MODEL] UPDATE CASH BALANCE ACCOUNT(%d:%d): +%f",
 			   a.ID, c.ID, adjustAmount.InexactFloat64())
 		db.Omit(clause.Associations).Model(a).
-		   Update("Balance", gorm.Expr("balance + ?", adjustAmount))
+		   Updates(map[string]interface{}{
+			   "cash_balance": gorm.Expr("cash_balance + ?", adjustAmount),
+			   "balance": gorm.Expr("balance + ?", adjustAmount)})
 	} else {
 		// Update
-		newBalance := (a.Balance.Sub(c.oldAmount)).Add(c.Amount)
-		if !(a.Balance.Equal(newBalance)) {
-			log.Printf("[MODEL] UPDATE BALANCE ACCOUNT(%d:%d): %f -> %f",
-				   a.ID, c.ID, a.Balance.InexactFloat64(),
-				   newBalance.InexactFloat64())
+		newBalance := a.Balance.Add(adjustAmount)
+		newCashBalance := a.CashBalance.Add(adjustAmount)
+		if !(a.CashBalance.Equal(newCashBalance)) {
+			log.Printf("[MODEL] UPDATE CASH BALANCE ACCOUNT(%d:%d): %f -> %f",
+				   a.ID, c.ID, a.CashBalance.InexactFloat64(),
+				   newCashBalance.InexactFloat64())
 			db.Omit(clause.Associations).Model(a).
-			   Update("Balance", newBalance)
+			   Updates(Account{CashBalance: newCashBalance,
+					   Balance: newBalance})
 			a.Balance = newBalance
+			a.CashBalance = newCashBalance
 		}
 	}
 }
@@ -309,6 +315,7 @@ func (a *Account) cloneVerified(src *Account) {
 	a.User.UserSettings = src.User.UserSettings
 	a.Session = src.Session
 	a.Balance = src.Balance
+	a.CashBalance = src.CashBalance
 	a.Verified = src.Verified
 }
 

@@ -228,7 +228,7 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 func (ca *Account) mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
 				  limit int) []CashFlow {
 	totalEntries := len(A) + len(B)
-	balance := ca.Balance
+	balance := ca.CashBalance
 	logTime := false
 	var mergedEntries []CashFlow
 	var a, b, c *CashFlow
