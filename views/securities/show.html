@@ -4,18 +4,18 @@
 <div class="show">
 <h2>{{ security.Company.GetName() }}</h2>
 <table>
-<tr>
-<td>Type:
-<td>{{ security.SecurityType.Name }}
-<tr>
-<td>Basis:
-<td>{{ security.Currency(security.Basis) }}
-<tr>
-<td>Value:
-<td>{{ security.Currency(security.Value) }}
-<tr>
-<td>Return:
-<td>{{ security.TotalReturn() }}%
+<tr/>
+<td>Type:</td>
+<td><strong>{{ security.SecurityType.Name }}</strong></td>
+<tr/>
+<td>Basis:</td>
+<td><b>{{ security.Currency(security.Basis) }}</b></td>
+<tr/>
+<td>Value:</td>
+<td><b>{{ security.Currency(security.Value) }}</b></td>
+<tr/>
+<td>Return:</td>
+<td><b>{{ security.TotalReturn() }}%</b></td>
 </table>
 
 {% if (trades|length > 0) -%}

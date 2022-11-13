@@ -1,6 +1,8 @@
 <table>
-<tr>
-<td>
-<strong>Cash Balance</strong>: {{ account.Currency(account.CashBalance) }}
-</td>
+<tr/>
+<td><strong>Cash Balance: </strong> {{ account.Currency(account.CashBalance) }} </td>
+{% if account.IsInvestment() -%}
+<tr/>
+<td><strong>Total Balance: </strong> {{ account.Currency(account.Balance) }} </td>
+{% endif -%}
 </table>

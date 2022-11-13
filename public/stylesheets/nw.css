@@ -102,9 +102,9 @@ a img {
 }
 
 #content h3 {
-  padding-top: 9px;
-  margin-bottom: 0.2;
-  font-size: 1.28em;
+  padding-top: 3px;
+  margin-bottom: 0.1;
+  font-size: 1.38em;
 }
 
 #content h3.horizontal-bar {
@@ -119,7 +119,7 @@ a img {
 }
 
 #content strong {
-  font-size: 1.08em;
+  font-size: 1.01em;
 }
 
 #content fieldset {
@@ -193,6 +193,7 @@ td, th {
 .twin-collapse td {
   font-size: 1.08em;
   padding: .1em;
+  padding-top: 0;
 }
 
 td.left {

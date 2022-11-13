@@ -5,22 +5,27 @@
 <h2>{{ account.Name }}</h2>
 
 <table>
-<tr>
-<td>Type:
-<td>{{ account.AccountType.Name }}
-</tr>
-<tr>
-<td>Balance:
-<td>{{ account.Currency(account.Balance) }}
+<tr/>
+<td>Type:</td>
+<td><strong>{{ account.AccountType.Name }}</strong></td>
+<tr/>
+<td>Cash Balance:</td>
+<td><b>{{ account.Currency(account.CashBalance) }}</b></td>
+{% if account.IsInvestment() -%}
+<tr/>
+<td>Total Balance:</td>
+<td><b>{{ account.Currency(account.Balance) }}</b></td>
+{% endif -%}
 {% if account.HasAverageDailyBalance() -%}
-<tr>
-<td>ADB (30 days):
-<td>{{ account.Currency(account.AverageBalance) }}
+<tr/>
+<td>ADB (30 days):</td>
+<td><b>{{ account.Currency(account.AverageBalance) }}</b></td>
 {% endif -%}
 </tr>
 </table>
 
 {% if account.IsInvestment() && (securities|length > 0) -%}
+<h3>Securities Held</h3>
 <div id="securities">
 {% include "securities/_list_securities.html" -%}
 </div>
@@ -28,14 +33,13 @@
 {% endif -%}
 
 {% if (cash_flows|length > 0) -%}
+<h3>Transaction Ledger</h3>
 <div id="cash_flows">
 {% include "cash_flows/_list_cash_flows.html" -%}
 </div>
-<div id="total">
-{% include "accounts/_total.html" -%}
-</div>
 {% endif -%}
 
+<h3>New Transaction</h3>
 <table class="twin-collapse">
 <tr>
 {% if account.IsInvestment() -%}
