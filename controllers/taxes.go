@@ -75,6 +75,23 @@ func CreateTaxEntry(c echo.Context) error {
 	}
 }
 
+func DeleteTaxEntry(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("DELETE TAX ENTRY(%d)", id)
+
+	entry := new(model.TaxEntry)
+	entry.ID = uint(id)
+	if entry.Delete(session) != nil {
+		return c.NoContent(http.StatusUnauthorized)
+	} else {
+		return c.NoContent(http.StatusAccepted)
+	}
+}
+
 func CreateTaxes(c echo.Context) error {
 	session := getSession(c)
 	if session == nil {

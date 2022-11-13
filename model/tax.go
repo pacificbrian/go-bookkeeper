@@ -286,6 +286,32 @@ func (t *TaxEntry) Create(session *Session) error {
 	return errors.New("Permission Denied")
 }
 
+func (te *TaxEntry) HaveAccessPermission(session *Session) bool {
+	u := session.GetCurrentUser()
+	return !(u == nil || u.ID != te.UserID)
+}
+
+func (te *TaxEntry) Get(session *Session) *TaxEntry {
+	db := session.DB
+	db.Table("taxes").First(&te)
+	if !te.HaveAccessPermission(session) {
+		return nil
+	}
+	return te
+}
+
+func (te *TaxEntry) Delete(session *Session) error {
+	te = te.Get(session)
+	if te == nil {
+		return errors.New("Permission Denied")
+	}
+	db := session.DB
+
+	log.Printf("[MODEL] DELETE TAX ENTRY(%d)", te.ID)
+	db.Table("taxes").Delete(te)
+	return nil
+}
+
 func (*TaxReturn) List(session *Session, year int) []TaxReturn {
 	db := session.DB
 	u := session.GetCurrentUser()

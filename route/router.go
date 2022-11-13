@@ -87,6 +87,7 @@ func Init() *echo.Echo {
 	e.PUT("/taxes/:id", controllers.RecalculateTaxes)
 	e.DELETE("/taxes/:id", controllers.DeleteTaxes)
 	e.POST("/tax_entries", controllers.CreateTaxEntry)
+	e.DELETE("/tax_entries/:id", controllers.DeleteTaxEntry)
 	//e.GET("/tax_entries/:id/edit", controllers.EditTaxEntry)
 	//e.POST"/tax_entries/:id", controllers.UpdateTaxEntry)
 	//e.GET("/tax_categories", controllers.ListTaxCategories)
