@@ -79,6 +79,7 @@ func Init() *echo.Echo {
 	e.GET("/trades/:id/edit", controllers.EditTrade)
 	e.POST("/securities/:security_id/trades/:id", controllers.UpdateTrade)
 	e.POST("/trades/:id", controllers.UpdateTrade)
+	e.DELETE("/trades/:id", controllers.DeleteTrade)
 
 	// Taxes
 	e.GET("/years/:year/taxes", controllers.ListTaxes)

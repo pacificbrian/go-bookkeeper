@@ -335,18 +335,6 @@ func (t *Trade) Get(session *Session) *Trade {
 	return t
 }
 
-func (t *Trade) Delete(session *Session) error {
-	db := session.DB
-	// Verify we have access to Trade
-	t = t.Get(session)
-	if t != nil {
-		spewModel(t)
-		db.Delete(t)
-		return nil
-	}
-	return errors.New("Permission Denied")
-}
-
 // TODO
 func (t *Trade) reverseGain(db *gorm.DB) ([]Trade, error) {
 	return nil, nil
@@ -356,6 +344,45 @@ func (t *Trade) reverseGain(db *gorm.DB) ([]Trade, error) {
 func (t *Trade) reverseSplit(db *gorm.DB) ([]Trade, error) {
 	err := t.Security.validateSplit(db, t)
 	return nil, err
+}
+
+func (t *Trade) Delete(session *Session) error {
+	var err error
+	db := session.DB
+	// Verify we have access to Trade
+	t = t.Get(session)
+	if t == nil {
+		return errors.New("Permission Denied")
+	}
+
+	// set these to Zero, updateTrade/Balance will reverse Trade
+	t.Amount = decimal.Zero
+	t.Shares = decimal.Zero
+
+	if t.IsSell() {
+		err = errors.New("Don't yet support Delete of Sell Trades!")
+	} else if t.IsBuy() && !t.oldBasis.IsZero() {
+		err = errors.New("Don't yet support Delete of Partially Sold Buy Trades!")
+	} else if t.IsSplit() {
+		_, err = t.reverseSplit(db)
+		err = errors.New("Don't yet support Delete of Splits!")
+		// set Shares to 1 for reversing Split in updateTrade
+		t.Shares = decimal.NewFromInt32(1)
+	}
+	if err != nil {
+		log.Printf("[MODEL] DELETE TRADE(%d) UNSUPPORTED: %v", t.ID, err)
+		return err
+	}
+
+	t.Security.updateTrade(db, t)
+	c := t.toCashFlow()
+	if c != nil {
+		t.Account.updateBalance(db, c)
+	}
+	spewModel(t)
+	db.Delete(t)
+	log.Printf("[MODEL] DELETE TRADE(%d)", t.ID)
+	return nil
 }
 
 // Trade access already verified with Get
