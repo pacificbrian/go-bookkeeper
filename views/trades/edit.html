@@ -63,10 +63,10 @@
 </form>
 </div>
 
-<ul id="footmenu">
+<ul id="footmenu" data-controller="trade">
 <li><a href=/accounts/{{trade.AccountID}}/securities/{{trade.SecurityID}}>Back To Security</a></li>
 <li><a href=/securities/{{trade.SecurityID}}/edit>Edit Security</a></li>
-<li><a href=/securities/{{trade.SecurityID}}>Delete Trade</a></li>
+<li><a href=/trades/{{trade.ID}} data-trade-id="{{trade.ID}}" data-action="trade#actionDelete">Delete Trade</a></li>
 </ul>
 
 {% endblock -%}

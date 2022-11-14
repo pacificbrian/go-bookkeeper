@@ -10,17 +10,38 @@ import { ajax } from 'rxjs/ajax';
 import { distinctUntilChanged, map, switchMap } from 'rxjs/operators';
 
 export default class extends Controller {
-  taxDelete$ = new Subject();
+  static targets = [ "taxEntryRow", "taxReturnRow" ]
+  taxEntryDelete$ = new Subject();
+  taxReturnDelete$ = new Subject();
   taxPut$ = new Subject();
 
   connect() {
     console.log("Stimulus[TAX] connected!", this.element);
 
-    this.taxDelete$
+    this.taxEntryDelete$
       .pipe(
         distinctUntilChanged(),
         switchMap((taxID) => {
-          console.log("RXJS[TAX]:ajax:DELETE: ", [taxID])
+          console.log("RXJS[TAX ENTRY]:ajax:DELETE: ", [taxID])
+          return ajax({
+            method: 'DELETE',
+            url: '/tax_entries/'+taxID,
+            responseType: 'json'
+          });
+        }),
+        map((response) => {
+          return response.response;
+        })
+      )
+      .subscribe((response) => {
+        console.log(response)
+      })
+
+    this.taxReturnDelete$
+      .pipe(
+        distinctUntilChanged(),
+        switchMap((taxID) => {
+          console.log("RXJS[TAX RETURN]:ajax:DELETE: ", [taxID])
           return ajax({
             method: 'DELETE',
             url: '/taxes/'+taxID,
@@ -56,7 +77,8 @@ export default class extends Controller {
   }
 
   disconnect() {
-    this.taxDelete$.unsubscribe();
+    this.taxEntryDelete$.unsubscribe();
+    this.taxReturnDelete$.unsubscribe();
     this.taxPut$.unsubscribe();
   }
 
@@ -74,7 +96,34 @@ export default class extends Controller {
     let taxID = target.getAttribute('data-tax-id')
     console.log("Stimulus[TAX]: actionDelete", taxID)
     event.preventDefault()
-    // add to RXJS stream processed with taxDelete.pipe above
-    this.taxDelete$.next(taxID)
+    // add to RXJS stream processed with taxReturnDelete.pipe above
+    this.taxReturnDelete$.next(taxID)
+
+    // hide deleted TaxReturn row in table
+    const taxReturnRows = this.taxReturnRowTargets;
+    for (let i in taxReturnRows) {
+      let id = taxReturnRows[i].getAttribute('data-tax-id')
+      if (id == taxID) {
+        taxReturnRows[i].hidden = 1
+      }
+    }
+  }
+
+  actionEntryDelete(event) {
+    let target = event.currentTarget
+    let taxID = target.getAttribute('data-tax-entry-id')
+    console.log("Stimulus[TAX]: actionEntryDelete", taxID)
+    event.preventDefault()
+    // add to RXJS stream processed with taxEntryDelete.pipe above
+    this.taxEntryDelete$.next(taxID)
+
+    // hide deleted TaxEntry row in table
+    const taxEntryRows = this.taxEntryRowTargets;
+    for (let i in taxEntryRows) {
+      let id = taxEntryRows[i].getAttribute('data-tax-entry-id')
+      if (id == taxID) {
+        taxEntryRows[i].hidden = 1
+      }
+    }
   }
 }
