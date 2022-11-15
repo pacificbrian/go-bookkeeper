@@ -25,13 +25,16 @@ func CreateCashFlow(c echo.Context) error {
 	if session == nil {
 		return redirectToLogin(c)
 	}
-	log.Printf("CREATE CASHFLOW (ACCOUNT:%d)", id)
+	log.Printf("CREATE CASHFLOW ACCOUNT(%d)", id)
 
 	entry := new(model.CashFlow)
 	c.Bind(entry)
 	entry.AccountID = uint(id)
 	entry.Date = getFormDate(c)
-	entry.Create(session)
+	err := entry.Create(session)
+	if err != nil {
+		log.Printf("CREATE CASHFLOW ACCOUNT(%d) FAILED: %v", id, err)
+	}
 
 	// http.StatusCreated
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
@@ -43,7 +46,7 @@ func CreateScheduledCashFlow(c echo.Context) error {
 	if session == nil {
 		return redirectToLogin(c)
 	}
-	log.Printf("CREATE SCHEDULED CASHFLOW (FROM:%d)", id)
+	log.Printf("CREATE SCHEDULED CASHFLOW ACCOUNT(%d)", id)
 
 	entry := new(model.CashFlow)
 	c.Bind(entry)
@@ -51,7 +54,10 @@ func CreateScheduledCashFlow(c echo.Context) error {
 	entry.AccountID = uint(id)
 	entry.Date = getFormDate(c)
 	entry.Type = "RCashFlow"
-	entry.Create(session)
+	err := entry.Create(session)
+	if err != nil {
+		log.Printf("CREATE SCHEDULED CASHFLOW ACCOUNT(%d) FAILED: %v", id, err)
+	}
 
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d/scheduled", id))
 }
@@ -71,7 +77,10 @@ func CreateSplitCashFlow(c echo.Context) error {
 
 	// from NewSplitCashFlow, we already have: AccountID, Date, Payee
 	c.Bind(entry)
-	entry.Create(session)
+	err := entry.Create(session)
+	if err != nil {
+		log.Printf("CREATE SPLIT CASHFLOW FAILED: %v", err)
+	}
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/cash_flows/%d/edit", split_from))
 }
 

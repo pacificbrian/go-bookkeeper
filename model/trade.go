@@ -84,11 +84,11 @@ func (t *Trade) getCashFlowType() uint {
 	case Buy:
 		cType = Debit
 	case Sell:
+		fallthrough
 	case Dividend:
+		fallthrough
 	case Distribution:
 		cType = Credit
-	default:
-		cType = 0
 	}
 
 	return cType

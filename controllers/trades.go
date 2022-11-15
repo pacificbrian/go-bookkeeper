@@ -34,7 +34,12 @@ func CreateTrade(c echo.Context) error {
 	entry.AccountID = uint(account_id)
 	entry.SecurityID = uint(security_id)
 	entry.Date = getFormDate(c)
-	entry.Create(session)
+	err := entry.Create(session)
+	account_id = int(entry.AccountID)
+	if err != nil {
+		log.Printf("CREATE TRADE ACCOUNT(%d) SECURITY(%d) FAILED: %v",
+			   account_id, security_id, err)
+	}
 
 	if security_id > 0 {
 		return c.Redirect(http.StatusSeeOther,
