@@ -30,9 +30,9 @@
 
 {% macro form_checkbox(name, checked) -%}
 {% if checked -%}
-<input type="checkbox" name="{{name}}" value="1" checked="checked"/>
+<input type="checkbox" name="{{name}}" value="true" checked="checked"/>
 {% else -%}
-<input type="checkbox" name="{{name}}" value="0"/>
+<input type="checkbox" name="{{name}}" value="true"/>
 {% endif -%}
 {% endmacro -%}
 

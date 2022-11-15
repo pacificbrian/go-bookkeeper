@@ -22,6 +22,11 @@ type Payee struct {
 	Category Category
 }
 
+// for Bind() and setting from input/checkboxes */
+func (p *Payee) ClearBooleans() {
+	p.SkipOnImport = false
+}
+
 func (*Payee) List(session *Session) []Payee {
 	u := session.GetCurrentUser()
 	entries := []Payee{}

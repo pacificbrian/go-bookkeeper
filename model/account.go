@@ -43,6 +43,12 @@ func (Account) Currency(value decimal.Decimal) string {
 	return "$" + value.StringFixedBank(2)
 }
 
+// for Bind() and setting from input/checkboxes */
+func (a *Account) ClearBooleans() {
+	a.Taxable = false
+	a.Hidden = false
+}
+
 func (a *Account) GetRouting() string {
 	if a.Routing == 0 {
 		return ""

@@ -151,6 +151,7 @@ func UpdateAccount(c echo.Context) error {
 		return c.NoContent(http.StatusUnauthorized)
 	}
 
+	entry.ClearBooleans()
 	c.Bind(entry)
 	entry.Update(session)
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
