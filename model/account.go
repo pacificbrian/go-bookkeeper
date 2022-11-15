@@ -275,9 +275,21 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 	}
 
 	adjustAmount := c.Amount.Sub(c.oldAmount)
+	if adjustAmount.IsZero() {
+		return
+	}
+
+	oldCashBalance := a.CashBalance
+	// Update object Balance fields just in case used in caller;
+	// If we didn't have accurate Balance, these will be unused in caller.
+	a.Balance = a.Balance.Add(adjustAmount)
+	a.CashBalance = a.CashBalance.Add(adjustAmount)
+
 	if c.oldAmount.IsZero() || a.CashBalance.IsZero() {
-		// Create, Scheduled CashFlows
-		// Put Update (Transfer) (don't know Account Balance)
+		// This case intended to handle when we don't know if we have
+		// accurate Account Balances, and so just use +delta.
+		// (Such as updates for Transfer/Pair).
+		// But will fall into this case when Balance/oldAmount is 0.
 		log.Printf("[MODEL] UPDATE CASH BALANCE ACCOUNT(%d:%d): +%f",
 			   a.ID, c.ID, adjustAmount.InexactFloat64())
 		db.Omit(clause.Associations).Model(a).
@@ -285,19 +297,13 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 			   "cash_balance": gorm.Expr("cash_balance + ?", adjustAmount),
 			   "balance": gorm.Expr("balance + ?", adjustAmount)})
 	} else {
-		// Update
-		newBalance := a.Balance.Add(adjustAmount)
-		newCashBalance := a.CashBalance.Add(adjustAmount)
-		if !(a.CashBalance.Equal(newCashBalance)) {
-			log.Printf("[MODEL] UPDATE CASH BALANCE ACCOUNT(%d:%d): %f -> %f",
-				   a.ID, c.ID, a.CashBalance.InexactFloat64(),
-				   newCashBalance.InexactFloat64())
-			db.Omit(clause.Associations).Model(a).
-			   Updates(Account{CashBalance: newCashBalance,
-					   Balance: newBalance})
-			a.Balance = newBalance
-			a.CashBalance = newCashBalance
-		}
+		// Could delete this and always use above. Need performance data.
+		log.Printf("[MODEL] UPDATE CASH BALANCE ACCOUNT(%d:%d): %f -> %f",
+			   a.ID, c.ID, oldCashBalance.InexactFloat64(),
+			   a.CashBalance.InexactFloat64())
+		db.Omit(clause.Associations).Model(a).
+		   Updates(Account{CashBalance: a.CashBalance,
+				   Balance: a.Balance})
 	}
 }
 
