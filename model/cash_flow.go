@@ -363,7 +363,7 @@ func (u *User) ListTaxCategory(db *gorm.DB, year int, taxCat *TaxCategory) ([]Ac
 
 	if taxCat.CategoryID > 0 {
 		db.Preload("CashFlows",
-			   "type != ? AND tax_year = ? AND category_id = ?",
+			   "(type != ? OR type IS NULL) AND tax_year = ? AND category_id = ?",
 			   "RCashFlow", year, taxCat.CategoryID).
 		   Find(&u.Accounts, &Account{UserID: u.ID, Taxable: true})
 		for i := 0; i < len(u.Accounts); i++ {
