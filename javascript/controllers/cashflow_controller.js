@@ -86,7 +86,7 @@ export default class extends Controller {
     // iterate and fixup Balance amounts until we pass modified row
     const cashflowBalances = this.cashflowTableRowBalanceTargets;
     for (let i in cashflowBalances) {
-      if (i > tableIdx) {
+      if (parseInt(i) > tableIdx) {
         break
       }
       let oldAmountHTML = cashflowBalances[i].innerHTML
@@ -155,7 +155,7 @@ export default class extends Controller {
       let id = cashflowRows[r].getAttribute('data-cashflow-id')
       if (id == cashflowID) {
         cashflowRows[r].hidden = 1
-        tableIdx = r - 1 // .hidden makes table one row smaller
+        tableIdx = parseInt(r) - 1 // .hidden makes table one row smaller
 
         let oldAmountHTML = displayAmounts[r].innerHTML
         let amountStart = oldAmountHTML.search(/[$]/)
@@ -221,7 +221,7 @@ export default class extends Controller {
       let id = displayAmounts[i].getAttribute('data-cashflow-id')
 
       if (id == cashflowID) {
-        tableIdx = i
+        tableIdx = parseInt(i)
         if (send_amount) {
           let oldAmountHTML = displayAmounts[i].innerHTML
           let amountStart = oldAmountHTML.search(/[$]/)
