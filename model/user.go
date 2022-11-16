@@ -9,6 +9,7 @@ package model
 import (
 	"log"
 	"golang.org/x/crypto/bcrypt"
+	"github.com/pacificbrian/go-bookkeeper/config"
 	gormdb "github.com/pacificbrian/go-bookkeeper/db"
 	"gorm.io/gorm"
 )
@@ -70,8 +71,15 @@ func (uc *UserCache) init() {
 }
 
 func (u *User) initSettings() {
-	u.CashflowLimit = DefaultCashFlowLimit
-	u.UserSettings.CashFlowLimit = u.CashflowLimit
+	globals := config.GlobalConfig()
+
+	cashflowLimit := DefaultCashFlowLimit
+	if u.CashflowLimit > 0 {
+		cashflowLimit = u.CashflowLimit
+	} else if globals.CashFlowLimit > 0 {
+		cashflowLimit = globals.CashFlowLimit
+	}
+	u.UserSettings.CashFlowLimit = cashflowLimit
 	u.UserSettings.UserID = u.ID
 }
 

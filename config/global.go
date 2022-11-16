@@ -15,6 +15,7 @@ var globalConfig *GlobalConfiguration
 
 type GlobalConfiguration struct {
 	Sessions bool `toml:"sessions"`
+	CashFlowLimit int `toml:"cashflow_limit"`
 }
 
 type Configuration struct {
