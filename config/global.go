@@ -16,6 +16,7 @@ var globalConfig *GlobalConfiguration
 type GlobalConfiguration struct {
 	Sessions bool `toml:"sessions"`
 	CashFlowLimit int `toml:"cashflow_limit"`
+	EnableAutoTaxes bool `toml:"enable_auto_taxes" env-default:"true"`
 }
 
 type Configuration struct {

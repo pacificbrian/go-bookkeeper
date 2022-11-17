@@ -1,5 +1,7 @@
 [global]
 sessions = true
+#cashflow_limit = 200 # (default = 200)
+#enable_auto_taxes = true # (default = true)
 [db]
 # choices are "sqlite" or "mysql"
 db = "sqlite"

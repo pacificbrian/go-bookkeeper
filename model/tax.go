@@ -11,6 +11,7 @@ import (
 	"log"
 	"time"
 	"github.com/shopspring/decimal"
+	"github.com/pacificbrian/go-bookkeeper/config"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -144,6 +145,11 @@ func (t TaxReturn) FilingStatusLabel() string {
 
 func (*TaxCategory) List(db *gorm.DB, taxType uint) []TaxCategory {
 	entries := []TaxCategory{}
+	globals := config.GlobalConfig()
+
+	if !globals.EnableAutoTaxes {
+		return entries
+	}
 
 	dbPrefix := db.Order("tax_item_id").Order("category_id")
 	if taxType > 0 {
