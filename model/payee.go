@@ -17,6 +17,7 @@ type Payee struct {
 	CategoryID uint `form:"payee.category_id"`
 	Name string `form:"payee.Name"`
 	Address string
+	ImportName string `form:"payee.ImportName"`
 	SkipOnImport bool `form:"payee.SkipOnImport"`
 	User User
 	Category Category

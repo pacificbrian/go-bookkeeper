@@ -16,7 +16,7 @@ import (
 )
 
 type SecurityValue struct {
-	Basis decimal.Decimal
+	Basis decimal.Decimal `form:"Basis"`
 	Shares decimal.Decimal
 	Value decimal.Decimal
 }
@@ -27,6 +27,7 @@ type Security struct {
 	SecurityBasisTypeID uint `form:"security_basis_type_id"`
 	SecurityTypeID uint `form:"security_type_id"`
 	AccountID uint `gorm:"not null"`
+	ImportName string `form:"ImportName"`
 	SecurityValue
 	lastQuoteUpdate time.Time
 	Account Account

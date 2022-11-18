@@ -21,7 +21,10 @@
 <td> {{ form_select_type(security_basis_types, "security_basis_type_id", security.SecurityBasisTypeID) }} </td>
 <tr/>
 <td>Basis:</td>
-<td><input type="text" name="amount" value="{{security.Basis}}"/></td>
+<td><input type="text" name="Basis" value="{{security.Basis}}"/></td>
+<tr/>
+<td>Import Name (QIF):</td>
+<td><input type="text" name="ImportName" value="{{security.ImportName}}"/></td>
 </table>
 </fieldset>
 <fieldset class="submit">
