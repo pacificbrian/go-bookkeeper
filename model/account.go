@@ -176,14 +176,13 @@ func (a *Account) securityGetBySymbol(session *Session, symbol string) *Security
 	security.CompanyID = c.ID
 	security.AccountID = a.ID
 	// need Where because these are not primary keys
-	db.Where(&security).First(&security)
+	db.Preload("Account").
+	   Where(&security).First(&security)
 	log.Printf("[MODEL] ACCOUNT GET SECURITY for (%s:%d)", symbol, security.ID)
 
 	if security.ID > 0 {
 		// verify Account
-		security.Account.ID = security.AccountID
-		account := security.Account.Get(session, false)
-		if account == nil {
+		if !security.HaveAccessPermission(session) {
 			return nil
 		}
 	} else { // security.ID == 0

@@ -247,31 +247,26 @@ func (t *Trade) validateInputs() error {
 	return nil
 }
 
-func (t *Trade) Create(session *Session) error {
-	var security *Security
-	var activeBuys []Trade
-	var err error
-	db := session.DB
-
-	if t.SecurityID > 0 {
-		// verify access to Security
-		t.Security.ID = t.SecurityID
-		security = t.Security.Get(session)
-	} else {
-		// verifies Account, creates Security if none exists
-		security = t.securityGetBySymbol(session)
-	}
-
-	if security == nil {
-		return errors.New("Permission Denied")
-	}
-	t.AccountID = security.AccountID
+func (t *Trade) setDefaults() {
 	t.TaxYear = t.Date.Year()
 	if t.IsBuy() {
 		t.AdjustedShares = t.Shares
 	}
-	spewModel(t)
+}
 
+// security.Account access must be verified by caller,
+// trade.Account should not be used here and assumed to be unset
+func (t *Trade) insertTrade(db *gorm.DB, security *Security) error {
+	var activeBuys []Trade
+	var err error
+
+	if !security.Account.Verified {
+		log.Printf("[MODEL] INSERT TRADE PERMISSION DENIED")
+		return errors.New("Permission Denied")
+	}
+	t.AccountID = security.AccountID
+
+	spewModel(t)
 	err = t.validateInputs()
 	if err == nil && (t.IsSell() || t.IsSplit()) {
 		activeBuys, err = security.validateTrade(db, t)
@@ -298,6 +293,26 @@ func (t *Trade) Create(session *Session) error {
 		security.Account.updateBalance(db, c)
 	}
 	return nil
+}
+
+func (t *Trade) Create(session *Session) error {
+	var security *Security
+	db := session.DB
+
+	if t.SecurityID > 0 {
+		// verify access to Security
+		t.Security.ID = t.SecurityID
+		security = t.Security.Get(session)
+	} else {
+		// verifies Account, creates Security if none exists
+		security = t.securityGetBySymbol(session)
+	}
+
+	if security == nil {
+		return errors.New("Permission Denied")
+	}
+	t.setDefaults()
+	return t.insertTrade(db, security)
 }
 
 // t.Account must be preloaded
