@@ -57,7 +57,8 @@ func (a *Account) GetRouting() string {
 }
 
 func (a *Account) IsInvestment() bool {
-	return a.AccountType.isType("Investment")
+	a.AccountType.ID = a.AccountTypeID
+	return a.AccountType.isInvestment()
 }
 
 func (a *Account) TotalPortfolio(securities []Security) {

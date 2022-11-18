@@ -10,6 +10,18 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	AccountTypeUndefined uint = iota
+	AccountTypeCash
+	AccountTypeDeposit
+	AccountTypeCreditCard
+	AccountTypeInvestment
+	AccountTypeHealthCare
+	AccountTypeLoan
+	AccountTypeAsset
+	AccountTypeCrypto
+)
+
 type AccountType struct {
 	Model
 	Name string `form:"account_type.Name"`
@@ -26,28 +38,32 @@ func (a AccountType) GetAltText() string {
 
 func (a AccountType) GetIconPath() string {
 	var path string
-	switch a.Name {
-	case "Cash":
+	switch a.ID {
+	case AccountTypeCash:
 		path = "images/icons/icn_small_deposit.png"
-	case "Checking/Deposit":
+	case AccountTypeDeposit:
 		path = "images/icons/icn_small_deposit.png"
-	case "Credit Card":
+	case AccountTypeCreditCard:
 		path = "images/icons/icn_small_credit_card.gif"
-	case "Investment":
+	case AccountTypeInvestment:
 		path = "images/icons/icn_investments.png"
-	case "Loan":
+	case AccountTypeLoan:
 		path = "images/icons/icn_home.png"
-	case "Health Care":
+	case AccountTypeHealthCare:
 		path = "images/icons/icn_health.png"
-	case "Asset":
+	case AccountTypeAsset:
 		path = "images/icons/icn_home.png"
-	case "Crypto":
+	case AccountTypeCrypto:
 		path = "images/icons/bitcoin.png"
 	default:
 		path = "images/icons/wrench.svg"
 	}
 
 	return path
+}
+
+func (a *AccountType) isInvestment() bool {
+	return a.ID == AccountTypeInvestment
 }
 
 func (a *AccountType) isType(askedType string) bool {
