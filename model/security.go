@@ -9,6 +9,7 @@ package model
 import (
 	"errors"
 	"log"
+	"strings"
 	"time"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
@@ -61,6 +62,14 @@ func (s Security) TotalReturn() decimal.Decimal {
 	}
 	simpleReturn := s.Value.Sub(s.Basis).DivRound(s.Basis, 4)
 	return decimalToPercentage(simpleReturn)
+}
+
+func (*Security) sanitizeSecurityName(securityName string) string {
+	subName := strings.Split(securityName, "(")[0]
+	if subName != "" {
+		return subName
+	}
+	return securityName
 }
 
 func (s *Security) setValue(price decimal.Decimal) decimal.Decimal {

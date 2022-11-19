@@ -196,6 +196,28 @@ func (a *Account) securityGetBySymbol(session *Session, symbol string) *Security
 	return security
 }
 
+func (a *Account) securityGetByImportName(session *Session, name string) *Security {
+	security := new(Security)
+	db := session.DB
+
+	security.AccountID = a.ID
+	security.ImportName = security.sanitizeSecurityName(name)
+	// need Where because these are not primary keys
+	db.Preload("Account").
+	   Where(&security).First(&security)
+	log.Printf("[MODEL] ACCOUNT GET SECURITY for (%s:%d)", name, security.ID)
+
+	if security.ID == 0 {
+		return nil
+	}
+
+	// verify Account
+	if !security.HaveAccessPermission(session) {
+		return nil
+	}
+	return security
+}
+
 func (a *Account) Init() *Account {
 	a.Taxable = true
 	// a.UserID unset (not needed for New)

@@ -9,6 +9,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.3.0
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/mayowa/echo-pongo2 v1.1.4
+	github.com/pacificbrian/qif v1.0.0
 	github.com/piquette/finance-go v1.0.0
 	github.com/rubenv/sql-migrate v1.2.0
 	github.com/shopspring/decimal v1.3.1
@@ -33,6 +34,7 @@ require (
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-sqlite3 v1.14.15 // indirect
+	github.com/pkg/errors v0.8.1 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.1 // indirect
 	golang.org/x/net v0.0.0-20220909164309-bea034e7d591 // indirect

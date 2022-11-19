@@ -21,6 +21,7 @@ type Trade struct {
 	AccountID uint `gorm:"not null"`
 	oldAccountID uint `gorm:"-:all"`
 	SecurityID uint `gorm:"not null"`
+	ImportID uint
 	Symbol string `form:"Symbol" gorm:"-:all"`
 	Date time.Time
 	oldDate time.Time `gorm:"-:all"`

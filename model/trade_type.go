@@ -7,6 +7,7 @@
 package model
 
 import (
+	"github.com/pacificbrian/qif"
 	"gorm.io/gorm"
 )
 
@@ -58,6 +59,43 @@ func TradeTypeIsSharesOut(TradeTypeID uint) bool {
 
 func TradeTypeIsSplit(TradeTypeID uint) bool {
 	return (TradeTypeID == Split)
+}
+
+func actionToTradeType(action qif.InvestmentAction) uint {
+	switch action {
+		case qif.ActionBuy:
+			return Buy
+		case qif.ActionSell:
+			return Sell
+		case qif.ActionIntInc:
+			fallthrough
+		case qif.ActionDiv:
+			return Dividend
+		case qif.ActionCGLong:
+			fallthrough
+		case qif.ActionCGMid:
+			fallthrough
+		case qif.ActionCGShort:
+			return Distribution
+		case qif.ActionReInvInt:
+			fallthrough
+		case qif.ActionReInvDiv:
+			return ReinvestedDividend
+		case qif.ActionReInvLg:
+			fallthrough
+		case qif.ActionReInvMd:
+			fallthrough
+		case qif.ActionReInvSh:
+			return ReinvestedDistribution
+		case qif.ActionStockSplit:
+			return Split
+		case qif.ActionSharesOut:
+			return SharesOut
+		case qif.ActionSharesIn:
+			return SharesIn
+	}
+
+	return UndefinedTradeType
 }
 
 func (*TradeType) List(db *gorm.DB) []TradeType {
