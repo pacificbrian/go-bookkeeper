@@ -38,10 +38,14 @@ type TradeType struct {
 var TradeTypeQueries = [3]string{"",
 				 "trade_type_id = 1 OR trade_type_id = 5 OR trade_type_id = 6",
 				 "trade_type_id = 2"}
-var TradeTypeCashFlowsQuery string = "trade_type_id <= 4"
+var TradeTypeCashFlowsQuery string = "trade_type_id <= 6"
 
 func TradeTypeIsBuy(TradeTypeID uint) bool {
-	return (TradeTypeID == Buy || TradeTypeID == ReinvestedDividend ||
+	return (TradeTypeID == Buy)
+}
+
+func TradeTypeIsReinvest(TradeTypeID uint) bool {
+	return (TradeTypeID == ReinvestedDividend ||
 		TradeTypeID == ReinvestedDistribution)
 }
 

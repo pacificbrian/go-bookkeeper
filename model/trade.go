@@ -49,7 +49,12 @@ func (Trade) Currency(value decimal.Decimal) string {
 }
 
 func (t *Trade) IsBuy() bool {
-	return TradeTypeIsBuy(t.TradeTypeID)
+	return (TradeTypeIsBuy(t.TradeTypeID) ||
+	        TradeTypeIsReinvest(t.TradeTypeID))
+}
+
+func (t *Trade) IsReinvest() bool {
+	return TradeTypeIsReinvest(t.TradeTypeID)
 }
 
 func (t *Trade) IsSell() bool {
@@ -92,6 +97,10 @@ func (t *Trade) getCashFlowType() uint {
 		cType = Credit
 	}
 
+	if t.IsReinvest() {
+		cType = Credit
+	}
+
 	return cType
 }
 
@@ -105,8 +114,10 @@ func (t *Trade) toCashFlow() *CashFlow {
 	c.Type = "TradeCashFlow"
 	c.AccountID = t.AccountID
 	c.CashFlowTypeID = cType
-	c.Amount = t.Amount
-	c.oldAmount = t.oldAmount
+	if !t.IsReinvest() {
+		c.Amount = t.Amount
+		c.oldAmount = t.oldAmount
+	}
 	c.Date = t.Date
 	c.applyCashFlowType()
 	c.CategoryID = t.TradeTypeID
