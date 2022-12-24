@@ -1,6 +1,6 @@
 module github.com/pacificbrian/go-bookkeeper
 
-go 1.19
+go 1.18
 
 require (
 	github.com/aclindsa/ofxgo v0.1.3
@@ -14,6 +14,7 @@ require (
 	github.com/rubenv/sql-migrate v1.2.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/spazzymoto/echo-scs-session v1.0.0
+	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.0.0-20220829220503-c86fa9a7ed90
 	gorm.io/driver/mysql v1.3.4
 	gorm.io/driver/sqlite v1.3.6
@@ -35,7 +36,6 @@ require (
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mattn/go-sqlite3 v1.14.15 // indirect
 	github.com/pkg/errors v0.8.1 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect
 	github.com/valyala/fasttemplate v1.2.1 // indirect
 	golang.org/x/net v0.0.0-20220909164309-bea034e7d591 // indirect
