@@ -16,6 +16,7 @@ import (
 	"github.com/aclindsa/ofxgo"
 	"github.com/pacificbrian/qif"
 	"github.com/shopspring/decimal"
+	"github.com/pacificbrian/go-bookkeeper/config"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -55,12 +56,30 @@ func (c *CashFlow) makeCashFlowQIF(qifTran qif.BankingTransaction) {
 	c.Memo = strings.TrimSpace(qifTran.Memo())
 }
 
+func (t *Trade) applyTradeFixups(memo string) {
+	globals := config.GlobalConfig()
+
+	if !globals.EnableImportTradeFixups {
+		return
+	}
+
+	// workarounds which have found to be needed
+	switch memo {
+	case "Change in Market Value":
+		t.TradeTypeID = ReinvestedDividend
+	case "Fees/Credits":
+		t.TradeTypeID = ReinvestedDividend
+	}
+}
+
 func (t *Trade) makeTradeQIF(qifTran qif.InvestmentTransaction) {
+	memo := strings.TrimSpace(qifTran.Memo())
 	t.TradeTypeID = actionToTradeType(qifTran.Action())
 	t.Date = qifTran.Date()
 	t.Amount = qifTran.AmountDecimal()
 	t.Shares = qifTran.Shares()
 	t.Price = qifTran.Price()
+	t.applyTradeFixups(memo)
 	t.setDefaults() // needs t.Date, t.Shares
 }
 

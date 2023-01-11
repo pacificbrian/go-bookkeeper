@@ -17,6 +17,7 @@ type GlobalConfiguration struct {
 	Sessions bool `toml:"sessions"`
 	CashFlowLimit int `toml:"cashflow_limit"`
 	EnableAutoTaxes bool `toml:"enable_auto_taxes" env-default:"true"`
+	EnableImportTradeFixups bool `toml:"enable_import_trade_fixups" env-default:"false"`
 }
 
 type Configuration struct {
