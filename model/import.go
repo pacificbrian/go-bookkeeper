@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"fmt"
 	"log"
+	"strings"
 	"time"
 	"github.com/aclindsa/ofxgo"
 	"github.com/pacificbrian/qif"
@@ -38,20 +39,20 @@ func (c *CashFlow) makeCashFlowOFX(ofxTran *ofxgo.Transaction) {
 			   ofxTran.DtPosted.Nanosecond(),
 			   ofxTran.DtPosted.Location())
 	c.setDefaults() // needs c.Date
-	c.Transnum = string(ofxTran.FiTID)
-	c.PayeeName = string(ofxTran.Name)
+	c.Transnum = strings.TrimSpace(string(ofxTran.FiTID))
+	c.PayeeName = strings.TrimSpace(string(ofxTran.Name))
 	TrnAmt, _ := ofxTran.TrnAmt.Float64()
 	c.Amount = decimal.NewFromFloatWithExponent(TrnAmt, -2)
-	c.Memo = string(ofxTran.Memo)
+	c.Memo = strings.TrimSpace(string(ofxTran.Memo))
 }
 
 func (c *CashFlow) makeCashFlowQIF(qifTran qif.BankingTransaction) {
 	c.Date = qifTran.Date()
 	c.setDefaults() // needs c.Date
-	c.Transnum = qifTran.Num()
-	c.PayeeName = qifTran.Payee()
+	c.Transnum = strings.TrimSpace(qifTran.Num())
+	c.PayeeName = strings.TrimSpace(qifTran.Payee())
 	c.Amount = qifTran.AmountDecimal()
-	c.Memo = qifTran.Memo()
+	c.Memo = strings.TrimSpace(qifTran.Memo())
 }
 
 func (t *Trade) makeTradeQIF(qifTran qif.InvestmentTransaction) {
@@ -85,6 +86,7 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 	var transactions []qif.Transaction
 	fileName := importFile.FileName
 	db := session.DebugDB
+	recordImport := true
 	count := 0
 	entered := 0
 
@@ -115,7 +117,9 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 		cashflows := make([]CashFlow, count)
 
 		// write Import, we store ImportID in CashFlows
-		im.create(db)
+		if recordImport {
+			im.create(db)
+		}
 
 		for i := 0; i < count; i++ {
 			transaction := transactions[i].(qif.BankingTransaction)
@@ -123,7 +127,9 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 			cashflows[i].AccountID = im.Account.ID
 			cashflows[i].Account.cloneVerified(&im.Account)
 			cashflows[i].ImportID = im.ID
-			cashflows[i].insertCashFlow(db)
+			if recordImport {
+				cashflows[i].insertCashFlow(db)
+			}
 			entered++
 		}
 	case qif.TransactionTypeInvestment:
@@ -134,12 +140,12 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 
 		for i := 0; i < count; i++ {
 			transaction := transactions[i].(qif.InvestmentTransaction)
-			securityName := transaction.SecurityName()
+			securityName := strings.TrimSpace(transaction.SecurityName())
 			security := im.Account.securityGetByImportName(session,
 								       securityName)
 			if security == nil {
 				continue
-			} else if im.ID == 0 {
+			} else if im.ID == 0 && recordImport {
 				// write Import, we store ImportID in CashFlows
 				im.create(db)
 			}
@@ -147,7 +153,9 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 			trades[i].makeTradeQIF(transaction)
 			trades[i].SecurityID = security.ID
 			trades[i].ImportID = im.ID
-			trades[i].insertTrade(db, security)
+			if recordImport {
+				trades[i].insertTrade(db, security)
+			}
 			entered++
 		}
 	default:

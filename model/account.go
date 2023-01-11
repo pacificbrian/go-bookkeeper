@@ -179,7 +179,8 @@ func (a *Account) securityGetBySymbol(session *Session, symbol string) *Security
 	// need Where because these are not primary keys
 	db.Preload("Account").
 	   Where(&security).First(&security)
-	log.Printf("[MODEL] ACCOUNT GET SECURITY for (%s:%d)", symbol, security.ID)
+	log.Printf("[MODEL] ACCOUNT(%d) GET SECURITY for (%s:%d)",
+		   a.ID, symbol, security.ID)
 
 	if security.ID > 0 {
 		// verify Account
@@ -200,12 +201,14 @@ func (a *Account) securityGetByImportName(session *Session, name string) *Securi
 	security := new(Security)
 	db := session.DB
 
-	security.AccountID = a.ID
-	security.ImportName = security.sanitizeSecurityName(name)
-	// need Where because these are not primary keys
+	importName := security.sanitizeSecurityName(name)
 	db.Preload("Account").
-	   Where(&security).First(&security)
-	log.Printf("[MODEL] ACCOUNT GET SECURITY for (%s:%d)", name, security.ID)
+	   // need Where because these are not primary keys
+	   Where("import_name = ? OR name = ?", importName, importName).
+	   Where(&Security{AccountID: a.ID}).
+	   Joins("Company").First(&security)
+	log.Printf("[MODEL] ACCOUNT(%d) IMPORT GET SECURITY for (%s:%d)",
+		   a.ID, importName, security.ID)
 
 	if security.ID == 0 {
 		return nil
