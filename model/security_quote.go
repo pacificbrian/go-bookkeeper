@@ -86,6 +86,9 @@ func (s *Security) fetchPrice(force bool) *SecurityQuote {
 		log.Println(err)
 		return nil
 	}
+	if q == nil {
+		return nil
+	}
 	spewModel(q)
 
 	//price := q.RegularMarketPreviousClose
