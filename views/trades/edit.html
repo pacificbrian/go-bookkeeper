@@ -10,14 +10,23 @@
 <td>Account: <strong>{{ trade.Account.Name }}</strong></td>
 <tr/>
 <td>Security: <strong>{{ trade.Security.Company.GetName() }}</strong></td>
+{% if (trade_types|length == 0) -%}
 <tr/>
 <td>Type: <strong>{{ trade.TradeType.Name }}</strong></td>
+{% endif -%}
 </table>
 </fieldset>
 
 <form method="POST" action="/securities/{{trade.SecurityID}}/trades/{{trade.ID}}">
 <fieldset>
 <table>
+{% if (trade_types|length > 0) -%}
+<tr/>
+<td>
+<label>Type:</label>
+{{ form_select_type(trade_types, "trade_type_id", trade.TradeTypeID) }}
+</td>
+{% endif -%}
 <tr/>
 <td>
 <label>Date:</label>

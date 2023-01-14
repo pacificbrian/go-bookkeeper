@@ -34,7 +34,9 @@ type TradeType struct {
 	Name string `form:"trade_type.Name"`
 }
 
-// SQL query string for all Buy, Sell types
+// SQL query string for Buy types
+var listBuyTypes = "id = 1 OR id = 5 OR id = 6"
+// SQL query string for all Buy, Sell types for Trades
 var TradeTypeQueries = [3]string{"",
 				 "trade_type_id = 1 OR trade_type_id = 5 OR trade_type_id = 6",
 				 "trade_type_id = 2"}
@@ -63,6 +65,27 @@ func TradeTypeIsSharesOut(TradeTypeID uint) bool {
 
 func TradeTypeIsSplit(TradeTypeID uint) bool {
 	return (TradeTypeID == Split)
+}
+
+func TradeTypeToCashFlowType(TradeTypeID uint) uint {
+	var cType uint
+
+	if TradeTypeIsReinvest(TradeTypeID) {
+		cType = Credit
+	} else {
+		switch TradeTypeID {
+		case Buy:
+			cType = Debit
+		case Sell:
+			fallthrough
+		case Dividend:
+			fallthrough
+		case Distribution:
+			cType = Credit
+		}
+	}
+
+	return cType
 }
 
 func actionToTradeType(action qif.InvestmentAction) uint {
@@ -106,6 +129,14 @@ func (*TradeType) List(db *gorm.DB) []TradeType {
 	// need userCache lookup
 	entries := []TradeType{}
 	db.Find(&entries)
+
+	return entries
+}
+
+func (*TradeType) ListBuys(db *gorm.DB) []TradeType {
+	// need userCache lookup
+	entries := []TradeType{}
+	db.Where(listBuyTypes).Find(&entries)
 
 	return entries
 }

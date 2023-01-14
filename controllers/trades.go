@@ -108,6 +108,7 @@ func EditTrade(c echo.Context) error {
 	}
 	log.Printf("EDIT TRADE(%d)", id)
 
+	var tradeTypes []model.TradeType
 	entry := new(model.Trade)
 	entry.ID = uint(id)
 	entry = entry.Get(session)
@@ -116,8 +117,12 @@ func EditTrade(c echo.Context) error {
 	dh.Init()
 	dh.SetDate(entry.Date)
 
+	if entry.IsBuy() {
+		tradeTypes = new(model.TradeType).ListBuys(session.DB)
+	}
+
 	data := map[string]any{ "trade": entry,
 				"date_helper": dh,
-				"trade_types": new(model.TradeType).List(session.DB) }
+				"trade_types": tradeTypes }
 	return c.Render(http.StatusOK, "trades/edit.html", data)
 }

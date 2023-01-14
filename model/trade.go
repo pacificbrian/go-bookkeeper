@@ -18,6 +18,7 @@ import (
 type Trade struct {
 	gorm.Model
 	TradeTypeID uint `form:"trade_type_id"`
+	oldTradeTypeID uint `gorm:"-:all"`
 	AccountID uint `gorm:"not null"`
 	oldAccountID uint `gorm:"-:all"`
 	SecurityID uint `gorm:"not null"`
@@ -57,6 +58,10 @@ func (t *Trade) IsReinvest() bool {
 	return TradeTypeIsReinvest(t.TradeTypeID)
 }
 
+func (t *Trade) WasReinvest() bool {
+	return TradeTypeIsReinvest(t.oldTradeTypeID)
+}
+
 func (t *Trade) IsSell() bool {
 	return TradeTypeIsSell(t.TradeTypeID)
 }
@@ -84,24 +89,11 @@ func (t Trade) GetBasis() string {
 }
 
 func (t *Trade) getCashFlowType() uint {
-	var cType uint
+	return TradeTypeToCashFlowType(t.TradeTypeID)
+}
 
-	switch t.TradeTypeID {
-	case Buy:
-		cType = Debit
-	case Sell:
-		fallthrough
-	case Dividend:
-		fallthrough
-	case Distribution:
-		cType = Credit
-	}
-
-	if t.IsReinvest() {
-		cType = Credit
-	}
-
-	return cType
+func (t *Trade) oldCashFlowType() uint {
+	return TradeTypeToCashFlowType(t.oldTradeTypeID)
 }
 
 func (t *Trade) toCashFlow() *CashFlow {
@@ -116,7 +108,14 @@ func (t *Trade) toCashFlow() *CashFlow {
 	c.CashFlowTypeID = cType
 	if !t.IsReinvest() {
 		c.Amount = t.Amount
+	}
+	if !t.WasReinvest() {
 		c.oldAmount = t.oldAmount
+		// handle here unless CashFlow.oldCashFlowTypeID is added
+		// and then can decide to move into applyCashFlowType()
+		if t.oldCashFlowType() == Debit {
+			c.oldAmount = c.oldAmount.Neg()
+		}
 	}
 	c.Date = t.Date
 	c.applyCashFlowType()
@@ -260,8 +259,10 @@ func (t *Trade) validateInputs() error {
 }
 
 func (t *Trade) setDefaults() {
-	t.TaxYear = t.Date.Year()
-	if t.IsBuy() {
+	if t.TaxYear == 0 {
+		t.TaxYear = t.Date.Year()
+	}
+	if t.IsBuy() && t.Basis.IsZero() {
 		t.AdjustedShares = t.Shares
 	}
 }
@@ -343,6 +344,7 @@ func (t *Trade) postQueryInit() {
 	t.oldAmount = t.Amount
 	t.oldBasis = t.Basis
 	t.oldShares = t.Shares
+	t.oldTradeTypeID = t.TradeTypeID
 }
 
 // Edit, Delete, Update use Get
@@ -356,6 +358,13 @@ func (t *Trade) Get(session *Session) *Trade {
 	if !t.HaveAccessPermission(session) {
 		return nil
 	}
+
+	// This is safe and will only set NULL fields to default values;
+	// Cannot seem to use GORM hook as NULL value would already be 
+	// converted to 0. (This is for working with old database).
+	t.setDefaults()
+	// need another query if AdjustedShares is NULL and Basis is set
+	//db.Where("adjusted_shares IS NOT NULL").First(&nullTest, t.ID)
 
 	// for Update, store old values before overwritten
 	t.postQueryInit()

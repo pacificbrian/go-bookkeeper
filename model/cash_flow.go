@@ -405,10 +405,6 @@ func (c *CashFlow) applyCashFlowType() {
 	switch c.CashFlowTypeID {
 	case Debit:
 		c.Amount = c.Amount.Neg()
-		// either handle this here or in trade.toCashFlow()
-		if c.IsTrade() {
-			c.oldAmount = c.oldAmount.Neg()
-		}
 		c.Transfer = false
 	case Credit:
 		c.Transfer = false
