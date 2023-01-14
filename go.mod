@@ -9,7 +9,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.3.0
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/mayowa/echo-pongo2 v1.1.4
-	github.com/pacificbrian/qif v1.0.0
+	github.com/pacificbrian/qif v1.1.0
 	github.com/piquette/finance-go v1.0.0
 	github.com/rubenv/sql-migrate v1.2.0
 	github.com/shopspring/decimal v1.3.1
