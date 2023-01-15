@@ -1,0 +1,24 @@
+<fieldset>
+<table>
+<tr/>
+<td>Symbol:</td>
+<td><input type="text" name="Symbol" value="{{security.Company.Symbol}}"/></td>
+<tr/>
+<td>Name:</td>
+<td><input type="text" name="Name" value="{{security.Company.Name}}"/></td>
+<tr/>
+<td>Security Type:</td>
+<td> {{ form_select_type(security_types, "security_type_id", security.SecurityTypeID) }} </td>
+<tr/>
+<td>Basis Type:</td>
+<td> {{ form_select_type(security_basis_types, "security_basis_type_id", security.SecurityBasisTypeID) }} </td>
+{% if security.ID > 0 -%}
+<tr/>
+<td>Basis:</td>
+<td><input type="text" name="Basis" value="{{security.Basis}}"/></td>
+{% endif -%}
+<tr/>
+<td>Import Name (QIF):</td>
+<td><input type="text" name="ImportName" value="{{security.ImportName}}"/></td>
+</table>
+</fieldset>

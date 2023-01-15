@@ -221,7 +221,8 @@ func (t *Trade) recordSplit(db *gorm.DB, activeBuys []Trade) {
 	}
 }
 
-// Look up Security by symbol, creates Security if none exists
+// Look up Security by symbol, creates Security if none exists.
+// Verifies Account Access, and returns nil if access denied.
 func (t *Trade) securityGetBySymbol(session *Session) *Security {
 	var security *Security
 
@@ -230,9 +231,15 @@ func (t *Trade) securityGetBySymbol(session *Session) *Security {
 		a.ID = t.AccountID
 		// verifies Account
 		security = a.securityGetBySymbol(session, t.Symbol)
-		if security != nil {
-			t.SecurityID = security.ID
+		if security == nil {
+			return nil
+		} else if security.ID == 0 {
+			err := security.create(session, true)
+			if err != nil {
+				return nil
+			}
 		}
+		t.SecurityID = security.ID
 	}
 
 	return security

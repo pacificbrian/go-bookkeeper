@@ -269,11 +269,13 @@ func (s *Security) init() {
 	s.SecurityBasisTypeID = 1 // Default is FIFO
 }
 
-func (s *Security) Create(session *Session) error {
+func (s *Security) create(session *Session, useDefaults bool) error {
 	db := session.DB
 	// Verify we have access to Account
 	s.Account.ID = s.AccountID
-	s.init()
+	if useDefaults {
+		s.init()
+	}
 	account := s.Account.Get(session, false)
 	if account != nil {
 		spewModel(s)
@@ -285,6 +287,19 @@ func (s *Security) Create(session *Session) error {
 		return result.Error
 	}
 	return errors.New("Permission Denied")
+}
+
+func (s *Security) Create(session *Session) error {
+	s.Account.ID = s.AccountID
+	existing := s.Account.securityGetBySymbol(session, s.Company.Symbol)
+	if existing == nil {
+		return errors.New("Permission Denied")
+	} else if existing.ID != 0 {
+		return errors.New("Security Already Exists")
+	}
+
+	s.CompanyID = existing.CompanyID
+	return s.create(session, false)
 }
 
 // s.Account must be preloaded

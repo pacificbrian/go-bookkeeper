@@ -1,21 +1,18 @@
 {% extends "base.html" %}
 {% block content -%}
 
-<div class="edit">
-<h2>Edit Security</h2>
+<div class="new">
+<h2>New Security</h2>
 
-<form method="POST" action="/securities/{{security.ID}}">
+<form method="POST" action="/accounts/{{security.AccountID}}/securities">
 {% include "securities/security_form.html" -%}
 <fieldset class="submit">
-<p>
-<input type="submit" value="Update Security"/>
-</p>
+<input type="submit" value="Add Security"/>
 </fieldset>
 </form>
 </div>
 
 <ul id="footmenu">
-<li><a href=/accounts/{{security.AccountID}}/securities/{{security.ID}}>Back To Security</a></li>
 <li><a href=/accounts/{{security.AccountID}}>Back To Account</a></li>
 </ul>
 

@@ -20,7 +20,7 @@ import (
 // https://go.dev/src/net/http/status.go
 
 func ListSecurities(c echo.Context) error {
-	id, _ := strconv.Atoi(c.Param("id"))
+	account_id, _ := strconv.Atoi(c.Param("account_id"))
 	session := getSession(c)
 	if session == nil {
 		return redirectToLogin(c)
@@ -33,7 +33,7 @@ func ListSecurities(c echo.Context) error {
 
 	var entries []model.Security
 	entry := new(model.Security)
-	entry.AccountID = uint(id)
+	entry.AccountID = uint(account_id)
 	entries = entry.List(session, nil, openOnly)
 
 	if get_json {
@@ -46,20 +46,24 @@ func ListSecurities(c echo.Context) error {
 }
 
 func CreateSecurity(c echo.Context) error {
-	id, _ := strconv.Atoi(c.Param("id"))
+	account_id, _ := strconv.Atoi(c.Param("account_id"))
 	session := getSession(c)
 	if session == nil {
 		return redirectToLogin(c)
 	}
-	log.Println("CREATE SECURITY")
 
 	entry := new(model.Security)
 	c.Bind(entry)
-	entry.AccountID = uint(id)
-	entry.Create(session)
-
-	// http.StatusCreated
-	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
+	c.Bind(&entry.Company)
+	log.Printf("CREATE SECURITY NAME(%s) SYMBOL(%s)",
+		   entry.Company.Name, entry.Company.Symbol)
+	entry.AccountID = uint(account_id)
+	err := entry.Create(session)
+	if err != nil {
+		return c.NoContent(http.StatusUnauthorized)
+	}
+	return c.Redirect(http.StatusSeeOther,
+			  fmt.Sprintf("/accounts/%d", account_id))
 }
 
 func DeleteSecurity(c echo.Context) error {
@@ -116,6 +120,23 @@ func GetSecurity(c echo.Context) error {
 					"trade_types": new(model.TradeType).List(db) }
 		return c.Render(http.StatusOK, "securities/show.html", data)
 	}
+}
+
+func NewSecurity(c echo.Context) error {
+	account_id, _ := strconv.Atoi(c.Param("account_id"))
+	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("NEW SECURITY ACCOUNT(%d)", account_id)
+
+	entry := new(model.Security)
+	entry.AccountID = uint(account_id)
+
+	data := map[string]any{ "security": entry,
+				"security_basis_types": new(model.SecurityBasisType).List(session.DB),
+				"security_types": new(model.SecurityType).List(session.DB) }
+	return c.Render(http.StatusOK, "securities/new.html", data)
 }
 
 func UpdateSecurity(c echo.Context) error {

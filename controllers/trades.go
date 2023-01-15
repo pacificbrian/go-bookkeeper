@@ -39,6 +39,7 @@ func CreateTrade(c echo.Context) error {
 	if err != nil {
 		log.Printf("CREATE TRADE ACCOUNT(%d) SECURITY(%d) FAILED: %v",
 			   account_id, security_id, err)
+		return c.NoContent(http.StatusUnauthorized)
 	}
 
 	if security_id > 0 {

@@ -70,6 +70,8 @@ func Init() *echo.Echo {
 
 	// Security
 	e.GET("/accounts/:account_id/securities/:id", controllers.GetSecurity) // Show
+	e.GET("/accounts/:account_id/securities/new", controllers.NewSecurity)
+	e.POST("/accounts/:account_id/securities", controllers.CreateSecurity)
 	e.GET("/securities/:id/edit", controllers.EditSecurity)
 	e.POST("/securities/:id", controllers.UpdateSecurity)
 

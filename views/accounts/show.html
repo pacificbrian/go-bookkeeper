@@ -79,7 +79,10 @@
 <li><a href=/accounts>Back to Accounts</a></li>
 <li><a href=/accounts/{{account.ID}}/edit>Edit Account</a></li>
 <li><a href=/accounts/{{account.ID}}/payees>Account Payees</a></li>
-<li><a href=/accounts/{{account.ID}}/imported>Import CashFlow</a></li>
+<li><a href=/accounts/{{account.ID}}/imported>Import From File</a></li>
+{% if account.IsInvestment() -%}
+<li><a href=/accounts/{{account.ID}}/securities/new>New Security</a></li>
+{% endif -%}
 <li><a href=/accounts/{{account.ID}}/scheduled>Schedule CashFlow</a></li>
 <li><a href=/accounts/{{account.ID}}/charts?days=0>Year to Date Chart</a></li>
 </ul>

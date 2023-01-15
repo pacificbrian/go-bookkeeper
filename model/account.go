@@ -187,13 +187,9 @@ func (a *Account) securityGetBySymbol(session *Session, symbol string) *Security
 		if !security.HaveAccessPermission(session) {
 			return nil
 		}
-	} else { // security.ID == 0
-		err := security.Create(session)
-		if err != nil {
-			return nil
-		}
 	}
 
+	// return Security if not found, so CompanyID can be reused
 	return security
 }
 
