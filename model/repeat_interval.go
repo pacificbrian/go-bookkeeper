@@ -23,7 +23,7 @@ type RepeatIntervalType struct {
 type RepeatInterval struct {
 	Model
 	CashFlowID uint
-	Rate decimal.Decimal `form:"rate"`
+	Rate decimal.Decimal
 	RepeatIntervalTypeID uint `form:"repeat_interval_type_id"`
 	RepeatsLeft uint `form:"repeats" gorm:"default:NULL"`
 	RepeatsLeftPtr *uint `gorm:"-:all"`
@@ -118,7 +118,7 @@ func (r *RepeatInterval) Create(db *gorm.DB, c *CashFlow) error {
 	r.StartDay = c.Date.Day()
 	result := db.Omit(clause.Associations).Create(r)
 	log.Printf("[MODEL] CREATE REPEAT_INTERVAL(%d) FOR CASHFLOW(%d)",
-		   c.RepeatIntervalID, c.ID)
+		   r.ID, c.ID)
 	return result.Error
 }
 

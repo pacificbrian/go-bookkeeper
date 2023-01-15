@@ -8,6 +8,7 @@ package model
 
 import (
 	"errors"
+	"log"
 	"gorm.io/gorm/clause"
 )
 
@@ -47,6 +48,7 @@ func payeeGetByName(session *Session, name string) *Payee {
 		return nil
 	}
 	db := session.DB
+	created := false
 
 	payee := new(Payee)
 	payee.Name = name
@@ -57,7 +59,10 @@ func payeeGetByName(session *Session, name string) *Payee {
 	if payee.ID == 0 {
 		db.Omit(clause.Associations).Create(payee)
 		spewModel(payee)
+		created = true
 	}
+	log.Printf("[MODEL] GET PAYEE(%d) BY NAME(%s) NEW(%t)",
+		   payee.ID, name, created)
 
 	return payee
 }

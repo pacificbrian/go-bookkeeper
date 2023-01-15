@@ -26,7 +26,7 @@ type CashFlow struct {
 	TaxYear int `form:"tax_year"`
 	Date time.Time
 	oldDate time.Time
-	Amount decimal.Decimal `form:"amount" gorm:"not null"`
+	Amount decimal.Decimal `gorm:"not null"`
 	oldAmount decimal.Decimal `gorm:"-:all"`
 	Balance decimal.Decimal `gorm:"-:all"`
 	PayeeID uint `gorm:"not null"` // also serves as Pair.AccountID (Transfers)
@@ -198,6 +198,7 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 	}
 
 	if c.Transfer {
+		assert(c.PayeeID > 0, "CashFlow.Preload: (Transfer) no PayeeID!")
 		if c.Account.Verified {
 			c.PayeeName = c.Account.User.lookupAccount(c.PayeeID)
 		}
@@ -205,18 +206,17 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 			a := new(Account)
 			db.First(&a, c.PayeeID)
 			c.PayeeName = a.Name
-			if c.Account.Verified {
+			if c.Account.Verified && a.ID > 0 {
 				c.Account.User.cacheAccount(a)
 			}
 		}
 		c.CategoryName = "Transfer"
 	} else {
 		c.PayeeName = c.Payee.Name
-		if c.PayeeName == "" {
-			c.Payee.ID = c.PayeeID
-			db.First(&c.Payee)
+		if c.PayeeName == "" && c.PayeeID > 0 {
+			db.First(&c.Payee, c.PayeeID)
+			c.PayeeName = c.Payee.Name
 		}
-		c.PayeeName = c.Payee.Name
 		c.setCategoryName(db)
 	}
 

@@ -7,7 +7,9 @@
 package controllers
 
 import (
+	"log"
 	"time"
+	"github.com/shopspring/decimal"
 	"github.com/labstack/echo/v4"
 )
 
@@ -18,6 +20,12 @@ type PutKeyValue struct {
 	Value string `json:"value"`
 }
 
+func assert(assertion bool, panicString string) {
+	if (!assertion) {
+		log.Panic(panicString)
+	}
+}
+
 func getFormDate(c echo.Context) time.Time {
 	dateStr := c.FormValue("date_month") + "/" +
 		c.FormValue("date_day") + "/" +
@@ -25,6 +33,12 @@ func getFormDate(c echo.Context) time.Time {
 	// local TZ and add 8 hours for sanity
 	date, _ := time.ParseInLocation("1/2/2006", dateStr, time.Local)
 	return date.Add(time.Hour * 8)
+}
+
+func getFormDecimal(c echo.Context, name string) decimal.Decimal {
+	valueStr := c.FormValue(name)
+	value,_ := decimal.NewFromString(valueStr)
+	return value
 }
 
 func timeToString(dx time.Time) string {

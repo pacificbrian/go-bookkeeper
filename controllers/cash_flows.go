@@ -28,10 +28,12 @@ func CreateCashFlow(c echo.Context) error {
 	log.Printf("CREATE CASHFLOW ACCOUNT(%d)", id)
 
 	entry := new(model.CashFlow)
-	c.Bind(entry)
+	err := c.Bind(entry)
+	assert(err == nil, "CREATE CASHFLOW BIND FAILED")
 	entry.AccountID = uint(id)
+	entry.Amount = getFormDecimal(c, "amount")
 	entry.Date = getFormDate(c)
-	err := entry.Create(session)
+	err = entry.Create(session)
 	if err != nil {
 		log.Printf("CREATE CASHFLOW ACCOUNT(%d) FAILED: %v", id, err)
 	}
@@ -49,12 +51,15 @@ func CreateScheduledCashFlow(c echo.Context) error {
 	log.Printf("CREATE SCHEDULED CASHFLOW ACCOUNT(%d)", id)
 
 	entry := new(model.CashFlow)
-	c.Bind(entry)
+	err := c.Bind(entry)
+	assert(err == nil, "CREATE SCHEDULED CASHFLOW BIND FAILED")
 	c.Bind(&entry.RepeatInterval)
+	entry.RepeatInterval.Rate = getFormDecimal(c, "rate")
 	entry.AccountID = uint(id)
 	entry.Date = getFormDate(c)
+	entry.Amount = getFormDecimal(c, "amount")
 	entry.Type = "RCashFlow"
-	err := entry.Create(session)
+	err = entry.Create(session)
 	if err != nil {
 		log.Printf("CREATE SCHEDULED CASHFLOW ACCOUNT(%d) FAILED: %v", id, err)
 	}
@@ -76,8 +81,10 @@ func CreateSplitCashFlow(c echo.Context) error {
 	}
 
 	// from NewSplitCashFlow, we already have: AccountID, Date, Payee
-	c.Bind(entry)
-	err := entry.Create(session)
+	err := c.Bind(entry)
+	assert(err == nil, "CREATE SPLIT CASHFLOW BIND FAILED")
+	entry.Amount = getFormDecimal(c, "amount")
+	err = entry.Create(session)
 	if err != nil {
 		log.Printf("CREATE SPLIT CASHFLOW FAILED: %v", err)
 	}
@@ -140,8 +147,11 @@ func UpdateCashFlow(c echo.Context) error {
 		return c.NoContent(http.StatusUnauthorized)
 	}
 
-	c.Bind(entry)
+	err := c.Bind(entry)
+	assert(err == nil, "UPDATE CASHFLOW BIND FAILED")
 	c.Bind(&entry.RepeatInterval)
+	entry.RepeatInterval.Rate = getFormDecimal(c, "rate")
+	entry.Amount = getFormDecimal(c, "amount")
 	entry.Date = getFormDate(c)
 	// special case RepeatsLeft so that unset from user equals SQL NULL value
 	entry.RepeatInterval.SetRepeatsLeft(c.FormValue("repeats"))
