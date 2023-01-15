@@ -291,9 +291,9 @@ func (s *Security) create(session *Session, useDefaults bool) error {
 
 func (s *Security) Create(session *Session) error {
 	s.Account.ID = s.AccountID
-	existing := s.Account.securityGetBySymbol(session, s.Company.Symbol)
+	existing,err := s.Account.GetSecurity(session, &s.Company)
 	if existing == nil {
-		return errors.New("Permission Denied")
+		return err
 	} else if existing.ID != 0 {
 		return errors.New("Security Already Exists")
 	}

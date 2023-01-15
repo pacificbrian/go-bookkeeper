@@ -19,27 +19,34 @@ type Company struct {
 	oldSymbol string `gorm:"-:all"`
 }
 
-func (co Company) GetName() string {
-	if co.Name != "" {
-		return co.Name
+func (c Company) GetName() string {
+	if c.Name != "" {
+		return c.Name
 	}
-	return co.Symbol
+	return c.Symbol
+}
+
+func (c *Company) Get(db *gorm.DB) *Company {
+	if c.Name == "" && c.Symbol == "" {
+		return nil
+	}
+	// need Where because these are not primary keys
+	db.Where(c).First(c)
+
+	if c.ID == 0 {
+		db.Create(c)
+		spewModel(c)
+		log.Printf("[MODEL] CREATE COMPANY(%d)", c.ID)
+	}
+
+	return c
 }
 
 func companyGetBySymbol(db *gorm.DB, symbol string, name string) *Company {
 	company := new(Company)
 	company.Symbol = symbol
 	company.Name = name
-	// need Where because these are not primary keys
-	db.Where(&company).First(&company)
-
-	if company.ID == 0 {
-		db.Create(company)
-		spewModel(company)
-		log.Printf("[MODEL] CREATE COMPANY(%d)", company.ID)
-	}
-
-	return company
+	return company.Get(db)
 }
 
 func (c *Company) updateName(db *gorm.DB) error {
@@ -53,10 +60,16 @@ func (c *Company) updateName(db *gorm.DB) error {
 	return err
 }
 
+/* return true if Symbol was updated */
 func (c *Company) update(db *gorm.DB) bool {
-	if c.oldSymbol != c.Symbol {
-		newCompany := companyGetBySymbol(db, c.Symbol, c.Name)
-		c.ID = newCompany.ID
+	if c.oldSymbol == c.Symbol {
+		return false
 	}
-	return c.oldSymbol != c.Symbol
+
+	newCompany := companyGetBySymbol(db, c.Symbol, c.Name)
+	if newCompany == nil {
+		return false
+	}
+	c.ID = newCompany.ID
+	return true
 }

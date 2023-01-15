@@ -170,27 +170,32 @@ func accountGetByName(session *Session, name string) *Account {
 	return a
 }
 
-func (a *Account) securityGetBySymbol(session *Session, symbol string) *Security {
+func (a *Account) GetSecurity(session *Session, company *Company) (*Security, error) {
 	security := new(Security)
 	db := session.DB
-	c := companyGetBySymbol(db, symbol, "")
+
+	c := company.Get(db)
+	if c == nil {
+		return nil, errors.New("Invalid Request")
+	}
 	security.CompanyID = c.ID
 	security.AccountID = a.ID
+
 	// need Where because these are not primary keys
 	db.Preload("Account").
 	   Where(&security).First(&security)
-	log.Printf("[MODEL] ACCOUNT(%d) GET SECURITY for (%s:%d)",
-		   a.ID, symbol, security.ID)
+	log.Printf("[MODEL] ACCOUNT(%d) COMPANY(%d) GET SECURITY(%d)",
+		   a.ID, c.ID, security.ID)
 
 	if security.ID > 0 {
 		// verify Account
 		if !security.HaveAccessPermission(session) {
-			return nil
+			return nil, errors.New("Permission Denied")
 		}
 	}
 
 	// return Security if not found, so CompanyID can be reused
-	return security
+	return security, nil
 }
 
 func (a *Account) securityGetByImportName(session *Session, name string) *Security {

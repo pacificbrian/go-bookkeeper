@@ -60,6 +60,8 @@ func CreateSecurity(c echo.Context) error {
 	entry.AccountID = uint(account_id)
 	err := entry.Create(session)
 	if err != nil {
+		log.Printf("CREATE SECURITY ACCOUNT(%d) FAILED: %v",
+			   account_id, err)
 		return c.NoContent(http.StatusUnauthorized)
 	}
 	return c.Redirect(http.StatusSeeOther,
