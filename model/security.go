@@ -364,20 +364,19 @@ func (s *Security) Delete(session *Session) error {
 // Security access already verified with Get
 func (s *Security) Update(session *Session) error {
 	db := session.DB
+	updatedCompany := false
 	spewModel(s)
 
-	// test if Symbol changed, and must update CompanyID
-	updatedSymbol := s.Company.update(db)
-	if updatedSymbol {
+	if !s.Company.updateName(session) {
+		updatedCompany = s.Company.update(db)
+	}
+	// test if Company changed, and must update CompanyID
+	if updatedCompany {
 		s.CompanyID = s.Company.ID
 	}
 	result := db.Omit(clause.Associations).Save(s)
 	if result.Error != nil {
 		return result.Error
-	}
-	if !updatedSymbol {
-		// test if just Company.Name changed
-		s.Company.updateName(db)
 	}
 
 	log.Printf("[MODEL] UPDATE SECURITY(%d:%s)", s.ID, s.Company.Symbol)

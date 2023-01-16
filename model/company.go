@@ -70,20 +70,49 @@ func (c *Company) Get(db *gorm.DB, tryUpdate bool) *Company {
 	return c
 }
 
-func (c *Company) updateName(db *gorm.DB) error {
+func (c *Company) updateAllowed() bool {
+	return (c.Name != "" || c.Symbol != "")
+}
+
+// Updates Company Name, if Symbol unchanged.
+// But do not modify a Company that is attached to the
+// Securities of other Users.
+// Return true if Company.Name was updated.
+func (c *Company) updateName(session *Session) bool {
+	db := session.DB
 	var err error
+
+	if !c.updateAllowed() {
+		return false
+	}
 
 	if c.oldSymbol == c.Symbol &&
 	   c.oldName != c.Name {
-		result := db.Model(c).Update("Name", c.Name)
-		err = result.Error
+		var numSecurities int64
+
+		// Verify Company not used by other Users' Securities
+		db.Model(&Security{}).
+		   Where(&Security{CompanyID: c.ID}).
+		   Where("user_id != ?", session.GetCurrentUser().ID).
+		   Joins("Account").Count(&numSecurities)
+
+		if numSecurities == 0 {
+			result := db.Model(c).Update("Name", c.Name)
+			err = result.Error
+			if err == nil {
+				log.Printf("[MODEL] UPDATED COMPANY(%d) NAME(%s)",
+					   c.ID, c.Name)
+			}
+			return err == nil
+		}
 	}
-	return err
+	return false
 }
 
-/* Return true if Symbol was updated. */
+// Return true if Company was updated.
 func (c *Company) update(db *gorm.DB) bool {
-	if c.oldSymbol == c.Symbol {
+	if !c.updateAllowed() ||
+	   (c.oldSymbol == c.Symbol && c.oldName == c.Name) {
 		return false
 	}
 
