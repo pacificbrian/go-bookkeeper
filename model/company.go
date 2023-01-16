@@ -26,27 +26,48 @@ func (c Company) GetName() string {
 	return c.Symbol
 }
 
-func (c *Company) Get(db *gorm.DB) *Company {
+// Query if Company already exists and return.
+// If non-existent, create one. But if this is an Update, first
+// try to update the calling object Company first if only attached
+// to one Security.
+// XXX Possibly should disallow multiple Companies for same Symbol.
+// Or in future have defined set of fixed Companies if ever consider
+// to add support for financial statements.
+func (c *Company) Get(db *gorm.DB, tryUpdate bool) *Company {
 	if c.Name == "" && c.Symbol == "" {
 		return nil
 	}
-	// need Where because these are not primary keys
-	db.Where(c).First(c)
+	result := new(Company)
 
-	if c.ID == 0 {
+	// Where query will only look at non-primary-key fields
+	db.Where(c).First(result)
+
+	if result.ID > 0 {
+		c = result
+		log.Printf("[MODEL] FOUND EXISTING COMPANY(%d)", c.ID)
+	} else {
+		// Before creating new Company, test if can just update the
+		// calling object Company if only has one Security (assumed to
+		// be the Security being updated). Racy! Maybe need the Save()
+		// to be in a hook attached to the Find().
+		if c.ID > 0 && tryUpdate {
+			var numSecurities int64
+
+			db.Model(&Security{}).Where(&Security{CompanyID: c.ID}).
+			   Count(&numSecurities)
+			if numSecurities == 1 {
+				db.Save(c)
+				log.Printf("[MODEL] UPDATED COMPANY(%d)", c.ID)
+				return c
+			}
+		}
+
 		db.Create(c)
 		spewModel(c)
 		log.Printf("[MODEL] CREATE COMPANY(%d)", c.ID)
 	}
 
 	return c
-}
-
-func companyGetBySymbol(db *gorm.DB, symbol string, name string) *Company {
-	company := new(Company)
-	company.Symbol = symbol
-	company.Name = name
-	return company.Get(db)
 }
 
 func (c *Company) updateName(db *gorm.DB) error {
@@ -60,13 +81,13 @@ func (c *Company) updateName(db *gorm.DB) error {
 	return err
 }
 
-/* return true if Symbol was updated */
+/* Return true if Symbol was updated. */
 func (c *Company) update(db *gorm.DB) bool {
 	if c.oldSymbol == c.Symbol {
 		return false
 	}
 
-	newCompany := companyGetBySymbol(db, c.Symbol, c.Name)
+	newCompany := c.Get(db, true)
 	if newCompany == nil {
 		return false
 	}

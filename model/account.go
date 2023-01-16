@@ -174,7 +174,7 @@ func (a *Account) GetSecurity(session *Session, company *Company) (*Security, er
 	security := new(Security)
 	db := session.DB
 
-	c := company.Get(db)
+	c := company.Get(db, false)
 	if c == nil {
 		return nil, errors.New("Invalid Request")
 	}
