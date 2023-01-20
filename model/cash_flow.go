@@ -486,7 +486,7 @@ func (c *CashFlow) pairFrom(src *CashFlow) {
 //   - lookup Account (error if not found/accessible)
 //   - return Pair cashflow (for other Account) if this is a Transfer
 //   - UPDATEs are allowed to change to/from Transfer type and change Peer Account
-func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
+func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB, importing bool) (error, *CashFlow) {
 	var pair *CashFlow = nil // Transfer Pair
 
 	if c.Transfer {
@@ -531,7 +531,10 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 
 		if !c.Split && c.PayeeName != "" {
 			// creates Payee if none exists
-			p := payeeGetByName(c.getSession(), c.PayeeName)
+			err, p := payeeGetByName(c.getSession(), c.PayeeName, importing)
+			if err != nil {
+				return err, nil
+			}
 			c.PayeeID = p.ID
 		}
 	}
@@ -540,12 +543,12 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB) (error, *CashFlow) {
 }
 
 // c.Account access must be verified
-func (c *CashFlow) insertCashFlow(db *gorm.DB) error {
+func (c *CashFlow) insertCashFlow(db *gorm.DB, importing bool) error {
 	if !c.Account.Verified {
 		log.Printf("[MODEL] INSERT CASHFLOW PERMISSION DENIED")
 		return errors.New("Permission Denied")
 	}
-	err, pair := c.prepareInsertCashFlow(db)
+	err, pair := c.prepareInsertCashFlow(db, importing)
 	if err == nil {
 		result := db.Omit(clause.Associations).Create(c)
 		err = result.Error
@@ -886,7 +889,7 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 		c.cloneScheduled(repeat)
 
 		// add scheduled CashFlow
-		err = c.insertCashFlow(db)
+		err = c.insertCashFlow(db, false)
 		if err != nil || c.Split {
 			break
 		}
@@ -941,7 +944,7 @@ func (c *CashFlow) Create(session *Session) error {
 	// defaults for DB fields not set during Create (are Edit only)
 	c.setDefaults()
 
-	err := c.insertCashFlow(db)
+	err := c.insertCashFlow(db, false)
 	if err == nil && c.IsScheduledParent() {
 		_err := c.RepeatInterval.Create(db, c)
 		if _err != nil {
@@ -1112,7 +1115,7 @@ func (c *CashFlow) Update(session *Session) error {
 		c.Date = c.oldDate
 	}
 
-	err, pair := c.prepareInsertCashFlow(db)
+	err, pair := c.prepareInsertCashFlow(db, false)
 	if err == nil {
 		result := db.Omit(clause.Associations, "type").Save(c)
 		err = result.Error

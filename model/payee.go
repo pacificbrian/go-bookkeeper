@@ -42,10 +42,10 @@ func (*Payee) List(session *Session) []Payee {
 	return entries
 }
 
-func payeeGetByName(session *Session, name string) *Payee {
+func payeeGetByName(session *Session, name string, importing bool) (error, *Payee) {
 	u := session.GetCurrentUser()
 	if u == nil {
-		return nil
+		return errors.New("Permission Denied"), nil
 	}
 	db := session.DB
 	created := false
@@ -56,7 +56,11 @@ func payeeGetByName(session *Session, name string) *Payee {
 	// need Where because these are not primary keys
 	db.Where(&payee).First(&payee)
 
-	if payee.ID == 0 {
+	if payee.SkipOnImport {
+		log.Printf("[MODEL] GET PAYEE(%d) BY NAME(%s) SKIP(1)",
+			   payee.ID, name)
+		return errors.New("Payee has SkipOnImport"), nil
+	} else if payee.ID == 0 {
 		db.Omit(clause.Associations).Create(payee)
 		spewModel(payee)
 		created = true
@@ -64,7 +68,7 @@ func payeeGetByName(session *Session, name string) *Payee {
 	log.Printf("[MODEL] GET PAYEE(%d) BY NAME(%s) NEW(%t)",
 		   payee.ID, name, created)
 
-	return payee
+	return nil, payee
 }
 
 func (p *Payee) Create(session *Session) error {

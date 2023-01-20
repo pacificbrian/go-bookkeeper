@@ -91,7 +91,7 @@ func (im *Import) create(db *gorm.DB) error {
 
 func (im *Import) ImportFile(session *Session, importFile HttpFile) error {
 	fileName := importFile.FileName
-	fileExtension := filepath.Ext(fileName)
+	fileExtension := strings.ToLower(filepath.Ext(fileName))
 	if fileExtension == ".qif" {
 		return im.ImportFromQIF(session, importFile)
 	} else if fileExtension == ".qfx" || fileExtension == ".ofx" {
@@ -124,11 +124,12 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 		return errors.New(fmt.Sprintf("[MODEL] IMPORT [%s]: error: %v",
 				              fileName, err))
 	}
-	count = len(transactions)
-	if count == 0 {
-		return nil
-	}
 	spewModel(transactions)
+
+	count = len(transactions)
+	if count == 0 || !recordImport {
+		goto done
+	}
 
 	// convert qif.Transactions to CashFlows or Trades
 	switch transactions[0].TransactionType() {
@@ -136,9 +137,7 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 		cashflows := make([]CashFlow, count)
 
 		// write Import, we store ImportID in CashFlows
-		if recordImport {
-			im.create(db)
-		}
+		im.create(db)
 
 		for i := 0; i < count; i++ {
 			transaction := transactions[i].(qif.BankingTransaction)
@@ -146,10 +145,9 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 			cashflows[i].AccountID = im.Account.ID
 			cashflows[i].Account.cloneVerified(&im.Account)
 			cashflows[i].ImportID = im.ID
-			if recordImport {
-				cashflows[i].insertCashFlow(db)
+			if cashflows[i].insertCashFlow(db, true) == nil {
+				entered++
 			}
-			entered++
 		}
 	case qif.TransactionTypeInvestment:
 		if !im.Account.IsInvestment() {
@@ -164,7 +162,7 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 								       securityName)
 			if security == nil {
 				continue
-			} else if im.ID == 0 && recordImport {
+			} else if im.ID == 0 {
 				// write Import, we store ImportID in CashFlows
 				im.create(db)
 			}
@@ -172,15 +170,14 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 			trades[i].makeTradeQIF(transaction)
 			trades[i].SecurityID = security.ID
 			trades[i].ImportID = im.ID
-			if recordImport {
-				trades[i].insertTrade(db, security)
-			}
+			trades[i].insertTrade(db, security)
 			entered++
 		}
 	default:
 		count = 0
 	}
 
+done:
 	log.Printf("[MODEL] IMPORT(%d) [%s] QIF TRANSACTIONS (ACCEPTED %d of %d)",
 		   im.ID, fileName, entered, count)
 	return nil
@@ -191,7 +188,9 @@ func (im *Import) ImportFromQFX(session *Session, importFile HttpFile) error {
 	var entries []CashFlow
 	fileName := importFile.FileName
 	db := session.DebugDB
+	recordImport := true
 	count := 0
+	entered := 0
 
 	// Verify we have access to Account
 	if !im.Account.Verified {
@@ -207,6 +206,7 @@ func (im *Import) ImportFromQFX(session *Session, importFile HttpFile) error {
 		return errors.New(fmt.Sprintf("[MODEL] IMPORT [%s]: bad response: %v",
 				              fileName, err))
 	}
+	spewModel(ofxTran)
 
 	if len(resp.Bank) > 0 {
 		stmt, valid := resp.Bank[0].(*ofxgo.StatementResponse)
@@ -214,24 +214,33 @@ func (im *Import) ImportFromQFX(session *Session, importFile HttpFile) error {
 			ofxTran = stmt.BankTranList.Transactions
 			count = len(ofxTran)
 			entries = make([]CashFlow, count)
+		}
+	} else if len(resp.CreditCard) > 0 {
+		stmt, valid := resp.CreditCard[0].(*ofxgo.CCStatementResponse)
+		if valid {
+			ofxTran = stmt.BankTranList.Transactions
+			count = len(ofxTran)
+			entries = make([]CashFlow, count)
+		}
+	}
 
-			// write Import, we store ImportID in CashFlows
-			if count > 0 {
-				im.create(db)
+	// write Import, we store ImportID in CashFlows
+	if recordImport && count > 0 {
+		im.create(db)
+
+		// convert ofxgo response to CashFlows
+		for i := 0; i < count; i++ {
+			entries[i].makeCashFlowOFX(&ofxTran[i])
+			entries[i].AccountID = im.Account.ID
+			entries[i].Account.cloneVerified(&im.Account)
+			entries[i].ImportID = im.ID
+			if entries[i].insertCashFlow(db, true) == nil {
+				entered++
 			}
 		}
 	}
 
-	// convert ofxgo response to CashFlows
-	for i := 0; i < count; i++ {
-		entries[i].makeCashFlowOFX(&ofxTran[i])
-		entries[i].AccountID = im.Account.ID
-		entries[i].Account.cloneVerified(&im.Account)
-		entries[i].ImportID = im.ID
-		entries[i].insertCashFlow(db)
-	}
-
-	log.Printf("[MODEL] IMPORT(%d) [%s] OFX TRANSACTIONS (%d)",
-		   im.ID, fileName, count)
+	log.Printf("[MODEL] IMPORT(%d) [%s] OFX TRANSACTIONS (ACCEPTED %d of %d)",
+		   im.ID, fileName, entered, count)
 	return nil
 }
