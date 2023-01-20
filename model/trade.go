@@ -88,6 +88,13 @@ func (t Trade) GetBasis() string {
 	}
 }
 
+func (t *Trade) SharesRemaining() decimal.Decimal {
+	if t.AdjustedShares.IsPositive() {
+		return t.AdjustedShares
+	}
+	return t.Shares
+}
+
 func (t *Trade) getCashFlowType() uint {
 	return TradeTypeToCashFlowType(t.TradeTypeID)
 }

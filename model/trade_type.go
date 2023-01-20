@@ -37,9 +37,15 @@ type TradeType struct {
 // SQL query string for Buy types
 var listBuyTypes = "id = 1 OR id = 5 OR id = 6"
 // SQL query string for all Buy, Sell types for Trades
-var TradeTypeQueries = [3]string{"",
+var TradeTypeQueries = [9]string{"",
 				 "trade_type_id = 1 OR trade_type_id = 5 OR trade_type_id = 6",
-				 "trade_type_id = 2"}
+				 "trade_type_id = 2",
+				 "trade_type_id = 3",
+				 "trade_type_id = 4",
+				 "trade_type_id = 3 OR trade_type_id = 5",
+				 "trade_type_id = 4 OR trade_type_id = 6",
+				 "trade_type_id = 7",
+				 "trade_type_id = 8"}
 var TradeTypeCashFlowsQuery string = "trade_type_id <= 6"
 
 func TradeTypeIsBuy(TradeTypeID uint) bool {

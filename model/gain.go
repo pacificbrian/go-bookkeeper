@@ -31,16 +31,15 @@ func (*TradeGain) List(db *gorm.DB) []TradeGain {
 	return entries
 }
 
+func (t *Trade) ListGains(db *gorm.DB) []TradeGain {
+	entries := []TradeGain{}
+	db.Where(&TradeGain{BuyID: t.ID}).Find(&entries)
+	return entries
+}
+
 func (tg *TradeGain) recordGain(db *gorm.DB, sell *Trade, buy *Trade,
 				maxShares decimal.Decimal) {
-	var buyRemain decimal.Decimal
-
-	if buy.AdjustedShares.IsPositive() {
-		buyRemain = buy.AdjustedShares
-	} else {
-		buyRemain = buy.Shares
-	}
-
+	buyRemain := buy.SharesRemaining()
 	tg.SellID = sell.ID
 	tg.BuyID = buy.ID
 	tg.DaysHeld = durationDays(sell.Date.Sub(buy.Date))
