@@ -112,41 +112,44 @@ func (account *Account) ListImports(session *Session) []Import {
 }
 
 func (account *Account) ListScheduled(session *Session, canRecordOnly bool) []CashFlow {
+	ignoreHasScheduled := false
 	entries := []CashFlow{}
 	if !account.Verified {
 		account.Get(session, false)
 	}
 
-	if account.Verified {
-		if !account.HasScheduled {
-			return entries
-		}
+	if !account.Verified || (!account.HasScheduled && !ignoreHasScheduled) {
+		return entries
+	}
 
-		db := session.DB
-		query := map[string]interface{}{"account_id": account.ID,
-					        "type": "RCashFlow", "split": false}
-		if canRecordOnly {
-			db.Order("date asc").Preload("RepeatInterval.RepeatIntervalType").
-					     Where("date <= ?", time.Now()).
-					     Where("repeats_left > 0 OR repeats_left IS NULL").
-					     Where("cash_flow_id > 0").
-					     Where("repeat_interval_id > 0").
-					     Joins("RepeatInterval").Find(&entries, query)
-		} else {
-			db.Order("date asc").Preload("RepeatInterval.RepeatIntervalType").
-					     Preload("Payee").
-					     Where("repeat_interval_id > 0").
-					     Joins("RepeatInterval").Find(&entries, query)
-			for i := 0; i < len(entries); i++ {
-				repeat := &entries[i]
-				// for Preload access to Account.User.Cache
-				repeat.Account.cloneVerified(account)
-				// for #Show
-				repeat.Preload(db)
-			}
+	db := session.DB
+	query := map[string]interface{}{"account_id": account.ID,
+					"type": "RCashFlow", "split": false}
+	if canRecordOnly {
+		db.Order("date asc").Preload("RepeatInterval.RepeatIntervalType").
+				     Where("date <= ?", time.Now()).
+				     Where("repeats_left > 0 OR repeats_left IS NULL").
+				     Where("cash_flow_id > 0").
+				     Where("repeat_interval_id > 0").
+				     Joins("RepeatInterval").Find(&entries, query)
+	} else {
+		db.Order("date asc").Preload("RepeatInterval.RepeatIntervalType").
+				     Preload("Payee").
+				     Where("repeat_interval_id > 0").
+				     Joins("RepeatInterval").Find(&entries, query)
+		for i := 0; i < len(entries); i++ {
+			repeat := &entries[i]
+			// for Preload access to Account.User.Cache
+			repeat.Account.cloneVerified(account)
+			// for #Show
+			repeat.Preload(db)
 		}
-		log.Printf("[MODEL] LIST SCHEDULED ACCOUNT(%d:%d) (%t)",
-			   account.ID, len(entries), canRecordOnly)
+	}
+	log.Printf("[MODEL] LIST SCHEDULED ACCOUNT(%d:%d) (%t)",
+		   account.ID, len(entries), canRecordOnly)
+
+	if len(entries) > 0 && !account.HasScheduled {
+		account.addScheduled(db)
 	}
 	return entries
 }
@@ -400,15 +403,21 @@ func (a *Account) Get(session *Session, preload bool) *Account {
 	}
 
 	if preload && enableScheduledCashFlow {
-		spewModel(a)
+		var amountAdded decimal.Decimal
 
 		// test if any ScheduledCashFlows need to post
 		scheduled := a.ListScheduled(session, true)
 		for i := 0; i < len(scheduled); i++ {
 			var repeat *CashFlow = &scheduled[i]
 			repeat.Account.cloneVerified(a)
-			repeat.tryInsertRepeatCashFlow(db)
+			total, err := repeat.tryInsertRepeatCashFlow(db)
+			if err == nil {
+				amountAdded = amountAdded.Add(total)
+			}
 		}
+		a.Balance = a.Balance.Add(amountAdded)
+		a.CashBalance = a.CashBalance.Add(amountAdded)
+		spewModel(a)
 	}
 	return a
 }

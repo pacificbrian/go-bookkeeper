@@ -110,8 +110,11 @@ func (c *CashFlow) IsScheduledParent() bool {
 	return c.IsScheduled() && !c.Split
 }
 
-func (c *CashFlow) IsScheduledEnterable() bool {
-	return (c.IsScheduledParent() && c.RepeatInterval.HasRepeatsLeft())
+func (c *CashFlow) IsScheduledEnterable(allowFutureNoRepeat bool) bool {
+	if allowFutureNoRepeat {
+		return c.IsScheduledParent() && c.Date.After(time.Now())
+	}
+	return c.IsScheduledParent() && c.RepeatInterval.HasRepeatsLeft()
 }
 
 func (c *CashFlow) IsTrade() bool {
@@ -858,7 +861,8 @@ func (repeat *CashFlow) advance(db *gorm.DB, updateDB bool) (bool, int) {
 	return time.Now().After(repeat.Date), days
 }
 
-func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
+func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) (decimal.Decimal, error) {
+	var amountAdded decimal.Decimal
 	var splits []CashFlow
 	var err error
 	updateDB := true
@@ -897,6 +901,7 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 			if err != nil || c.Split {
 				break
 			}
+			amountAdded = amountAdded.Add(c.Amount)
 
 			// reuse Splits array if queried above
 			if len(splits) == 0 {
@@ -922,7 +927,8 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 		}
 		c.ID = 0
 	}
-	return err
+
+	return amountAdded, err
 }
 
 // defaults for DB fields not set during Create (are Edit only)
@@ -1073,8 +1079,9 @@ func (c *CashFlow) Put(session *Session, request map[string]interface{}) error {
 
 	if request["apply"] != nil {
 		delete(request, "apply")
-		if c.IsScheduledEnterable() {
-			return c.tryInsertRepeatCashFlow(db)
+		if c.IsScheduledEnterable(true) {
+			_,err := c.tryInsertRepeatCashFlow(db)
+			return err
 		}
 	}
 
