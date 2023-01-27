@@ -802,7 +802,7 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 }
 
 // returns true if advanced date is still less than time.Now
-func (repeat *CashFlow) advance(db *gorm.DB) (bool, int) {
+func (repeat *CashFlow) advance(db *gorm.DB, updateDB bool) (bool, int) {
 	days := repeat.RepeatInterval.advance(db)
 	if days == 0 {
 		return false, days
@@ -845,11 +845,13 @@ func (repeat *CashFlow) advance(db *gorm.DB) (bool, int) {
 	}
 	repeat.TaxYear = repeat.Date.Year()
 
-	updates := repeat.repeatUpdateMap()
-	if !repeat.oldAmount.Equal(repeat.Amount) {
-		updates["amount"] = repeat.Amount
+	if updateDB {
+		updates := repeat.repeatUpdateMap()
+		if !repeat.oldAmount.Equal(repeat.Amount) {
+			updates["amount"] = repeat.Amount
+		}
+		db.Omit(clause.Associations).Model(repeat).Updates(updates)
 	}
-	db.Omit(clause.Associations).Model(repeat).Updates(updates)
 	log.Printf("[MODEL] ADVANCE SCHEDULED CASHFLOW(%d) to %s", repeat.ID,
 		   repeat.Date.Format("2006-01-02"))
 
@@ -859,6 +861,7 @@ func (repeat *CashFlow) advance(db *gorm.DB) (bool, int) {
 func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 	var splits []CashFlow
 	var err error
+	updateDB := true
 
 	c := new(CashFlow)
 	for {
@@ -888,27 +891,29 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) error {
 		}
 		c.cloneScheduled(repeat)
 
-		// add scheduled CashFlow
-		err = c.insertCashFlow(db, false)
-		if err != nil || c.Split {
-			break
-		}
+		if updateDB {
+			// add scheduled CashFlow
+			err = c.insertCashFlow(db, false)
+			if err != nil || c.Split {
+				break
+			}
 
-		// reuse Splits array if queried above
-		if len(splits) == 0 {
-			splits, _ = repeat.ListSplit(db)
-		}
-		// now add SplitCashFlows
-		for i := 0; i < len(splits); i++ {
-			split := &splits[i]
-			split.SplitFrom = c.ID
-			split.tryInsertRepeatCashFlow(db)
+			// reuse Splits array if queried above
+			if len(splits) == 0 {
+				splits, _ = repeat.ListSplit(db)
+			}
+			// now add SplitCashFlows
+			for i := 0; i < len(splits); i++ {
+				split := &splits[i]
+				split.SplitFrom = c.ID
+				split.tryInsertRepeatCashFlow(db)
+			}
 		}
 
 		// advance Date in Repeat CashFlow and Splits, but reuse
 		// array of Splits we already queried
-		canRepeat,_ := repeat.advance(db)
-		if len(splits) > 0 {
+		canRepeat,_ := repeat.advance(db, updateDB)
+		if updateDB && len(splits) > 0 {
 			updateSplits(db, splits, repeat.repeatUpdateMap(),
 				     newSplitAmounts)
 		}

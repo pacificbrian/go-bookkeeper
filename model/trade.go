@@ -200,12 +200,13 @@ func (t *Trade) updateBasis(db *gorm.DB, basis decimal.Decimal, soldShares decim
 func (t *Trade) recordGain(db *gorm.DB, activeBuys []Trade) {
 	var sellBasis decimal.Decimal
 	sharesRemain := t.Shares
+	updateDB := true
 
 	tg := new(TradeGain)
 	for i := 0; sharesRemain.IsPositive(); i++ {
 		buy := &activeBuys[i]
 		tg.ID = 0
-		tg.recordGain(db, t, buy, sharesRemain)
+		tg.recordGain(db, t, buy, sharesRemain, updateDB)
 		sharesRemain = sharesRemain.Sub(tg.Shares)
 		sellBasis = sellBasis.Add(tg.Basis)
 
