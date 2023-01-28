@@ -87,6 +87,7 @@ type TaxEntry struct {
 	TaxItemID uint `form:"tax_item_id"`
 	TaxRegionID uint `form:"tax_region_id"`
 	TaxTypeID uint `form:"tax_type_id"`
+	TaxCategoryID uint `gorm:"-:all"`
 	UserID uint
 	Amount decimal.Decimal `form:"amount" gorm:"not null"`
 	Memo string `form:"memo"`
@@ -143,7 +144,7 @@ func (t TaxReturn) FilingStatusLabel() string {
 	return label
 }
 
-func (*TaxCategory) List(db *gorm.DB, taxType uint) []TaxCategory {
+func (tc *TaxCategory) List(db *gorm.DB, taxType uint) []TaxCategory {
 	entries := []TaxCategory{}
 	globals := config.GlobalConfig()
 
@@ -152,7 +153,9 @@ func (*TaxCategory) List(db *gorm.DB, taxType uint) []TaxCategory {
 	}
 
 	dbPrefix := db.Order("tax_item_id").Order("category_id")
-	if taxType > 0 {
+	if tc.TaxItem.ID > 0 {
+		dbPrefix = dbPrefix.Where(&TaxCategory{TaxItemID: tc.TaxItem.ID})
+	} else if taxType > 0 {
 		dbPrefix = dbPrefix.Where("tax_type_id = ?", taxType).Joins("TaxItem")
 	} else {
 		dbPrefix = dbPrefix.Preload("TaxItem")
@@ -237,6 +240,7 @@ func (taxCat *TaxCategory) makeTaxEntry(session *Session, year int, total decima
 	entry.TaxItem.setTaxType()
 	entry.TaxType = entry.TaxItem.TaxType
 	entry.TaxTypeID = entry.TaxType.ID
+	entry.TaxCategoryID = taxCat.ID
 	entry.setAmount(total)
 
 	c := new(CashFlow)
@@ -266,7 +270,7 @@ func (*TaxEntry) List(session *Session, year int) []TaxEntry {
 	for i := 0; i < len(taxCategories); i++ {
 		taxCategory := &taxCategories[i]
 		if taxCategory.CategoryID > 0 {
-			_, total := u.ListTaxCategory(db, year, taxCategory)
+			total := u.ListTaxCategoryTotal(db, year, taxCategory)
 			if !total.IsZero() {
 				autoEntry := taxCategory.makeTaxEntry(session, year, total)
 				autoEntries = append(autoEntries, *autoEntry)
@@ -355,6 +359,67 @@ func (item *TaxItem) GetByName(db *gorm.DB, name string) *TaxItem {
 	return item
 }
 
+func (item *TaxItem) Get(db *gorm.DB) *TaxItem {
+	db.First(&item, item.ID)
+	if item.ID == 0 {
+		return nil
+	}
+	return item
+}
+
+func (tt *TaxType) Get(db *gorm.DB) *TaxType {
+	db.First(&tt, tt.ID)
+	if tt.ID == 0 {
+		return nil
+	}
+	return tt
+}
+
+// it.TaxTypeID is expected to be set to valid TaxType.
+// it.TaxType object is optional and set if the TaxCategory.List should
+// use TaxType for filtering. Unfortunately, this is a bit confusing.
+func (it *TaxItem) listTaxCashFlows(session *Session, year int,
+				    wantEntries bool) ([]CashFlow, decimal.Decimal) {
+	db := session.DB
+	u := session.GetCurrentUser()
+	var total decimal.Decimal
+	var entries []CashFlow
+
+	taxCategory := new(TaxCategory)
+	taxEntry := new(TaxEntry)
+	taxCategory.TaxItem = *it
+	taxCategories := taxCategory.List(db, it.TaxType.ID)
+	for i := 0; i < len(taxCategories); i++ {
+		taxCategory := &taxCategories[i]
+		if taxCategory.CategoryID > 0 {
+			catEntries,catTotal := u.ListTaxCategory(db, year, taxCategory)
+			if !catTotal.IsZero() {
+				taxEntry.TaxTypeID = it.TaxTypeID
+				taxEntry.setAmount(catTotal)
+				total = total.Add(taxEntry.Amount)
+			}
+			if wantEntries {
+				//entries = append(entries, catEntries...)
+				entries = new(Account).mergeCashFlows(db, entries, catEntries,
+								      0, false, false)
+			}
+		}
+	}
+
+	return entries, total
+}
+
+func (it *TaxItem) ListTaxCashFlows(session *Session, year int) ([]CashFlow, decimal.Decimal) {
+	return it.listTaxCashFlows(session, year, true)
+}
+
+func (tt *TaxType) ListTaxCashFlows(session *Session, year int) ([]CashFlow, decimal.Decimal) {
+	it := new(TaxItem)
+	it.TaxTypeID = tt.ID
+	it.TaxType = *tt
+	return it.ListTaxCashFlows(session, year)
+}
+
 // Some TaxTypes may need Neg() of the CashFlows (handled in makeTaxEntry)
 // Possibly we should add Round(2) to be cautious
 func (*TaxType) Sum(db *gorm.DB, r *TaxReturn, taxType uint) decimal.Decimal {
@@ -375,21 +440,13 @@ func (*TaxType) Sum(db *gorm.DB, r *TaxReturn, taxType uint) decimal.Decimal {
 	}
 
 	// Include "AUTO" entries
-	taxCategories := new(TaxCategory).List(db, taxType)
-	taxEntry := new(TaxEntry)
-	for i := 0; i < len(taxCategories); i++ {
-		taxCategory := &taxCategories[i]
-		if taxCategory.CategoryID > 0 {
-			_, categoryTotal := r.User.ListTaxCategory(db, r.Year, taxCategory)
-			if !categoryTotal.IsZero() {
-				taxEntry.TaxTypeID = taxType
-				taxEntry.setAmount(categoryTotal)
-				total = total.Add(taxEntry.Amount)
-			}
-		}
-	}
+	it := new(TaxItem)
+	it.TaxTypeID = taxType
+	it.TaxType.ID = taxType
+	_,autoTotal := it.listTaxCashFlows(r.Session, r.Year, false)
+	total = total.Add(autoTotal)
 
-	if len(entries) > 0 {
+	if total.IsPositive() {
 		log.Printf("[MODEL] TAX TYPE(%d) SUM(%f)", taxType, total.InexactFloat64())
 	}
 	return total

@@ -228,16 +228,24 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 	}
 }
 
+// Merges two sorted CashFlow arrays into one, with computed Balances.
+// Can be sorted ascending (default) or descending.
+// Account is needed if setting preload boolean, or if setting descending
+// boolean, but otherwise does not need to be valid Account.
 func (ca *Account) mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
-				  limit int) []CashFlow {
+				  limit int, descending bool, preload bool) []CashFlow {
 	totalEntries := len(A) + len(B)
-	balance := ca.CashBalance
+	balance := decimal.Zero
 	logTime := false
 	var mergedEntries []CashFlow
 	var a, b, c *CashFlow
 
 	if logTime {
 		log.Printf("[MODEL] ACCOUNT(%d) CASHFLOW MERGE/PRELOAD START", ca.ID)
+	}
+
+	if descending {
+		balance = ca.CashBalance
 	}
 
 	entries := &A
@@ -248,10 +256,17 @@ func (ca *Account) mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
 
 		for i := 0; i < totalEntries; i++ {
 			c = &(*entries)[i]
-			c.Balance = balance
-			balance = balance.Sub(c.Amount)
-			c.Account.cloneVerified(ca)
-			c.Preload(db)
+			if descending {
+				c.Balance = balance
+				balance = balance.Sub(c.Amount)
+			} else {
+				balance = balance.Add(c.Amount)
+				c.Balance = balance
+			}
+			if preload {
+				c.Account.cloneVerified(ca)
+				c.Preload(db)
+			}
 		}
 	} else {
 		aIdx := 0
@@ -268,7 +283,7 @@ func (ca *Account) mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
 				b = &B[bIdx]
 			}
 
-			if b == nil || (a != nil && a.Date.After(b.Date)) {
+			if b == nil || (a != nil && dateFirst(&a.Date, &b.Date, descending)) {
 				c = a
 				aIdx += 1
 			} else {
@@ -276,10 +291,17 @@ func (ca *Account) mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
 				bIdx += 1
 			}
 
-			c.Balance = balance
-			balance = balance.Sub(c.Amount)
-			c.Account.cloneVerified(ca)
-			c.Preload(db)
+			if descending {
+				c.Balance = balance
+				balance = balance.Sub(c.Amount)
+			} else {
+				balance = balance.Add(c.Amount)
+				c.Balance = balance
+			}
+			if preload {
+				c.Account.cloneVerified(ca)
+				c.Preload(db)
+			}
 			mergedEntries[i] = *c
 		}
 		entries = &mergedEntries
@@ -325,7 +347,7 @@ func (*CashFlow) ListMergeByDate(db *gorm.DB, account *Account, other []CashFlow
 	queryPrefix.Find(&entries, query)
 
 	// merge if multiple CashFlow sets, update Balances
-	entries = account.mergeCashFlows(db, entries, other, limit)
+	entries = account.mergeCashFlows(db, entries, other, limit, true, true)
 
 	log.Printf("[MODEL] LIST CASHFLOWS ACCOUNT(%d:%d)", account.ID, len(entries))
 	return entries
@@ -347,6 +369,7 @@ func (*CashFlow) ListMerge(db *gorm.DB, account *Account, other []CashFlow) []Ca
 func (c *CashFlow) ListSplit(db *gorm.DB) ([]CashFlow, string) {
 	var total decimal.Decimal
 	entries := []CashFlow{}
+
 	if c.HasSplits() && c.Account.Verified {
 		db.Find(&entries, &CashFlow{AccountID: c.AccountID, SplitFrom: c.ID, Split: true})
 		for i := 0; i < len(entries); i++ {
@@ -361,13 +384,18 @@ func (c *CashFlow) ListSplit(db *gorm.DB) ([]CashFlow, string) {
 	return entries, currency(total)
 }
 
-func (u *User) ListTaxCategory(db *gorm.DB, year int, taxCat *TaxCategory) ([]Account, decimal.Decimal) {
+func (u *User) listTaxCategory(db *gorm.DB, year int, taxCat *TaxCategory,
+			       wantEntries bool) ([]CashFlow, decimal.Decimal) {
 	var total decimal.Decimal
+	var entries []CashFlow
 
 	if taxCat.CategoryID > 0 {
 		db.Preload("CashFlows",
-			   "(type != ? OR type IS NULL) AND tax_year = ? AND category_id = ?",
-			   "RCashFlow", year, taxCat.CategoryID).
+			   func(db *gorm.DB) *gorm.DB {
+				return db.Order("date asc").
+					  Where("(type != ? OR type IS NULL) AND tax_year = ? AND category_id = ?",
+						"RCashFlow", year, taxCat.CategoryID)
+			   }).
 		   Find(&u.Accounts, &Account{UserID: u.ID, Taxable: true})
 		for i := 0; i < len(u.Accounts); i++ {
 			a := &u.Accounts[i]
@@ -376,9 +404,25 @@ func (u *User) ListTaxCategory(db *gorm.DB, year int, taxCat *TaxCategory) ([]Ac
 				c.determineCashFlowType()
 				total = total.Add(c.Amount)
 			}
+
+			if (wantEntries) {
+				//entries = append(entries, *c)
+				a.setSession(u.Session)
+				entries = a.mergeCashFlows(db, entries, a.CashFlows,
+                                                           0, false, true)
+			}
 		}
 	}
-	return u.Accounts, total
+	return entries, total
+}
+
+func (u *User) ListTaxCategory(db *gorm.DB, year int, taxCat *TaxCategory) ([]CashFlow, decimal.Decimal) {
+	return u.listTaxCategory(db, year, taxCat, true)
+}
+
+func (u *User) ListTaxCategoryTotal(db *gorm.DB, year int, taxCat *TaxCategory) decimal.Decimal {
+	_, total  := u.listTaxCategory(db, year, taxCat, false)
+	return total
 }
 
 // c.Account must be preloaded

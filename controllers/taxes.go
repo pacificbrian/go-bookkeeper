@@ -55,6 +55,48 @@ func ListTaxes(c echo.Context) error {
 	}
 }
 
+func ListTaxCashFlows(c echo.Context) error {
+	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	var entries []model.CashFlow
+	taxItem := new(model.TaxItem)
+	taxType := new(model.TaxType)
+	get_json := false
+
+	year, _ := strconv.Atoi(c.Param("year"))
+	paramID, _ := strconv.Atoi(c.Param("tax_item_id"))
+	taxItem.ID = uint(paramID)
+	paramID, _ = strconv.Atoi(c.Param("tax_type_id"))
+	taxType.ID = uint(paramID)
+
+	log.Printf("LIST TAX CASHFLOWS (%d) ITEM(%d) TYPE(%d)",
+		   year, taxItem.ID, taxType.ID)
+
+
+	if get_json {
+		return c.JSON(http.StatusOK, entries)
+	} else {
+		db := session.DB
+		taxItem  = taxItem.Get(db)
+		taxType  = taxType.Get(db)
+		if taxItem != nil && taxItem.ID > 0 {
+			entries,_ = taxItem.ListTaxCashFlows(session, year)
+		} else if taxType != nil && taxType.ID > 0 {
+			entries,_ = taxType.ListTaxCashFlows(session, year)
+		}
+
+		data := map[string]any{ "cash_flows": entries,
+					"tax_item": taxItem,
+					"tax_type": taxType,
+					"account": nil,
+					"disallow_delete": true,
+					"year": year }
+		return c.Render(http.StatusOK, "taxes/list_entries.html", data)
+	}
+}
+
 func CreateTaxEntry(c echo.Context) error {
 	session := getSession(c)
 	if session == nil {

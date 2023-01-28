@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="show">
+{% if tax_item.ID > 0  -%}
+<h2>Tax Cashflows for Item: {{tax_item.Name}} </h2>
+{% elif tax_type.ID > 0  -%}
+<h2>Tax Cashflows for Type: {{tax_type.Name}} </h2>
+{% else -%}
+<h2>Tax Cashflows</h2>
+{% endif -%}
+
+{% if (cash_flows|length > 0) -%}
+<div id="cash_flows">
+{% include "cash_flows/_list_cash_flows.html" -%}
+</div>
+{% endif -%}
+</div>
+
+<ul id="footmenu">
+{% if account  -%}
+<li><a href=/accounts/{{ account.ID }}>Go to Account</a></li>
+{% if tax_item.ID > 0  -%}
+<li><a href=/years/{{year}}/tax_items/{{tax_item.ID}}>Go to Tax Entries</a></li>
+{% elif tax_type.ID > 0  -%}
+<li><a href=/years/{{year}}/tax_types/{{tax_type.ID}}>Go to Tax Entries</a></li>
+{% endif -%}
+{% endif -%}
+<li><a href=/years/{{year}}/taxes>Back to Taxes</a></li>
+</ul>
+{% endblock -%}

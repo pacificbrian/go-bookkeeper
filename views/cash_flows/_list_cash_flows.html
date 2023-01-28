@@ -11,7 +11,9 @@
 <th id="balance" class="noedit">Balance</th>
 {% endif -%}
 <th class="noedit"></th>
+{% if !disallow_delete -%}
 <th class="noedit"></th>
+{% endif -%}
 </tr>
 </thead>
 <tbody data-controller="cashflow">
@@ -42,13 +44,17 @@
 {% endif -%}
 {% if c.ID > 0 -%}
 <td><a href=/cash_flows/{{ c.ID }}/edit>Edit</a></td>
-<td><a href=/cash_flows/{{ c.ID }} data-cashflow-id="{{ c.ID }}" data-action="cashflow#actionDelete">Delete</a></td>
 {% elif c.ShowTradeLinks() -%}
 <td><a href=/trades/{{ c.ImportID }}/edit>Edit</a></td>
-<td></td>
 {% else -%}
 <td></td>
+{% endif -%}
+{% if !disallow_delete -%}
+{% if c.ID > 0 -%}
+<td><a href=/cash_flows/{{ c.ID }} data-cashflow-id="{{ c.ID }}" data-action="cashflow#actionDelete">Delete</a></td>
+{% else -%}
 <td></td>
+{% endif -%}
 {% endif -%}
 </tr>
 {% endfor -%}

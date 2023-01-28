@@ -52,6 +52,13 @@ func currency(value decimal.Decimal) string {
 	return  "$" + value.StringFixedBank(2)
 }
 
+func dateFirst(a *time.Time, b *time.Time, descending bool) bool {
+	if descending {
+		return a.After(*b)
+	}
+	return b.After(*a)
+}
+
 func daysBetweenDates(from *time.Time, to *time.Time, onlyBusinessDays bool) int32 {
 	days := durationDays(to.Sub(*from))
 	if !onlyBusinessDays {
@@ -95,5 +102,5 @@ func timeToString(dx *time.Time) string {
 }
 
 func yearToDate(year int) time.Time {
-	return time.Date(year, 1, 1, 0, 0, 0, 0, time.UTC)
+	return time.Date(year, 1, 1, 0, 0, 0, 0, time.Local)
 }
