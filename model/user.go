@@ -35,7 +35,7 @@ type User struct {
 	Email string
 	PasswordDigest string
 	CashflowLimit int
-	Cache *UserCache `gorm:"-:all"`
+	Session *Session `gorm:"-:all"`
 	UserSettings UserSettings
 	Accounts []Account
 	Payees []Payee
@@ -48,21 +48,25 @@ type Session struct {
 	DebugDB *gorm.DB
 }
 
+func (u *User) Cache() *UserCache {
+	return &u.Session.Cache
+}
+
 func (u *User) cacheAccount(a *Account) {
-	u.Cache.AccountNames[a.ID] = a.Name
+	u.Cache().AccountNames[a.ID] = a.Name
 }
 
 func (u *User) cacheCategory(c *Category) {
-	u.Cache.CategoryNames[c.ID] = c.Name
+	u.Cache().CategoryNames[c.ID] = c.Name
 	log.Printf("[CACHE] ADD CATEGORY(%d: %s)", c.ID, c.Name)
 }
 
 func (u *User) lookupAccount(id uint) string {
-	return u.Cache.AccountNames[id]
+	return u.Cache().AccountNames[id]
 }
 
 func (u *User) lookupCategory(id uint) string {
-	return u.Cache.CategoryNames[id]
+	return u.Cache().CategoryNames[id]
 }
 
 func (uc *UserCache) init() {
@@ -83,9 +87,9 @@ func (u *User) initSettings() {
 	u.UserSettings.UserID = u.ID
 }
 
-func (u *User) init(userCache *UserCache) {
+func (u *User) init(session *Session) {
 	u.initSettings()
-	u.Cache = userCache
+	u.Session = session
 }
 
 func (sn *Session) init() {
@@ -102,7 +106,7 @@ func (u *User) NewSession() *Session {
 	newSession := new(Session)
 	newSession.init()
 	newSession.User.ID = u.ID
-	newSession.User.init(&newSession.Cache)
+	newSession.User.init(newSession)
 
 	// example of using bcrypt for passwords
 	// overwrite u.PasswordDigest just for testing

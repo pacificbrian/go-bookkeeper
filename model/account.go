@@ -349,12 +349,13 @@ func (a *Account) Create(session *Session) error {
 func (a *Account) cloneVerified(src *Account) {
 	a.ID = src.ID
 	a.User.ID = src.User.ID
-	a.User.Cache = src.User.Cache
+	a.User.Session = src.User.Session
 	a.User.UserSettings = src.User.UserSettings
 	a.Session = src.Session
 	a.Balance = src.Balance
 	a.CashBalance = src.CashBalance
 	a.Verified = src.Verified
+	assert(a.Session == a.User.Session, "Account/User Corrupt!")
 }
 
 // Account.User is populated from Session
