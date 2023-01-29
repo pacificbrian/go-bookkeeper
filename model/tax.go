@@ -286,14 +286,15 @@ func (*TaxEntry) List(session *Session, year int) []TaxEntry {
 func (t *TaxEntry) Create(session *Session) error {
 	db := session.DB
 	u := session.GetCurrentUser()
-	if u != nil {
-		t.UserID = u.ID
-		t.Year = yearToDate(t.DateYear)
-		spewModel(t)
-		result := db.Omit(clause.Associations).Table("taxes").Create(t)
-		return result.Error
+	if u == nil {
+		return errors.New("Permission Denied")
 	}
-	return errors.New("Permission Denied")
+
+	t.UserID = u.ID
+	t.Year = yearToDate(t.DateYear)
+	spewModel(t)
+	result := db.Omit(clause.Associations).Table("taxes").Create(t)
+	return result.Error
 }
 
 func (te *TaxEntry) HaveAccessPermission(session *Session) bool {
@@ -337,16 +338,18 @@ func (*TaxReturn) List(session *Session, year int) []TaxReturn {
 func (t *TaxReturn) Create(session *Session) error {
 	db := session.DB
 	u := session.GetCurrentUser()
-	if u != nil {
-		t.UserID = u.ID
-		spewModel(t)
-		result := db.Omit(clause.Associations).Table("tax_users").Create(t)
-		if result.Error != nil {
-			log.Panic(result.Error)
-		}
+	if u == nil {
+		return errors.New("Permission Denied")
+	}
+
+	t.UserID = u.ID
+	spewModel(t)
+	result := db.Omit(clause.Associations).Table("tax_users").Create(t)
+	if result.Error != nil {
+		log.Panic(result.Error)
 		return result.Error
 	}
-	return errors.New("Permission Denied")
+	return t.Recalculate(session)
 }
 
 func (item *TaxItem) GetByName(db *gorm.DB, name string) *TaxItem {
@@ -475,8 +478,12 @@ func (item *TaxItem) Sum(db *gorm.DB, r *TaxReturn, name string) decimal.Decimal
 		total = total.Add(t.Amount)
 	}
 
-	if len(entries) > 0 {
-		log.Printf("[MODEL] TAX ITEM(%d) SUM(%d:%f)", item.ID, total.InexactFloat64())
+	// Include "AUTO" entries
+	_,autoTotal := item.listTaxCashFlows(r.Session, r.Year, false)
+	total = total.Add(autoTotal)
+
+	if total.IsPositive() {
+		log.Printf("[MODEL] TAX ITEM(%d) SUM(%f)", item.ID, total.InexactFloat64())
 	}
 	return total
 }
@@ -503,10 +510,13 @@ func (r *TaxReturn) calculate(db *gorm.DB) {
 		saltTotal := new(TaxItem).Sum(db, r, "State Local Income Taxes")
 		saltTotal = saltTotal.Add(new(TaxItem).Sum(db, r, "Real Estate Taxes"))
 		saltTotal = saltTotal.Add(new(TaxItem).Sum(db, r, "Personal Property Taxes"))
+
 		if saltTotal.IsPositive() && saltTotal.GreaterThan(saltMaximum) {
 			r.ItemizedDeduction = r.ItemizedDeduction.Sub(saltTotal)
 			r.ItemizedDeduction = r.ItemizedDeduction.Add(saltMaximum)
 		}
+		log.Printf("[MODEL] CALCULATE TAX SALT_DEDUCT(%f) REDUCED ITEMIZED(%f)",
+			   saltTotal.InexactFloat64(), r.ItemizedDeduction.InexactFloat64())
 	}
 
 	r.Exemption = decimal.NewFromInt32(r.Exemptions * taxYear.ExemptionAmount)

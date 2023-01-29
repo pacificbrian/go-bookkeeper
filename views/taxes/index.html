@@ -15,7 +15,9 @@
 <th>Credits</th>
 <th>Payments</th>
 <th>Unpaid_Tax</th>
+{% if year > 0 -%}
 <th></th>
+{% endif -%}
 <tbody data-controller="tax">
 {% for r in tax_returns -%}
 <tr id="{{ r.ID }}" data-tax-target="taxReturnRow" data-tax-id="{{ r.ID }}">
@@ -28,11 +30,12 @@
 <td class="currency">{{ r.Currency(r.Credits) }}</td>
 <td class="currency">{{ r.Currency(r.Payments) }}</td>
 <td class="currency">{{ r.Currency(r.UnpaidTax) }}</td>
+{% if year > 0 -%}
 <td>
 <a href=/taxes/{{r.ID}} data-tax-id="{{ r.ID }}" data-action="tax#actionCalculate">Recalculate</a><br>
-<a href=/taxes/{{r.ID}}/edit>Edit</a><br>
 <a href=/taxes/{{r.ID}} data-tax-id="{{ r.ID }}" data-action="tax#actionDelete">Delete</a><br>
 </td>
+{% endif -%}
 </tr>
 {% endfor -%}
 </tbody>
