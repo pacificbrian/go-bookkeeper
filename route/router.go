@@ -59,7 +59,8 @@ func Init() *echo.Echo {
 
 	// Import
 	e.POST("/accounts/:id/imported", controllers.CreateImportedCashFlows)
-	e.GET("/accounts/:id/imported", controllers.ListImportedCashFlows)
+	e.GET("/accounts/:id/imported", controllers.ListImported)
+	e.GET("/imported/:id", controllers.ListImportedCashFlows)
 
 	// Payee
 	e.GET("/payees", controllers.ListPayees)

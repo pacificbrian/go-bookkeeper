@@ -52,12 +52,34 @@ func ListImportedCashFlows(c echo.Context) error {
 	if session == nil {
 		return redirectToLogin(c)
 	}
-	log.Printf("LIST IMPORTED CASHFLOWS (ACCOUNT:%d)", id)
+	log.Printf("LIST IMPORTED CASHFLOWS (IMPORT:%d)", id)
+
+	var cashflows []model.CashFlow
+	entry := new(model.Import)
+	entry.ID = uint(id)
+	entry = entry.Get(session)
+	if entry != nil {
+		cashflows = entry.ListImported(session)
+	}
+
+	data := map[string]any{ "import": entry,
+				"cash_flows": cashflows,
+				"disallow_delete": true }
+	return c.Render(http.StatusOK, "accounts/list_imported.html", data)
+}
+
+func ListImported(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("LIST IMPORTS (ACCOUNT:%d)", id)
 
 	var imports []model.Import
 	entry := new(model.Account)
 	entry.ID = uint(id)
-	imports = entry.ListImports(session)
+	imports = entry.ListImports(session, 20)
 
 	data := map[string]any{ "account": entry,
 				"button_text": "Import File",

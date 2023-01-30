@@ -25,8 +25,51 @@ type Import struct {
 	Model
 	AccountID uint `gorm:"not null"`
 	CashFlowCount uint `gorm:"-:all"`
+	TradeCount uint `gorm:"-:all"`
 	CreatedOn time.Time
 	Account Account
+}
+
+// i.Account must be preloaded
+func (i *Import) HaveAccessPermission(session *Session) bool {
+	u := session.GetCurrentUser()
+	i.Account.Verified = !(u == nil || i.Account.ID == 0 || u.ID != i.Account.UserID)
+	if i.Account.Verified {
+		i.Account.User = *u
+		i.Account.Session = session
+	}
+	return i.Account.Verified
+}
+
+func (im *Import) Get(session *Session) *Import {
+	db := session.DB
+	// Verify we have access to Import
+	db.Preload("Account").First(&im)
+	if !im.HaveAccessPermission(session) {
+		return nil
+	}
+	return im
+}
+
+func (im *Import) ListImported(session *Session) []CashFlow {
+	entries := []CashFlow{}
+	if !im.Account.Verified {
+		return entries
+	}
+	db := session.DB
+
+	db.Order("date asc").Preload("Payee").
+			     Where(&CashFlow{AccountID: im.AccountID, ImportID: im.ID}).
+			     Find(&entries)
+	for i := 0; i < len(entries); i++ {
+		c := &entries[i]
+		c.Account.cloneVerified(&im.Account)
+		c.Preload(db)
+	}
+
+	log.Printf("[MODEL] LIST IMPORTED CASHFLOWS ACCOUNT(%d:%d)",
+		   im.AccountID, len(entries))
+	return entries
 }
 
 func (c *CashFlow) makeCashFlowOFX(ofxTran *ofxgo.Transaction) {

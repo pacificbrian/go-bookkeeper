@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="show">
+<h2>{{ import.Account.Name }} - Imported Transactions</h2>
+
+{% if (cash_flows|length > 0) -%}
+<div id="cash_flows">
+{% include "cash_flows/_list_cash_flows.html" -%}
+</div>
+{% endif -%}
+</div>
+
+<ul id="footmenu">
+<li><a href=/accounts/{{ import.AccountID }}>Go to Account</a></li>
+<li><a href=/accounts/{{ import.AccountID }}/imported>Back to Imports</a></li>
+</ul>
+{% endblock -%}

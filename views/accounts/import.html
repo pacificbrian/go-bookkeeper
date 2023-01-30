@@ -13,6 +13,28 @@
 <td><input type="submit" value="{{button_text}}"/></td>
 </form>
 </table>
+
+{% if (imports|length > 0) -%}
+<h3>Recent Imports</h3>
+<table class="ledger">
+
+<th>Date</th>
+<th># Transactions</th>
+{% if account.IsInvestment() -%}
+<th># Trades</th>
+{% endif -%}
+{% for i in imports -%}
+<tr>
+<td><a href=/imported/{{i.ID}}>{{ i.CreatedOn.Format("2006-01-02") }}</a></td>
+<td>{{ i.CashFlowCount }}</td>
+{% if account.IsInvestment() -%}
+<td>{{ i.TradeCount }}</td>
+{% endif -%}
+</tr>
+{% endfor -%}
+
+</table>
+{% endif -%}
 </div>
 
 <ul id="footmenu">

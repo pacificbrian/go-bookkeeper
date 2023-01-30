@@ -103,11 +103,20 @@ func (*Account) List(session *Session, all bool) []Account {
 	return ListAccounts(session, all)
 }
 
-func (account *Account) ListImports(session *Session) []Import {
+func (account *Account) ListImports(session *Session, limit int) []Import {
+	db := session.DB
 	entries := []Import{}
+
 	if !account.Verified {
-		account.Get(session, false)
+		account = account.Get(session, false)
+		if account == nil {
+			//errors.New("Permission Denied")
+			return entries
+		}
 	}
+
+	db.Order("created_on desc").Limit(limit).
+	   Where(&Import{AccountID: account.ID}).Find(&entries)
 	return entries
 }
 
