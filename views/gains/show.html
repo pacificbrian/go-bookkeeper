@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="show">
+{% if trade -%}
+<h2>{{ trade.Security.Company.Name }}</h2>
+
+<h3>Gain for Sell Trade</h3>
+<table class="ledger">
+<th>Sell Date</th>
+<th>Shares Sold</th>
+<th>Price</th>
+<th>Amount</th>
+<th>Basis</th>
+<th>Basis PS</th>
+<th>Gain</th>
+<th>Gain PS</th>
+<tr>
+<td>{{ trade.Date.Format("2006-01-02") }}</td>
+<td>{{ trade.Shares }}</td>
+<td class="currency">{{ trade.Currency(trade.Price) }}</td>
+<td class="currency">{{ trade.Currency(trade.Amount) }}</td>
+<td class="currency">{{ trade.Currency(trade.Basis) }}</td>
+<td class="currency">{{ trade.Currency(trade.BasisPS) }}</td>
+<td class="currency">{{ trade.Currency(trade.Gain) }}</td>
+<td class="currency">{{ trade.Currency(trade.GainPS) }}</td>
+</tr>
+</table>
+{% endif -%}
+
+{% if gains -%}
+<h3>Gains per Buy Trade</h3>
+<table class="ledger">
+<th>Buy Date</th>
+<th>Shares Sold</th>
+<th>Price</th>
+<th>Amount</th>
+<th>Basis</th>
+<th>Basis PS</th>
+<th>Gain</th>
+<th>Gain PS</th>
+{% for g in gains -%}
+<tr>
+<td>{{ g.BuyDate.Format("2006-01-02") }}</td>
+<td>{{ g.Shares }}</td>
+<td class="currency">{{ trade.Currency(trade.Price) }}</td>
+<td class="currency">{{ trade.Currency(g.Amount) }}</td>
+<td class="currency">{{ trade.Currency(g.Basis) }}</td>
+<td class="currency">{{ trade.Currency(g.BasisPS) }}</td>
+<td class="currency">{{ trade.Currency(g.Gain) }}</td>
+<td class="currency">{{ trade.Currency(g.GainPS) }}</td>
+</tr>
+{% endfor -%}
+</table>
+{% endif -%}
+</div>
+
+{% if trade -%}
+<ul id="footmenu">
+{% if account -%}
+<li><a href=/years/{{trade.Date.Year()}}/accounts/{{account.ID}}/gains>Back to TradeGains</a></li>
+<li><a href=/accounts/{{account.ID}}>Back to Account</a></li>
+{% endif -%}
+</ul>
+{% endif -%}
+
+{% endblock -%}

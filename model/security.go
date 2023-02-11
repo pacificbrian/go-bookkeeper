@@ -219,7 +219,7 @@ func (s *Security) ListTradesBy(db *gorm.DB, tradeType uint, openOnly bool) []Tr
 		dbQuery.Where(&Trade{SecurityID: s.ID}).
 			Find(&entries)
 
-		fixupTrades(db, entries)
+		s.fixupTrades(db, entries)
 	}
 	log.Printf("[MODEL] LIST TRADES SECURITY(%d:%d)", s.ID, len(entries))
 	return entries
@@ -424,7 +424,7 @@ func (s *Security) Update(session *Session) error {
 	return nil
 }
 
-func fixupTrades(db *gorm.DB, entries []Trade) {
+func (s *Security) fixupTrades(db *gorm.DB, entries []Trade) {
 	fixSharesIn := false
 	fixAdjustedBasis := false
 
@@ -442,6 +442,7 @@ func fixupTrades(db *gorm.DB, entries []Trade) {
 
 		if fixAdjustedBasis && !t.Closed && t.IsBuy() &&
 		    t.Basis.IsPositive() && t.AdjustedShares.IsZero() {
+			t.Account.cloneVerified(&s.Account)
 			gains := t.ListGains(db)
 			if len(gains) == 1 {
 				tg:= gains[0]

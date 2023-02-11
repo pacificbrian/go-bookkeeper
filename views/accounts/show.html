@@ -82,6 +82,7 @@
 <li><a href=/accounts/{{account.ID}}/imported>Import From File</a></li>
 {% if account.IsInvestment() -%}
 <li><a href=/accounts/{{account.ID}}/securities/new>New Security</a></li>
+<li><a href=/years/{{date_helper.Year()}}/accounts/{{account.ID}}/gains>Trade Gains</a></li>
 {% endif -%}
 <li><a href=/accounts/{{account.ID}}/scheduled>Schedule CashFlow</a></li>
 <li><a href=/accounts/{{account.ID}}/charts?days=0>Year to Date Chart</a></li>

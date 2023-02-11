@@ -7,6 +7,8 @@
 package model
 
 import (
+	"log"
+	"time"
 	"github.com/shopspring/decimal"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
@@ -16,24 +18,48 @@ type TradeGain struct {
 	Model
 	SellID uint
 	BuyID uint
-	Sell Trade
-	Buy Trade
 	DaysHeld int32
 	Shares decimal.Decimal
 	AdjustedShares decimal.Decimal // deprecated
 	Basis decimal.Decimal
-}
-
-func (*TradeGain) List(db *gorm.DB) []TradeGain {
-	entries := []TradeGain{}
-	db.Find(&entries)
-
-	return entries
+	BasisPS decimal.Decimal `gorm:"-:all"`
+	Amount decimal.Decimal `gorm:"-:all"`
+	Gain decimal.Decimal `gorm:"-:all"`
+	GainPS decimal.Decimal `gorm:"-:all"`
+	BuyDate time.Time `gorm:"-:all"`
+	Sell Trade
+	Buy Trade
 }
 
 func (t *Trade) ListGains(db *gorm.DB) []TradeGain {
 	entries := []TradeGain{}
-	db.Where(&TradeGain{BuyID: t.ID}).Find(&entries)
+
+	if !t.Account.Verified || t.ID == 0 {
+		return entries
+	}
+
+	if t.IsBuy() {
+		db.Where(&TradeGain{BuyID: t.ID}).Find(&entries)
+	} else if t.IsSell() {
+		db.Where(&TradeGain{SellID: t.ID}).Find(&entries)
+		for i := 0; i < len(entries); i++ {
+			tg := &entries[i]
+			tg.Amount = t.Amount.Div(t.Shares).Mul(tg.Shares).Round(2)
+			tg.Gain = tg.Amount.Sub(tg.Basis)
+			tg.GainPS = tg.Gain.Div(tg.Shares)
+			tg.BasisPS = tg.Basis.Div(tg.Shares)
+			if tg.DaysHeld > 0 {
+				tg.BuyDate = t.Date.AddDate(0,0,int(-tg.DaysHeld))
+			} else {
+				buy := new(Trade)
+				db.Select("date").First(&buy, tg.BuyID)
+				tg.BuyDate = buy.Date
+			}
+		}
+	}
+	log.Printf("[MODEL] LIST ACCOUNT(%d) GAINS(%d:%d)",
+		   t.AccountID, t.TradeTypeID, len(entries))
+
 	return entries
 }
 

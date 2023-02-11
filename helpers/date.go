@@ -20,6 +20,10 @@ type DateHelper struct {
 	DayIndex int
 }
 
+func YearToDate(year int) time.Time {
+	return time.Date(year, 1, 1, 0, 0, 0, 0, time.Local)
+}
+
 func (dh *DateHelper) Year() int {
 	return dh.Years[dh.YearIndex - 1]
 }

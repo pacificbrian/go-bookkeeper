@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="show">
+{% if account.ID > 0 -%}
+<h2>{{ year }} Captial Gains (for Account: {{ account.Name }})</h2>
+{% else -%}
+<h2>{{ year }} Captial Gains</h2>
+{% endif -%}
+
+<table class="ledger">
+{% if account.ID == 0 -%}
+<th>Account</th>
+{% endif -%}
+<th>Security</th>
+<th>Type</th>
+<th>Date</th>
+<th>Shares</th>
+<th>Price</th>
+<th>Amount</th>
+<th>Basis</th>
+<th>Gain</th>
+{% for t in trades -%}
+<tr>
+{% if account.ID == 0 -%}
+<td><a href=/years/{{year}}/accounts/{{t.Account.ID}}/gains>{{ t.Account.Name }}</a></td>
+{% endif -%}
+<td>{{ t.Security.Company.Name }}</td>
+<td><a href=/gains/{{t.ID}}>{{ t.TradeType.Name }}</a></td>
+<td>{{ t.Date.Format("2006-01-02") }}</td>
+<td>{{ t.Shares }}</td>
+<td class="currency">{{ t.Currency(t.Price) }}</td>
+<td class="currency">{{ t.Currency(t.Amount) }}</td>
+<td class="currency">{{ t.Currency(t.Basis) }}</td>
+<td class="currency">{{ t.Currency(t.Gain) }}</td>
+</tr>
+{% endfor -%}
+<tr>
+{% if account.ID == 0 -%}
+<td></td>
+{% endif -%}
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>Total Gain</td>
+<td class="currency">{{ total_gain }}</td>
+</tr>
+{% if account.ID == 0 -%}
+<tr>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td></td>
+<td>Taxable Gain</td>
+<td class="currency">{{ taxable_gain }}</td>
+</tr>
+{% endif -%}
+</table>
+</div>
+
+<ul id="footmenu">
+{% if account.ID == 0 -%}
+<li><a href=/accounts>Back to Accounts</a></li>
+{% else -%}
+<li><a href=/accounts/{{account.ID}}>Back to Account</a></li>
+<li><a href=/years/{{year - 1}}/accounts/{{account.ID}}/gains>Last Year Gains</a></li>
+{% endif -%}
+</ul>
+
+{% endblock -%}

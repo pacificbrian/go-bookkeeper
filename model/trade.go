@@ -37,6 +37,9 @@ type Trade struct {
 	// for Buys: remaining Basis is: Amount - Basis
 	// for Sells: the Gain (Loss) then is: Amount - Basis
 	Basis decimal.Decimal
+	BasisPS decimal.Decimal `gorm:"-:all"`
+	Gain decimal.Decimal `gorm:"-:all"`
+	GainPS decimal.Decimal `gorm:"-:all"`
 	oldShares decimal.Decimal `gorm:"-:all"`
 	oldBasis decimal.Decimal `gorm:"-:all"`
 	Closed bool
@@ -141,9 +144,61 @@ func (*Trade) List(db *gorm.DB, account *Account) []Trade {
 		db.Preload("TradeType").
 		   Order("date asc").
 		   Where(&Trade{AccountID: account.ID}).Find(&entries)
-		log.Printf("[MODEL] LIST TRADES ACCOUNT(%d:%d)", account.ID, len(entries))
+		log.Printf("[MODEL] LIST ACCOUNT(%d) TRADES(%d)", account.ID, len(entries))
 	}
 	return entries
+}
+
+// Filtered Account or User Trades for just single Year (t.Date.Year)
+func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]string) {
+	var gain [2]decimal.Decimal
+	var gainStr [2]string
+	entries := []Trade{}
+	year := t.Date.Year()
+	db := session.DB
+
+	if year == 0 {
+		return entries, gainStr
+	}
+
+	if !t.Account.Verified && t.AccountID > 0 {
+		// verify account against Session
+		t.Account.ID = t.AccountID
+		account := t.Account.Get(session, false)
+		if account == nil {
+			return entries, gainStr
+		}
+	}
+
+	if t.AccountID > 0 {
+		db.Preload("TradeType").Preload("Security.Company").
+		   Order("date asc").
+		   Where("date >= ? AND date < ?", t.Date, yearToDate(year+1)).
+		   Where(TradeTypeQueries[tradeType]).
+		   Where(&Trade{AccountID: t.AccountID}).Find(&entries)
+	} else {
+		db.Preload("TradeType").Preload("Security.Company").
+		   Order("date asc").
+		   Where("date >= ? AND date < ?", t.Date, yearToDate(year+1)).
+		   Where(TradeTypeQueries[tradeType]).
+		   Where("user_id = ?", session.GetCurrentUser().ID).
+		   Joins("Account").Find(&entries)
+	}
+
+	for i := 0; i < len(entries); i++ {
+		entry := &entries[i]
+		entry.postQueryInit()
+		gain[0] = gain[0].Add(entry.Gain)
+		if entry.Account.Taxable {
+			gain[1] = gain[1].Add(entry.Gain)
+		}
+	}
+	log.Printf("[MODEL] LIST ACCOUNT(%d) TRADES(%d:%d)",
+		   t.AccountID, tradeType, len(entries))
+
+	gainStr[0] = currency(gain[0])
+	gainStr[1] = currency(gain[1])
+	return entries, gainStr
 }
 
 // Account access already verified by caller
@@ -363,6 +418,11 @@ func (t *Trade) postQueryInit() {
 	t.oldBasis = t.Basis
 	t.oldShares = t.Shares
 	t.oldTradeTypeID = t.TradeTypeID
+	if t.IsSell() {
+		t.Gain = t.Amount.Sub(t.Basis)
+		t.GainPS = t.Gain.Div(t.Shares)
+		t.BasisPS = t.Basis.Div(t.Shares)
+	}
 }
 
 // Edit, Delete, Update use Get
