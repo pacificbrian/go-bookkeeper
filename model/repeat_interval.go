@@ -94,6 +94,10 @@ func (r *RepeatInterval) advance(db *gorm.DB) int {
 		updates := map[string]interface{}{"repeats_left": gorm.Expr("repeats_left - ?", 1)}
 		db.Omit(clause.Associations).Model(r).
 		   Select("repeats_left").Updates(updates)
+	} else if days == 0 {
+		// if IntervalType == Once, don't let it repeat
+		db.Omit(clause.Associations).Model(r).
+		   Select("repeats_left").Updates(RepeatInterval{RepeatsLeft: 0})
 	}
 
 	// use helper, can't test r.RepeatsLeft because unset/NULL == 0
