@@ -75,7 +75,15 @@ func cacheAccounts(u *User, accounts []Account) {
 	}
 }
 
-func ListAccounts(session *Session, all bool) []Account {
+// goroutine: this checks and applies ScheduledCashFlows which are ready
+func updateAccounts(accounts []Account, session *Session) {
+	for i := 0; i < len(accounts); i++ {
+		a := &accounts[i]
+		a.updateAccount(session)
+	}
+}
+
+func List(session *Session, all bool) []Account {
 	db := session.DB
 	u := session.GetCurrentUser()
 	entries := []Account{}
@@ -99,8 +107,12 @@ func ListAccounts(session *Session, all bool) []Account {
 	return entries
 }
 
-func (*Account) List(session *Session, all bool) []Account {
-	return ListAccounts(session, all)
+func ListAccounts(session *Session, all bool) []Account {
+	entries := List(session, all)
+	if entries != nil {
+		go updateAccounts(entries, session)
+	}
+	return entries
 }
 
 func (account *Account) ListImports(session *Session, limit int) []Import {
@@ -393,11 +405,40 @@ func (a *Account) HaveAccessPermission(session *Session) bool {
 	return a.Verified
 }
 
+func (a *Account) updateAccount(session *Session) {
+	var amountAdded decimal.Decimal
+	var repeat *CashFlow
+	db := session.DB
+	enableScheduledCashFlow := true
+
+	// test if any ScheduledCashFlows need to post
+	scheduled := a.ListScheduled(session, true)
+	if len(scheduled) == 0 {
+		return
+	}
+
+	log.Printf("[MODEL] UPDATE ACCOUNT(%d) HAVE SCHEDULED(%d)",
+		   a.ID, len(scheduled))
+	if !enableScheduledCashFlow {
+		return
+	}
+
+	for i := 0; i < len(scheduled); i++ {
+		repeat = &scheduled[i]
+		repeat.Account.cloneVerified(a)
+		total, err := repeat.tryInsertRepeatCashFlow(db)
+		if err == nil {
+			amountAdded = amountAdded.Add(total)
+		}
+	}
+	a.Balance = a.Balance.Add(amountAdded)
+	a.CashBalance = a.CashBalance.Add(amountAdded)
+}
+
 // Show, Edit, Delete, Update use Get
 // a.UserID unset, need to load
 func (a *Account) Get(session *Session, preload bool) *Account {
 	db := session.DB
-	enableScheduledCashFlow := true
 
 	// Load and Verify we have access to Account
 	if preload {
@@ -411,21 +452,8 @@ func (a *Account) Get(session *Session, preload bool) *Account {
 		return nil
 	}
 
-	if preload && enableScheduledCashFlow {
-		var amountAdded decimal.Decimal
-
-		// test if any ScheduledCashFlows need to post
-		scheduled := a.ListScheduled(session, true)
-		for i := 0; i < len(scheduled); i++ {
-			var repeat *CashFlow = &scheduled[i]
-			repeat.Account.cloneVerified(a)
-			total, err := repeat.tryInsertRepeatCashFlow(db)
-			if err == nil {
-				amountAdded = amountAdded.Add(total)
-			}
-		}
-		a.Balance = a.Balance.Add(amountAdded)
-		a.CashBalance = a.CashBalance.Add(amountAdded)
+	if preload {
+		a.updateAccount(session)
 		spewModel(a)
 	}
 	return a
