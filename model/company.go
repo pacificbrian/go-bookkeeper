@@ -8,7 +8,6 @@ package model
 
 import (
 	"log"
-	"gorm.io/gorm"
 )
 
 type Company struct {
@@ -17,6 +16,8 @@ type Company struct {
 	Symbol string `form:"Symbol"`
 	oldName string `gorm:"-:all"`
 	oldSymbol string `gorm:"-:all"`
+	// UserID only used from Security.Update
+	UserID uint `gorm:"-:all"`
 }
 
 func (c Company) GetName() string {
@@ -33,11 +34,12 @@ func (c Company) GetName() string {
 // XXX Possibly should disallow multiple Companies for same Symbol.
 // Or in future have defined set of fixed Companies if ever consider
 // to add support for financial statements.
-func (c *Company) Get(db *gorm.DB, tryUpdate bool) *Company {
+func (c *Company) Get(tryUpdate bool) *Company {
 	if c.Name == "" && c.Symbol == "" {
 		return nil
 	}
 	result := new(Company)
+	db := getDbManager()
 
 	// Where query will only look at non-primary-key fields
 	db.Where(c).First(result)
@@ -78,8 +80,7 @@ func (c *Company) updateAllowed() bool {
 // But do not modify a Company that is attached to the
 // Securities of other Users.
 // Return true if Company.Name was updated.
-func (c *Company) updateName(session *Session) bool {
-	db := session.DB
+func (c *Company) updateName() bool {
 	var err error
 
 	if !c.updateAllowed() {
@@ -88,13 +89,16 @@ func (c *Company) updateName(session *Session) bool {
 
 	if c.oldSymbol == c.Symbol &&
 	   c.oldName != c.Name {
+		db := getDbManager()
 		var numSecurities int64
 
 		// Verify Company not used by other Users' Securities
-		db.Model(&Security{}).
-		   Where(&Security{CompanyID: c.ID}).
-		   Where("user_id != ?", session.GetCurrentUser().ID).
-		   Joins("Account").Count(&numSecurities)
+		if c.UserID > 0 {
+			db.Model(&Security{}).
+			   Where(&Security{CompanyID: c.ID}).
+			   Where("user_id != ?", c.UserID).
+			   Joins("Account").Count(&numSecurities)
+		}
 
 		if numSecurities == 0 {
 			result := db.Model(c).Update("Name", c.Name)
@@ -102,21 +106,26 @@ func (c *Company) updateName(session *Session) bool {
 			if err == nil {
 				log.Printf("[MODEL] UPDATED COMPANY(%d) NAME(%s)",
 					   c.ID, c.Name)
+				return true
 			}
-			return err == nil
 		}
 	}
 	return false
 }
 
-// Return true if Company was updated.
-func (c *Company) update(db *gorm.DB) bool {
+// Return true if Company.ID was updated.
+func (c *Company) Update() bool {
 	if !c.updateAllowed() ||
 	   (c.oldSymbol == c.Symbol && c.oldName == c.Name) {
 		return false
 	}
 
-	newCompany := c.Get(db, true)
+	// First try update of just c.Name
+	if c.updateName() {
+		return false
+	}
+
+	newCompany := c.Get(true)
 	if newCompany == nil {
 		return false
 	}

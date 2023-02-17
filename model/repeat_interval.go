@@ -126,8 +126,9 @@ func (r *RepeatInterval) Create(db *gorm.DB, c *CashFlow) error {
 	return result.Error
 }
 
-func (r *RepeatInterval) Update(db *gorm.DB, c *CashFlow) error {
-	r.StartDay = c.Date.Day()
+func (r *RepeatInterval) Update() error {
+	db := getDbManager()
+
 	result := db.Omit(clause.Associations).Save(r)
 	if result.Error == nil && r.GetRepeatsLeft() == "" {
 		updates := map[string]interface{}{"repeats_left": nil}

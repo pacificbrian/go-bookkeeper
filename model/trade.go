@@ -500,10 +500,14 @@ func (t *Trade) Delete(session *Session) error {
 }
 
 // Trade access already verified with Get
-func (t *Trade) Update(session *Session) error {
+func (t *Trade) Update() error {
 	var activeBuys []Trade
 	var err error
-	db := session.DB
+	db := getDbManager()
+
+	if !t.Account.Verified {
+		return errors.New("!Account.Verified")
+	}
 
 	spewModel(t)
 	err = t.validateInputs()

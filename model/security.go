@@ -403,21 +403,22 @@ func (s *Security) Delete(session *Session) error {
 }
 
 // Security access already verified with Get
-func (s *Security) Update(session *Session) error {
-	db := session.DB
+func (s *Security) Update() error {
+	db := getDbManager()
 	updatedCompany := false
 	spewModel(s)
 
-	if !s.Company.updateName(session) {
-		updatedCompany = s.Company.update(db)
-	}
+	s.Company.UserID = s.Account.UserID
+	updatedCompany = s.Company.Update()
 	// test if Company changed, and must update CompanyID
 	if updatedCompany {
 		s.CompanyID = s.Company.ID
 	}
+
 	result := db.Omit(clause.Associations).Save(s)
-	if result.Error != nil {
-		return result.Error
+	err := result.Error
+	if err != nil {
+		return err
 	}
 
 	log.Printf("[MODEL] UPDATE SECURITY(%d:%s)", s.ID, s.Company.Symbol)

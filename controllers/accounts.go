@@ -153,7 +153,7 @@ func UpdateAccount(c echo.Context) error {
 
 	entry.ClearBooleans()
 	c.Bind(entry)
-	entry.Update(session)
+	entry.Update()
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d", id))
 }
 

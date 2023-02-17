@@ -86,7 +86,7 @@ func UpdatePayee(c echo.Context) error {
 	}
 
 	c.Bind(entry)
-	entry.Update(session)
+	entry.Update()
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/payee/%d", id))
 }
 

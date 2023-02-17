@@ -89,7 +89,7 @@ func UpdateTrade(c echo.Context) error {
 
 	c.Bind(entry)
 	entry.Date = getFormDate(c)
-	entry.Update(session)
+	entry.Update()
 	a_id := entry.AccountID
 	s_id := entry.SecurityID
 	if security_id > 0 {

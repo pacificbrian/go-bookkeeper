@@ -198,7 +198,7 @@ func (a *Account) GetSecurity(session *Session, company *Company) (*Security, er
 	security := new(Security)
 	db := session.DB
 
-	c := company.Get(db, false)
+	c := company.Get(false)
 	if c == nil {
 		return nil, errors.New("Invalid Request")
 	}
@@ -483,8 +483,8 @@ func (a *Account) Delete(session *Session) error {
 }
 
 // Account access already verified with Get
-func (a *Account) Update(session *Session) error {
-	db := session.DB
+func (a *Account) Update() error {
+	db := getDbManager()
 	spewModel(a)
 	result := db.Omit(clause.Associations).Save(a)
 	return result.Error

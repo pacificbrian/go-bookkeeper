@@ -69,6 +69,10 @@ func (u *User) lookupCategory(id uint) string {
 	return u.Cache().CategoryNames[id]
 }
 
+func getDbManager() *gorm.DB {
+	return gormdb.DbManager()
+}
+
 func (uc *UserCache) init() {
 	uc.AccountNames = map[uint]string{}
 	uc.CategoryNames = map[uint]string{}

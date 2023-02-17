@@ -1163,8 +1163,13 @@ func (c *CashFlow) Put(session *Session, request map[string]interface{}) error {
 }
 
 // CashFlow access already verified with Get
-func (c *CashFlow) Update(session *Session) error {
-	db := session.DebugDB
+func (c *CashFlow) Update() error {
+	db := getDbManager()
+
+	if !c.Account.Verified {
+		return errors.New("!Account.Verified")
+	}
+
 	c.applyCashFlowType()
 	if c.Split {
 		// don't let Splits mess with date
@@ -1190,7 +1195,8 @@ func (c *CashFlow) Update(session *Session) error {
 				// above also updates Pair.Date (Transfers)
 			}
 			if c.IsScheduled() {
-				c.RepeatInterval.Update(db, c)
+				c.RepeatInterval.StartDay = c.Date.Day()
+				c.RepeatInterval.Update()
 			}
 		}
 

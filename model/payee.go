@@ -113,8 +113,8 @@ func (p *Payee) Delete(session *Session) error {
 }
 
 // Payee access already verified with Get
-func (p *Payee) Update(session *Session) error {
-	db := session.DB
+func (p *Payee) Update() error {
+	db := getDbManager()
 	spewModel(p)
 	result := db.Omit(clause.Associations).Save(p)
 	return result.Error

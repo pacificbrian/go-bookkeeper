@@ -158,7 +158,7 @@ func UpdateSecurity(c echo.Context) error {
 
 	c.Bind(entry)
 	c.Bind(&entry.Company)
-	entry.Update(session)
+	entry.Update()
 	a_id := entry.AccountID
 	return c.Redirect(http.StatusSeeOther,
 			  fmt.Sprintf("/accounts/%d/securities/%d", a_id, id))
