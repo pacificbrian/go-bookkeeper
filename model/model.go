@@ -28,13 +28,15 @@ const timeFormatPrint string = "2006-01-02 08:00:00"
 
 var useSpew bool = false
 
-func forceSpewModel(data any) {
+func forceSpewModel(data any, depth int) {
+	spew.Config.MaxDepth = depth
 	spew.Dump(data)
+	spew.Config.MaxDepth = 0
 }
 
 func spewModel(data any) {
 	if useSpew {
-		forceSpewModel(data)
+		forceSpewModel(data, 0)
 	}
 }
 

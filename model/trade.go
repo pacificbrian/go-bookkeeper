@@ -555,3 +555,25 @@ func (t *Trade) Update() error {
 
 	return err
 }
+
+
+// Debug routines -
+
+// Find() for use with rails/ruby like REPL console (gomacro);
+// controllers should not expose this as are no access controls
+func (*Trade) Find(ID uint) *Trade {
+	db := getDbManager()
+	t := new(Trade)
+	db.First(&t, ID)
+	t.postQueryInit()
+	return t
+}
+
+func (t *Trade) Print() {
+	forceSpewModel(t.Model, 0)
+	forceSpewModel(t, 1)
+}
+
+func (t *Trade) PrintAll() {
+	forceSpewModel(t, 0)
+}

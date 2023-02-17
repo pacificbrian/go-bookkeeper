@@ -139,3 +139,17 @@ func (r *RepeatInterval) Update() error {
 		   r.ID, r.CashFlowID)
 	return result.Error
 }
+
+
+// Find() for use with rails/ruby like REPL console (gomacro);
+// controllers should not expose this as are no access controls
+func (*RepeatInterval) Find(ID uint) *RepeatInterval {
+	db := getDbManager()
+	r := new(RepeatInterval)
+	db.First(&r, ID)
+	return r
+}
+
+func (r *RepeatInterval) Print() {
+	forceSpewModel(r, 0)
+}

@@ -1237,8 +1237,21 @@ func (c *CashFlow) Update() error {
 
 // Debug routines -
 
-func CashFlowFind(db *gorm.DB, id uint) *CashFlow {
+// Find() for use with rails/ruby like REPL console (gomacro);
+// controllers should not expose this as are no access controls
+func (*CashFlow) Find(ID uint) *CashFlow {
+	db := getDbManager()
 	c := new(CashFlow)
-	db.First(&c, id)
+	db.First(&c, ID)
+	c.postQueryInit()
 	return c
+}
+
+func (c *CashFlow) Print() {
+	forceSpewModel(c.Model, 0)
+	forceSpewModel(c, 1)
+}
+
+func (c *CashFlow) PrintAll() {
+	forceSpewModel(c, 0)
 }

@@ -119,3 +119,17 @@ func (p *Payee) Update() error {
 	result := db.Omit(clause.Associations).Save(p)
 	return result.Error
 }
+
+
+// Find() for use with rails/ruby like REPL console (gomacro);
+// controllers should not expose this as are no access controls
+func (*Payee) Find(ID uint) *Payee {
+	db := getDbManager()
+	p := new(Payee)
+	db.First(&p, ID)
+	return p
+}
+
+func (p *Payee) Print() {
+	forceSpewModel(p, 0)
+}

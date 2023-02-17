@@ -132,3 +132,17 @@ func (c *Company) Update() bool {
 	c.ID = newCompany.ID
 	return true
 }
+
+
+// Find() for use with rails/ruby like REPL console (gomacro);
+// controllers should not expose this as are no access controls
+func (*Company) Find(ID uint) *Company {
+	db := getDbManager()
+	c := new(Company)
+	db.First(&c, ID)
+	return c
+}
+
+func (c *Company) Print() {
+	forceSpewModel(c, 0)
+}

@@ -82,3 +82,24 @@ func (tg *TradeGain) recordGain(db *gorm.DB, sell *Trade, buy *Trade,
 		db.Omit(clause.Associations).Create(tg)
 	}
 }
+
+
+// Debug routines -
+
+// Find() for use with rails/ruby like REPL console (gomacro);
+// controllers should not expose this as are no access controls
+func (*TradeGain) Find(ID uint) *TradeGain {
+	db := getDbManager()
+	tg := new(TradeGain)
+	db.First(&tg, ID)
+	return tg
+}
+
+func (tg *TradeGain) Print() {
+	forceSpewModel(tg.Model, 0)
+	forceSpewModel(tg, 1)
+}
+
+func (tg *TradeGain) PrintAll() {
+	forceSpewModel(tg, 0)
+}

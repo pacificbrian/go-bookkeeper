@@ -454,3 +454,24 @@ func (s *Security) fixupTrades(db *gorm.DB, entries []Trade) {
 		}
 	}
 }
+
+
+// Debug routines -
+
+// Find() for use with rails/ruby like REPL console (gomacro);
+// controllers should not expose this as are no access controls
+func (*Security) Find(ID uint) *Security {
+	db := getDbManager()
+	s := new(Security)
+	db.First(&s, ID)
+	return s
+}
+
+func (s *Security) Print() {
+	forceSpewModel(s.Model, 0)
+	forceSpewModel(s, 1)
+}
+
+func (s *Security) PrintAll() {
+	forceSpewModel(s, 0)
+}
