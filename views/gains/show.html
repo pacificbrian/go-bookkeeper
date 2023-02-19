@@ -58,8 +58,9 @@
 {% if trade -%}
 <ul id="footmenu">
 {% if account -%}
-<li><a href=/years/{{trade.Date.Year()}}/accounts/{{account.ID}}/gains>Back to TradeGains</a></li>
 <li><a href=/accounts/{{account.ID}}>Back to Account</a></li>
+<li><a href=/years/{{trade.Date.Year()}}/gains>Back to TradeGains</a></li>
+<li><a href=/years/{{trade.Date.Year()}}/accounts/{{account.ID}}/gains>Account TradeGains</a></li>
 {% endif -%}
 </ul>
 {% endif -%}
