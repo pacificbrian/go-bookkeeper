@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="edit">
+<h2>Edit Tax Entry</h2>
+
+<form method="POST" action="/tax_entries/{{entry.ID}}">
+{% include "taxes/tax_entry.html" -%}
+<fieldset class="submit">
+<input type="submit" value="Update"/>
+</fieldset>
+</form>
+</div>
+
+<ul id="footmenu" data-controller="tax">
+<li><a href=/years/{{entry.DateYear}}/taxes>Back to Taxes</a></li>
+<td><a href=/tax_entries/{{entry.ID}} data-tax-entry-id="{{ entry.ID }}" data-action="tax#actionEntryDelete">Delete Tax Entry</a></td>
+</ul>
+
+{% endblock -%}

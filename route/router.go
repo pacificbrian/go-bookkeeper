@@ -97,8 +97,8 @@ func Init() *echo.Echo {
 	e.DELETE("/tax_entries/:id", controllers.DeleteTaxEntry)
 	e.GET("/years/:year/tax_items/:tax_item_id", controllers.ListTaxCashFlows)
 	e.GET("/years/:year/tax_types/:tax_type_id", controllers.ListTaxCashFlows)
-	//e.GET("/tax_entries/:id/edit", controllers.EditTaxEntry)
-	//e.POST"/tax_entries/:id", controllers.UpdateTaxEntry)
+	e.GET("/tax_entries/:id/edit", controllers.EditTaxEntry)
+	e.POST("/tax_entries/:id", controllers.UpdateTaxEntry)
 	//e.GET("/tax_categories", controllers.ListTaxCategories)
 	//e.GET("/tax_years", controllers.ListTaxYears)
 

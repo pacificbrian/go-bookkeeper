@@ -41,11 +41,14 @@ func ListTaxes(c echo.Context) error {
 		return c.JSON(http.StatusOK, returns)
 	} else {
 		db := session.DB
+		entry := new(model.TaxEntry)
 		entries := new(model.TaxEntry).List(session, year)
 		data := map[string]any{ "tax_returns": returns,
 					"tax_entries": entries,
 					"date_helper": dh,
+					"entry": entry,
 					"filing_status": new(model.TaxFilingStatus).List(db),
+					"isEdit": false,
 					"tax_items": new(model.TaxItem).List(db),
 					"tax_regions": new(model.TaxRegion).List(db),
 					"tax_types": new(model.TaxType).List(db),
@@ -106,6 +109,7 @@ func CreateTaxEntry(c echo.Context) error {
 
 	entry := new(model.TaxEntry)
 	c.Bind(entry)
+	entry.Amount = getFormDecimal(c, "amount")
 	entry.Create(session)
 
 	// http.StatusCreated
@@ -132,6 +136,47 @@ func DeleteTaxEntry(c echo.Context) error {
 	} else {
 		return c.NoContent(http.StatusAccepted)
 	}
+}
+
+func UpdateTaxEntry(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("UPDATE TAX ENTRY(%d)", id)
+
+	entry := new(model.TaxEntry)
+	entry.ID = uint(id)
+	entry = entry.Get(session)
+	if entry == nil {
+		return c.NoContent(http.StatusUnauthorized)
+	}
+
+	c.Bind(entry)
+	entry.Amount = getFormDecimal(c, "amount")
+	entry.Update()
+	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/years/%d/taxes",entry.DateYear))
+}
+
+func EditTaxEntry(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	log.Printf("EDIT TAX ENTRY(%d)", id)
+
+	entry := new(model.TaxEntry)
+	entry.ID = uint(id)
+	entry = entry.Get(session)
+
+	data := map[string]any{ "entry": entry,
+				"isEdit": true,
+				"tax_items": new(model.TaxItem).List(session.DB),
+				"tax_types": new(model.TaxType).List(session.DB),
+				"tax_regions": new(model.TaxRegion).List(session.DB) }
+	return c.Render(http.StatusOK, "taxes/edit.html", data)
 }
 
 func CreateTaxes(c echo.Context) error {

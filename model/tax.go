@@ -89,7 +89,7 @@ type TaxEntry struct {
 	TaxTypeID uint `form:"tax_type_id"`
 	TaxCategoryID uint `gorm:"-:all"`
 	UserID uint
-	Amount decimal.Decimal `form:"amount" gorm:"not null"`
+	Amount decimal.Decimal `gorm:"not null"`
 	Memo string `form:"memo"`
 	TaxItem TaxItem
 	TaxRegion TaxRegion
@@ -305,6 +305,7 @@ func (te *TaxEntry) HaveAccessPermission(session *Session) bool {
 func (te *TaxEntry) Get(session *Session) *TaxEntry {
 	db := session.DB
 	db.Table("taxes").First(&te)
+	te.DateYear = te.Year.Year()
 	if !te.HaveAccessPermission(session) {
 		return nil
 	}
@@ -321,6 +322,15 @@ func (te *TaxEntry) Delete(session *Session) error {
 	log.Printf("[MODEL] DELETE TAX ENTRY(%d)", te.ID)
 	db.Table("taxes").Delete(te)
 	return nil
+}
+
+// TaxEntry access already verified with Get
+func (te *TaxEntry) Update() error {
+	db := getDbManager()
+	te.Year = yearToDate(te.DateYear)
+	result := db.Omit(clause.Associations).Table("taxes").Save(te)
+	log.Printf("[MODEL] UPDATE TAX ENTRY(%d)", te.ID)
+	return result.Error
 }
 
 func (*TaxReturn) List(session *Session, year int) []TaxReturn {

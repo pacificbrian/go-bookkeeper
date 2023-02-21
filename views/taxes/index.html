@@ -88,26 +88,7 @@
 
 {% if !account -%}
 <form method="POST" action="/tax_entries">
-<fieldset>
-<label>Tax Year</label>
-{{ form_year_select(date_helper) }}
-{{ form_select_type(tax_regions, "tax_region_id") }}
-</fieldset>
-<fieldset>
-<label>Item Name</label>
-{{ form_select_type(tax_types, "tax_type_id") }}
-{{ form_select_type(tax_items, "tax_item_id") }}
-</fieldset>
-</fieldset>
-</fieldset>
-<fieldset>
-<label>Memo</label>
-<input type="text" name="memo"/>
-</fieldset>
-<fieldset class="last">
-<label>Amount</label>
-<input type="text" name="amount"/>
-</fieldset>
+{% include "taxes/tax_entry.html" -%}
 <fieldset class="submit">
 <input type="submit" value="Add Tax Item"/>
 </fieldset>

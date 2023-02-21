@@ -1,0 +1,26 @@
+<fieldset>
+<label>Tax Year</label>
+{% if isEdit -%}
+<input type="text" name="year" value="{{entry.DateYear}}" readonly/>
+{% else -%}
+{{ form_year_select(date_helper) }}
+{% endif-%}
+{{ form_select_type(tax_regions, "tax_region_id", entry.TaxRegionID) }}
+</fieldset>
+<fieldset>
+<label>Item Name</label>
+{{ form_select_type(tax_types, "tax_type_id", entry.TaxTypeID) }}
+{{ form_select_type(tax_items, "tax_item_id", entry.TaxItemID) }}
+</fieldset>
+<fieldset>
+<label>Memo</label>
+<input type="text" name="memo" value="{{entry.Memo}}"/>
+</fieldset>
+<fieldset class="last">
+<label>Amount</label>
+{% if isEdit -%}
+<input type="text" name="amount" value="{{entry.Amount}}"/>
+{% else-%}
+<input type="text" name="amount"/>
+{% endif-%}
+</fieldset>
