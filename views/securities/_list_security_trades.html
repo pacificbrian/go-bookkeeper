@@ -20,7 +20,11 @@
 {% endif -%}
 <td>{{ t.Security.Company.Name }}</td>
 {% endif -%}
+{% if t.ViewIsSell() -%}
+<td><a href=/gains/{{t.ID}}>{{ t.TradeType.Name }}</a></td>
+{% else -%}
 <td>{{ t.TradeType.Name }}</td>
+{% endif -%}
 <td>{{ t.Date.Format("2006-01-02") }}</td>
 <td>{{ t.Shares }}</td>
 <td class="currency">{{ t.Currency(t.Price) }}</td>

@@ -81,6 +81,10 @@ func (t *Trade) IsSplit() bool {
 	return TradeTypeIsSplit(t.TradeTypeID)
 }
 
+func (t Trade) ViewIsSell() bool {
+	return TradeTypeIsSell(t.TradeTypeID)
+}
+
 func (t Trade) GetBasis() string {
 	if t.IsSell() {
 		return "$" + t.Basis.StringFixed(2)
@@ -229,7 +233,8 @@ func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
 	return cf_entries
 }
 
-func (t *Trade) updateBasis(db *gorm.DB, basis decimal.Decimal, soldShares decimal.Decimal) {
+func (t *Trade) updateBasis(basis decimal.Decimal, soldShares decimal.Decimal) {
+	db := getDbManager()
 	updates := make(map[string]interface{})
 	if t.IsBuy() {
 		if t.AdjustedShares.IsZero() {
@@ -252,7 +257,7 @@ func (t *Trade) updateBasis(db *gorm.DB, basis decimal.Decimal, soldShares decim
 }
 
 // t is Sell trade and was already tested to be Valid
-func (t *Trade) recordGain(db *gorm.DB, activeBuys []Trade) {
+func (t *Trade) recordGain(activeBuys []Trade) {
 	var sellBasis decimal.Decimal
 	sharesRemain := t.Shares
 	updateDB := true
@@ -261,20 +266,22 @@ func (t *Trade) recordGain(db *gorm.DB, activeBuys []Trade) {
 	for i := 0; sharesRemain.IsPositive(); i++ {
 		buy := &activeBuys[i]
 		tg.ID = 0
-		tg.recordGain(db, t, buy, sharesRemain, updateDB)
+		tg.recordGain(t, buy, sharesRemain, updateDB)
 		sharesRemain = sharesRemain.Sub(tg.Shares)
 		sellBasis = sellBasis.Add(tg.Basis)
 
 		// update Basis in Buy
-		buy.updateBasis(db, tg.Basis, tg.Shares)
+		buy.updateBasis(tg.Basis, tg.Shares)
 	}
 
 	// update Sell
-	t.updateBasis(db, sellBasis, t.Shares)
+	t.updateBasis(sellBasis, t.Shares)
 }
 
 // t is Split trade and was already tested to be Valid
-func (t *Trade) recordSplit(db *gorm.DB, activeBuys []Trade) {
+func (t *Trade) recordSplit(activeBuys []Trade) {
+	db := getDbManager()
+
 	// update unsold Shares in Buys that are not yet closed
 	for i := 0; i < len(activeBuys); i++ {
 		buy := &activeBuys[i]
@@ -369,9 +376,9 @@ func (t *Trade) insertTrade(db *gorm.DB, security *Security) error {
 	}
 
 	if t.IsSell() {
-		t.recordGain(db, activeBuys)
+		t.recordGain(activeBuys)
 	} else if t.IsSplit() {
-		t.recordSplit(db, activeBuys)
+		t.recordSplit(activeBuys)
 	}
 	security.addTrade(db, t)
 	c := t.toCashFlow()
@@ -538,9 +545,9 @@ func (t *Trade) Update() error {
 	err = result.Error
 	if err == nil {
 		if t.IsSell() && activeBuys != nil {
-			t.recordGain(db, activeBuys)
+			t.recordGain(activeBuys)
 		} else if t.IsSplit() && activeBuys != nil {
-			t.recordSplit(db, activeBuys)
+			t.recordSplit(activeBuys)
 		}
 
 		t.Security.updateTrade(db, t)
@@ -567,6 +574,11 @@ func (*Trade) Find(ID uint) *Trade {
 	db.First(&t, ID)
 	t.postQueryInit()
 	return t
+}
+
+func (t *Trade) UpdateAdjustedShares(fShares float64) {
+	soldShares := decimal.NewFromFloat(fShares)
+	t.updateBasis(decimal.Zero, soldShares)
 }
 
 func (t *Trade) Print() {

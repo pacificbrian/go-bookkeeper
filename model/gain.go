@@ -63,7 +63,7 @@ func (t *Trade) ListGains(db *gorm.DB) []TradeGain {
 	return entries
 }
 
-func (tg *TradeGain) recordGain(db *gorm.DB, sell *Trade, buy *Trade,
+func (tg *TradeGain) recordGain(sell *Trade, buy *Trade,
 				maxShares decimal.Decimal,
 				updateDB bool) {
 	buyRemain := buy.SharesRemaining()
@@ -79,6 +79,7 @@ func (tg *TradeGain) recordGain(db *gorm.DB, sell *Trade, buy *Trade,
 	// [sell,buy].Basis is updated in caller
 
 	if updateDB {
+		db := getDbManager()
 		db.Omit(clause.Associations).Create(tg)
 	}
 }

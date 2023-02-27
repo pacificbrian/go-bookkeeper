@@ -187,8 +187,9 @@ func (s *Security) List(session *Session, account *Account, openPositions bool) 
 
 	// Find Securities for Account
 	if (openPositions) {
-		db.Preload("Company").
+		db.Order("Company.Symbol").
 		   Where("shares > 0 AND account_id = ?", account.ID).
+		   Joins("Company").
 		   Find(&entries)
 	} else {
 		db.Preload("Company").
@@ -264,7 +265,7 @@ func (s *Security) validateSell(db *gorm.DB, trade *Trade) ([]Trade, error) {
 	for i := 0; i < len(activeBuys); i++ {
 		buy := &activeBuys[i]
 		if !buy.Date.After(trade.Date) {
-			buyShares = buyShares.Add(activeBuys[i].Shares)
+			buyShares = buyShares.Add(activeBuys[i].SharesRemaining())
 		}
 	}
 	if buyShares.LessThan(trade.Shares) {
