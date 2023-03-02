@@ -12,8 +12,8 @@ import (
 
 type Company struct {
 	Model
-	Name string `form:"Name"`
-	Symbol string `form:"Symbol"`
+	Name string `form:"company.Name"`
+	Symbol string `form:"company.Symbol"`
 	oldName string `gorm:"-:all"`
 	oldSymbol string `gorm:"-:all"`
 	// UserID only used from Security.Update

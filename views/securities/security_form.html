@@ -2,10 +2,10 @@
 <table>
 <tr/>
 <td>Symbol:</td>
-<td><input type="text" name="Symbol" value="{{security.Company.Symbol}}"/></td>
+<td><input type="text" name="company.Symbol" value="{{security.Company.Symbol}}"/></td>
 <tr/>
 <td>Name:</td>
-<td><input type="text" name="Name" value="{{security.Company.Name}}"/></td>
+<td><input type="text" name="company.Name" value="{{security.Company.Name}}"/></td>
 <tr/>
 <td>Security Type:</td>
 <td> {{ form_select_type(security_types, "security_type_id", security.SecurityTypeID) }} </td>
@@ -15,10 +15,10 @@
 {% if security.ID > 0 -%}
 <tr/>
 <td>Basis:</td>
-<td><input type="text" name="Basis" value="{{security.Basis}}"/></td>
+<td><input type="text" name="security.Basis" value="{{security.Basis}}"/></td>
 {% endif -%}
 <tr/>
 <td>Import Name (QIF):</td>
-<td><input type="text" name="ImportName" value="{{security.ImportName}}"/></td>
+<td><input type="text" name="security.ImportName" value="{{security.ImportName}}"/></td>
 </table>
 </fieldset>
