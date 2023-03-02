@@ -36,6 +36,14 @@
 {% endif -%}
 {% endmacro -%}
 
+{% macro form_checkbox_readonly(name, checked) -%}
+{% if checked -%}
+<input type="checkbox" name="{{name}}" value="true" checked="checked" disabled/>
+{% else -%}
+<input type="checkbox" name="{{name}}" value="true" disabled/>
+{% endif -%}
+{% endmacro -%}
+
 {% macro form_date_select(helper) %}
 <select name="date_year">
 {% for y in helper.Years -%}

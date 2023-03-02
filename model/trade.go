@@ -182,6 +182,7 @@ func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]string
 		   Where(&Trade{AccountID: t.AccountID}).Find(&entries)
 	} else {
 		db.Preload("TradeType").Preload("Security.Company").
+		   Order("Account.Name").
 		   Order("date asc").
 		   Where("date >= ? AND date < ?", t.Date, yearToDate(year+1)).
 		   Where(TradeTypeQueries[tradeType]).
@@ -506,11 +507,17 @@ func (t *Trade) Delete(session *Session) error {
 	return nil
 }
 
+func (t *Trade) isSimpleUpdate() bool {
+	return t.oldAmount.Equal(t.Amount) && t.oldBasis.Equal(t.Basis) &&
+	       t.oldShares.Equal(t.Shares) && t.oldTradeTypeID == t.TradeTypeID
+}
+
 // Trade access already verified with Get
 func (t *Trade) Update() error {
 	var activeBuys []Trade
 	var err error
 	db := getDbManager()
+	logSimple := ""
 
 	if !t.Account.Verified {
 		return errors.New("!Account.Verified")
@@ -521,8 +528,14 @@ func (t *Trade) Update() error {
 	if err != nil {
 		return err
 	}
+	isSimple := t.isSimpleUpdate()
 
-	if t.IsSell() {
+	if isSimple {
+		// (Price, Date) only, no validation needed
+		// Though, some risk (with Date) that Trades are now reordered
+		// and Split or TradeGain is now wrong...
+		logSimple = " (SIMPLE)"
+	} else if t.IsSell() {
 		activeBuys, err = t.reverseGain(db)
 		err = errors.New("Don't yet support Updating of Sell Trades!")
 	} else if t.IsBuy() && !t.oldBasis.IsZero() {
@@ -543,7 +556,7 @@ func (t *Trade) Update() error {
 
 	result := db.Omit(clause.Associations).Save(t)
 	err = result.Error
-	if err == nil {
+	if err == nil && !isSimple {
 		if t.IsSell() && activeBuys != nil {
 			t.recordGain(activeBuys)
 		} else if t.IsSplit() && activeBuys != nil {
@@ -555,9 +568,10 @@ func (t *Trade) Update() error {
 		if c != nil {
 			t.Account.updateBalance(db, c)
 		}
-
-		log.Printf("[MODEL] UPDATE TRADE(%d) SECURITY(%d) ACCOUNT(%d) TYPE(%d)",
-			   t.ID, t.SecurityID, t.AccountID, t.TradeTypeID)
+	}
+	if err == nil {
+		log.Printf("[MODEL] UPDATE%s TRADE(%d) SECURITY(%d) ACCOUNT(%d) TYPE(%d)",
+			   logSimple, t.ID, t.SecurityID, t.AccountID, t.TradeTypeID)
 	}
 
 	return err
@@ -579,6 +593,12 @@ func (*Trade) Find(ID uint) *Trade {
 func (t *Trade) UpdateAdjustedShares(fShares float64) {
 	soldShares := decimal.NewFromFloat(fShares)
 	t.updateBasis(decimal.Zero, soldShares)
+}
+
+func (t *Trade) Save() error {
+	db := getDbManager()
+	result := db.Omit(clause.Associations).Save(t)
+	return result.Error
 }
 
 func (t *Trade) Print() {

@@ -34,6 +34,11 @@
 </td>
 <tr/>
 <td>
+<label>Tax Year:</label>
+<input type="text" name="tax_year" value="{{trade.TaxYear}}"/>
+</td>
+<tr/>
+<td>
 <label>Shares:</label>
 <input type="text" name="shares" value="{{trade.Shares}}"/>
 </td>
@@ -50,17 +55,12 @@
 <tr/>
 <td>
 <label>Basis:</label>
-<input type="text" name="basis" value="{{trade.Basis}}"/>
+<input type="text" name="basis" value="{{trade.Basis}}" readonly/>
 </td>
 <tr/>
 <td>
 <label>Closed:</label>
-{{ form_checkbox("closed", trade.Closed) }}
-</td>
-<tr/>
-<td>
-<label>Tax Year:</label>
-<input type="text" name="tax_year" value="{{trade.TaxYear}}"/>
+{{ form_checkbox_readonly("closed", trade.Closed) }}
 </td>
 </table>
 </fieldset>
