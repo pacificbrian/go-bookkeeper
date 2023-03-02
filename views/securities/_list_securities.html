@@ -6,7 +6,7 @@
 <th>Avg. Price</th>
 <th>Value</th>
 <th>Basis</th>
-<th>Vested ROC</th>
+<th>Unsold ROC</th>
 <th>Total ROC</th>
 <th></th>
 {% for s in securities -%}
@@ -19,7 +19,7 @@
 <td class="currency">{{ s.Currency(s.BasisPrice()) }}</td>
 <td class="currency">{{ s.Currency(s.Value) }}</td>
 <td class="currency">{{ s.Currency(s.Basis) }}</td>
-<td></td>
+<td class="percentage">{{ s.TotalReturn() }}%</td>
 <td></td>
 <td><a href=/accounts/{{account.ID}}/securities/{{s.ID}}>Info</a></td>
 </tr>
@@ -33,7 +33,7 @@
 <td></td>
 <td class="currency">{{ account.Currency(account.Portfolio.Value) }}</td>
 <td class="currency">{{ account.Currency(account.Portfolio.Basis) }}</td>
-<td></td>
+<td class="percentage">{{ account.PortfolioTotalReturn() }}%</td>
 <td></td>
 <td></td>
 </tr>

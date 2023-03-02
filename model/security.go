@@ -165,8 +165,9 @@ func (s *Security) updateTrade(db *gorm.DB, trade *Trade) {
 // It should not access the database.
 func updateSecurities(securities []Security) {
 	for i := 0; i < len(securities); i++ {
-		if securities[i].Shares.IsPositive() {
-			securities[i].fetchPrice(false)
+		s := &securities[i]
+		if s.Shares.IsPositive() {
+			s.fetchPrice(false)
 		}
 	}
 }
@@ -199,6 +200,11 @@ func (s *Security) List(session *Session, account *Account, openPositions bool) 
 
 	// initiate fetching of Security Quotes
 	go updateSecurities(entries)
+
+	for i := 0; i < len(entries); i++ {
+		entry := &entries[i]
+		entry.postQueryInit()
+	}
 
 	log.Printf("[MODEL] LIST SECURITIES ACCOUNT(%d:%d)", account.ID, len(entries))
 	return entries
@@ -347,7 +353,7 @@ func (s *Security) HaveAccessPermission(session *Session) bool {
 	return s.Account.Verified
 }
 
-func (s *Security) updateValue() {
+func (s *Security) updateValue(debugValue bool) {
 	// don't update when no Shares
 	if s.Company.Symbol == "" || s.Shares.IsZero() ||
 	   GetQuoteCache() == nil {
@@ -358,28 +364,33 @@ func (s *Security) updateValue() {
 	if quote.Price.IsPositive() {
 		s.setValue(quote.Price)
 	}
-	if false {
+	if debugValue {
 		log.Printf("[MODEL] SECURITY(%d:%s) UPDATE VALUE(%f) (%f)",
 			   s.ID, s.Company.Symbol,
 			   s.Value.InexactFloat64(), quote.Price.InexactFloat64())
 	}
 }
 
+func (s *Security) postQueryInit() {
+	debugValue := false
+
+	s.Company.oldSymbol = s.Company.Symbol
+	s.Company.oldName = s.Company.Name
+	// updates s.Value (if have Shares) from latest Quote
+	s.updateValue(debugValue)
+}
+
 // controllers(Get, Edit, Delete, Update) use Get
 func (s *Security) Get(session *Session) *Security {
 	db := session.DB
-	debugShares := true
+	debugShares := false
 
 	db.Preload("SecurityType").Preload("Company").Preload("Account").First(&s)
 	// Verify we have access to Security
 	if !s.HaveAccessPermission(session) {
 		return nil
 	}
-
-	s.Company.oldSymbol = s.Company.Symbol
-	s.Company.oldName = s.Company.Name
-	// updates s.Value (if have Shares) from latest Quote
-	s.updateValue()
+	s.postQueryInit()
 
 	if debugShares {
 		log.Printf("[MODEL] GET SECURITY(%d:%s) SHARES(%f:%f)",

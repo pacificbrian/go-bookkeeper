@@ -61,6 +61,15 @@ func (a *Account) IsInvestment() bool {
 	return a.AccountType.isInvestment()
 }
 
+func (a Account) PortfolioTotalReturn() decimal.Decimal {
+	if a.Portfolio.Basis.IsZero() {
+		return decimal.Zero
+	}
+	simpleReturn := a.Portfolio.Value.Sub(a.Portfolio.Basis).
+					  DivRound(a.Portfolio.Basis, 4)
+	return decimalToPercentage(simpleReturn)
+}
+
 func (a *Account) TotalPortfolio(securities []Security) {
 	for i := 0; i < len(securities); i++ {
 		security := &securities[i]
