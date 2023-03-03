@@ -121,6 +121,11 @@ func (c *CashFlow) IsTrade() bool {
 	return c.Type == "TradeCashFlow"
 }
 
+func (c CashFlow) IsSellTrade() bool {
+	return c.Type == "TradeCashFlow" &&
+	       TradeTypeIsSell(c.CategoryID)
+}
+
 func (c CashFlow) ShowTradeLinks() bool {
 	return c.IsTrade()
 }

@@ -40,16 +40,36 @@ var listBuyTypes = "id = 1 OR id = 5 OR id = 6"
 var TradeTypeQueries = [9]string{"",
 				 "trade_type_id = 1 OR trade_type_id = 5 OR trade_type_id = 6",
 				 "trade_type_id = 2",
-				 "trade_type_id = 3",
-				 "trade_type_id = 4",
 				 "trade_type_id = 3 OR trade_type_id = 5",
 				 "trade_type_id = 4 OR trade_type_id = 6",
+				 "", // use Buy or Dividend
+				 "", // use Buy or Distribution
 				 "trade_type_id = 7",
 				 "trade_type_id = 8"}
 var TradeTypeCashFlowsQuery string = "trade_type_id <= 6"
 
+var TradeTypeQueryDesc = [9]string{"",
+				   "",
+				   "Shares Sold",
+				   "Dividend",
+				   "Distribution",
+				   "", // use Buy or Dividend
+				   "", // use Buy or Distribution
+				   "",
+				   ""}
+
 func TradeTypeIsBuy(TradeTypeID uint) bool {
 	return (TradeTypeID == Buy)
+}
+
+func TradeTypeIsDividend(TradeTypeID uint) bool {
+	return (TradeTypeID == ReinvestedDividend ||
+		TradeTypeID == Dividend)
+}
+
+func TradeTypeIsDistribution(TradeTypeID uint) bool {
+	return (TradeTypeID == ReinvestedDistribution ||
+		TradeTypeID == Distribution)
 }
 
 func TradeTypeIsReinvest(TradeTypeID uint) bool {

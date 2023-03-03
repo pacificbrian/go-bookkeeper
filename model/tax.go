@@ -241,14 +241,18 @@ func (taxCat *TaxCategory) makeTaxEntry(session *Session, year int, total decima
 	entry.TaxType = entry.TaxItem.TaxType
 	entry.TaxTypeID = entry.TaxType.ID
 	entry.TaxCategoryID = taxCat.ID
+	entry.TaxRegion.Name = "AUTO"
 	entry.setAmount(total)
 
-	c := new(CashFlow)
-	c.CategoryID = taxCat.CategoryID
-	c.Account.setSession(session)
-	c.setCategoryName(db)
-	entry.Memo = c.CategoryName
-	entry.TaxRegion.Name = "AUTO"
+	if taxCat.CategoryID > 0 {
+		c := new(CashFlow)
+		c.CategoryID = taxCat.CategoryID
+		c.Account.setSession(session)
+		c.setCategoryName(db)
+		entry.Memo = c.CategoryName
+	} else if taxCat.TradeTypeID > 0 {
+		entry.Memo = TradeTypeQueryDesc[taxCat.TradeTypeID]
+	}
 
 	return entry
 }
@@ -258,6 +262,7 @@ func (*TaxEntry) List(session *Session, year int) []TaxEntry {
 	u := session.GetCurrentUser()
 	autoEntries := []TaxEntry{}
 	entries := []TaxEntry{}
+
 	db.Preload("TaxRegion").
 	   Preload("TaxType").
 	   Preload("TaxItem").
@@ -265,16 +270,25 @@ func (*TaxEntry) List(session *Session, year int) []TaxEntry {
 	   Where("year >= ? AND year < ?", yearToDate(year), yearToDate(year+1)).
 	   Where(&TaxEntry{UserID: u.ID}).Find(&entries)
 
+	gainTrade := new(Trade)
+	gainTrade.Date = yearToDate(year)
+
 	// Get "AUTO" entries
 	taxCategories := new(TaxCategory).List(db, 0)
 	for i := 0; i < len(taxCategories); i++ {
+		total := decimal.Zero
 		taxCategory := &taxCategories[i]
 		if taxCategory.CategoryID > 0 {
-			total := u.ListTaxCategoryTotal(db, year, taxCategory)
-			if !total.IsZero() {
-				autoEntry := taxCategory.makeTaxEntry(session, year, total)
-				autoEntries = append(autoEntries, *autoEntry)
-			}
+			total = u.ListTaxCategoryTotal(db, year, taxCategory)
+		} else if taxCategory.TradeTypeID > 0 {
+			// Get Capital Gains
+			gain := gainTrade.ListByTypeTotal(session, taxCategory.TradeTypeID)
+			total = gain[1]
+		}
+
+		if !total.IsZero() {
+			autoEntry := taxCategory.makeTaxEntry(session, year, total)
+			autoEntries = append(autoEntries, *autoEntry)
 		}
 	}
 
@@ -402,20 +416,30 @@ func (it *TaxItem) listTaxCashFlows(session *Session, year int,
 	taxEntry := new(TaxEntry)
 	taxCategory.TaxItem = *it
 	taxCategories := taxCategory.List(db, it.TaxType.ID)
+
+	gainTrade := new(Trade)
+	gainTrade.Date = yearToDate(year)
+
 	for i := 0; i < len(taxCategories); i++ {
+		var catTotal decimal.Decimal
+		var catEntries []CashFlow
 		taxCategory := &taxCategories[i]
+
 		if taxCategory.CategoryID > 0 {
-			catEntries,catTotal := u.ListTaxCategory(db, year, taxCategory)
-			if !catTotal.IsZero() {
-				taxEntry.TaxTypeID = it.TaxTypeID
-				taxEntry.setAmount(catTotal)
-				total = total.Add(taxEntry.Amount)
-			}
-			if wantEntries {
-				//entries = append(entries, catEntries...)
-				entries = new(Account).mergeCashFlows(db, entries, catEntries,
-								      0, false, false)
-			}
+			catEntries,catTotal = u.ListTaxCategory(db, year, taxCategory)
+		} else if taxCategory.TradeTypeID > 0 {
+			catEntries,catTotal = gainTrade.ListCashFlowByType(session, taxCategory.TradeTypeID)
+		}
+
+		if !catTotal.IsZero() {
+			taxEntry.TaxTypeID = it.TaxTypeID
+			taxEntry.setAmount(catTotal)
+			total = total.Add(taxEntry.Amount)
+		}
+		if wantEntries && len(catEntries) > 0 {
+			//entries = append(entries, catEntries...)
+			entries = new(Account).mergeCashFlows(db, entries, catEntries,
+							      0, false, false)
 		}
 	}
 

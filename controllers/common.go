@@ -26,6 +26,10 @@ func assert(assertion bool, panicString string) {
 	}
 }
 
+func currency(value decimal.Decimal) string {
+	return  "$" + value.StringFixedBank(2)
+}
+
 func getFormDate(c echo.Context) time.Time {
 	dateStr := c.FormValue("date_month") + "/" +
 		c.FormValue("date_day") + "/" +

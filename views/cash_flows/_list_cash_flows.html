@@ -32,7 +32,11 @@
 {% else -%}
 <td>{{ c.PayeeName }}</td>
 {% endif -%}
+{% if c.IsSellTrade() -%}
+<td><a href=/gains/{{c.ImportID}}>{{ c.CategoryName }}</a></td>
+{% else -%}
 <td>{{ c.CategoryName }}</td>
+{% endif -%}
 <td class="currency">
 <div data-cashflow-target="cashflowAmount" data-cashflow-id="{{ c.ID }}" data-action="click->cashflow#actionEditAmount">
 {{ c.Currency(c.Amount) }}

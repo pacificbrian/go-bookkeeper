@@ -39,8 +39,8 @@ func ListTradeGains(c echo.Context) error {
 		data := map[string]any{ "account": &entry.Account,
 					"trades": entries,
 					"year": year,
-					"total_gain": totals[0],
-					"taxable_gain": totals[1] }
+					"total_gain": currency(totals[0]),
+					"taxable_gain": currency(totals[1]) }
 		return c.Render(http.StatusOK, "gains/index.html", data)
 	}
 }

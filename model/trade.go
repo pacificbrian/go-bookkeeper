@@ -57,6 +57,11 @@ func (t *Trade) IsBuy() bool {
 	        TradeTypeIsReinvest(t.TradeTypeID))
 }
 
+func (t *Trade) IsCredit() bool {
+	return (TradeTypeIsDividend(t.TradeTypeID) ||
+	        TradeTypeIsDistribution(t.TradeTypeID))
+}
+
 func (t *Trade) IsReinvest() bool {
 	return TradeTypeIsReinvest(t.TradeTypeID)
 }
@@ -110,7 +115,7 @@ func (t *Trade) oldCashFlowType() uint {
 	return TradeTypeToCashFlowType(t.oldTradeTypeID)
 }
 
-func (t *Trade) toCashFlow() *CashFlow {
+func (t *Trade) toCashFlow(preload bool) *CashFlow {
 	cType := t.getCashFlowType()
 	if cType == 0 {
 		return nil
@@ -136,6 +141,11 @@ func (t *Trade) toCashFlow() *CashFlow {
 	c.CategoryID = t.TradeTypeID
 	c.PayeeID = t.SecurityID
 	c.ImportID = t.ID
+	if preload {
+		c.PayeeName = t.Security.Company.GetName()
+		c.CategoryName = t.TradeType.Name
+	}
+
 	return c
 }
 
@@ -154,15 +164,14 @@ func (*Trade) List(db *gorm.DB, account *Account) []Trade {
 }
 
 // Filtered Account or User Trades for just single Year (t.Date.Year)
-func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]string) {
+func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]decimal.Decimal) {
 	var gain [2]decimal.Decimal
-	var gainStr [2]string
 	entries := []Trade{}
 	year := t.Date.Year()
 	db := session.DB
 
-	if year == 0 {
-		return entries, gainStr
+	if year == 0 || TradeTypeQueries[tradeType] == "" {
+		return entries, gain
 	}
 
 	if !t.Account.Verified && t.AccountID > 0 {
@@ -170,7 +179,7 @@ func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]string
 		t.Account.ID = t.AccountID
 		account := t.Account.Get(session, false)
 		if account == nil {
-			return entries, gainStr
+			return entries, gain
 		}
 	}
 
@@ -198,18 +207,42 @@ func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]string
 			gain[1] = gain[1].Add(entry.Gain)
 		}
 	}
+
 	log.Printf("[MODEL] LIST ACCOUNT(%d) TRADES(%d:%d)",
 		   t.AccountID, tradeType, len(entries))
+	return entries, gain
+}
 
-	gainStr[0] = currency(gain[0])
-	gainStr[1] = currency(gain[1])
-	return entries, gainStr
+func (t *Trade) ListByTypeTotal(session *Session, tradeType uint) [2]decimal.Decimal {
+	_,total := t.ListByType(session, tradeType)
+	return total
+}
+
+// Usage is interested in Trade Gains (Taxable), so here in returned CashFlows,
+// we switch cf.Amount with the trade.Gain.
+func (t *Trade) ListCashFlowByType(session *Session, tradeType uint) ([]CashFlow, decimal.Decimal) {
+	entries := []CashFlow{}
+
+	trades, total := t.ListByType(session, tradeType)
+	for i := 0; i < len(trades); i++ {
+		t := trades[i]
+		if !t.Account.Taxable {
+			continue
+		}
+		cf := t.toCashFlow(true)
+		if cf != nil {
+			cf.Amount = t.Gain
+			entries = append(entries, *cf)
+		}
+	}
+
+	return entries, total[1]
 }
 
 // Account access already verified by caller
 func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
-	entries := []Trade{}
-	cf_entries := []CashFlow{}
+	trades := []Trade{}
+	entries := []CashFlow{}
 
 	if account.Verified {
 		// Find Trades for Account
@@ -218,20 +251,18 @@ func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
 		   Order("date desc").
 		   Joins("Security").
 		   Where(TradeTypeCashFlowsQuery).
-		   Where(&Trade{AccountID: account.ID}).Find(&entries)
-		log.Printf("[MODEL] LIST TRADES ACCOUNT(%d:%d)", account.ID, len(entries))
+		   Where(&Trade{AccountID: account.ID}).Find(&trades)
+		log.Printf("[MODEL] LIST TRADES ACCOUNT(%d:%d)", account.ID, len(trades))
 
-		for i := 0; i < len(entries); i++ {
-			t := entries[i]
-			cf := t.toCashFlow()
+		for i := 0; i < len(trades); i++ {
+			t := trades[i]
+			cf := t.toCashFlow(true)
 			if cf != nil {
-				cf.PayeeName = t.Security.Company.GetName()
-				cf.CategoryName = t.TradeType.Name
-				cf_entries = append(cf_entries, *cf)
+				entries = append(entries, *cf)
 			}
 		}
 	}
-	return cf_entries
+	return entries
 }
 
 func (t *Trade) updateBasis(basis decimal.Decimal, soldShares decimal.Decimal) {
@@ -382,7 +413,7 @@ func (t *Trade) insertTrade(db *gorm.DB, security *Security) error {
 		t.recordSplit(activeBuys)
 	}
 	security.addTrade(db, t)
-	c := t.toCashFlow()
+	c := t.toCashFlow(false)
 	if c != nil {
 		security.Account.updateBalance(db, c)
 	}
@@ -430,6 +461,8 @@ func (t *Trade) postQueryInit() {
 		t.Gain = t.Amount.Sub(t.Basis)
 		t.GainPS = t.Gain.Div(t.Shares)
 		t.BasisPS = t.Basis.Div(t.Shares)
+	} else if t.IsCredit() {
+		t.Gain = t.Amount
 	}
 }
 
@@ -497,7 +530,7 @@ func (t *Trade) Delete(session *Session) error {
 	}
 
 	t.Security.updateTrade(db, t)
-	c := t.toCashFlow()
+	c := t.toCashFlow(false)
 	if c != nil {
 		t.Account.updateBalance(db, c)
 	}
@@ -564,7 +597,7 @@ func (t *Trade) Update() error {
 		}
 
 		t.Security.updateTrade(db, t)
-		c := t.toCashFlow()
+		c := t.toCashFlow(false)
 		if c != nil {
 			t.Account.updateBalance(db, c)
 		}
