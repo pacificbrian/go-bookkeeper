@@ -163,9 +163,9 @@ func (s *Security) updateTrade(db *gorm.DB, trade *Trade) {
 
 // goroutine: this fetches latest Price and updates cached Quotes.
 // It should not access the database.
-func updateSecurities(securities []Security) {
-	for i := 0; i < len(securities); i++ {
-		s := &securities[i]
+func updateSecurities(securities *[]Security) {
+	for i := 0; i < len(*securities); i++ {
+		s := &(*securities)[i]
 		if s.Shares.IsPositive() {
 			s.fetchPrice(false)
 		}
@@ -191,23 +191,25 @@ func (s *Security) List(session *Session, account *Account, openPositions bool) 
 		db.Order("Company.Symbol").
 		   Where("shares > 0 AND account_id = ?", account.ID).
 		   Joins("Company").
-		   Find(&entries)
+		   Find(&account.Securities)
 	} else {
 		db.Preload("Company").
 		   Where(&Security{AccountID: account.ID}).
-		   Find(&entries)
+		   Find(&account.Securities)
 	}
 
 	// initiate fetching of Security Quotes
-	go updateSecurities(entries)
+	go updateSecurities(&account.Securities)
 
-	for i := 0; i < len(entries); i++ {
-		entry := &entries[i]
+	for i := 0; i < len(account.Securities); i++ {
+		entry := &account.Securities[i]
 		entry.postQueryInit()
 	}
+	account.updateValue(true)
 
-	log.Printf("[MODEL] LIST SECURITIES ACCOUNT(%d:%d)", account.ID, len(entries))
-	return entries
+	log.Printf("[MODEL] LIST SECURITIES ACCOUNT(%d:%d)", account.ID,
+		   len(account.Securities))
+	return account.Securities
 }
 
 // Security access already verified by caller

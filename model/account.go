@@ -37,6 +37,7 @@ type Account struct {
 	CurrencyType CurrencyType
 	User User
 	CashFlows []CashFlow
+	Securities []Security
 }
 
 func (Account) Currency(value decimal.Decimal) string {
@@ -451,6 +452,27 @@ func (a *Account) updateAccount(session *Session) {
 	a.CashBalance = a.CashBalance.Add(amountAdded)
 }
 
+// update Account.Balance from Securities.Value
+func (a *Account) updateValue(debugValue bool) {
+	if !a.IsInvestment() {
+		return
+	}
+
+	oldBalance := a.Balance
+	a.Balance = a.CashBalance
+	for i := 0; i < len(a.Securities); i++ {
+		s :=  &a.Securities[i]
+		a.Balance = a.Balance.Add(s.Value)
+	}
+
+	if debugValue {
+		log.Printf("[MODEL] ACCOUNT(%d:%d) REFRESH BALANCE(%f -> %f)",
+			   a.ID, len(a.Securities),
+			   oldBalance.InexactFloat64(),
+			   a.Balance.InexactFloat64())
+	}
+}
+
 // Show, Edit, Delete, Update use Get
 // a.UserID unset, need to load
 func (a *Account) Get(session *Session, preload bool) *Account {
@@ -517,6 +539,12 @@ func (*Account) Find(ID int) *Account {
 	a := new(Account)
 	db.First(&a, ID)
 	return a
+}
+
+func (a *Account) AddToBalance(fAmount float64) {
+	amount := decimal.NewFromFloat(fAmount)
+	a.Balance = a.Balance.Add(amount)
+	a.CashBalance = a.CashBalance.Add(amount)
 }
 
 func (a *Account) Print() {
