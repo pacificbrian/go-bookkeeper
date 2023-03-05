@@ -135,6 +135,10 @@ func NewSecurity(c echo.Context) error {
 	entry := new(model.Security)
 	entry.AccountID = uint(account_id)
 
+	account := &entry.Account
+	account.Model.ID = uint(account_id)
+	account.Get(session, false)
+
 	data := map[string]any{ "security": entry,
 				"security_basis_types": new(model.SecurityBasisType).List(session.DB),
 				"security_types": new(model.SecurityType).List(session.DB) }

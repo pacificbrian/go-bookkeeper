@@ -2,7 +2,11 @@
 {% block content -%}
 
 <div class="new">
+{% if security.Account.Name != "" -%}
+<h2>{{security.Account.Name}} - New Security</h2>
+{% else -%}
 <h2>New Security</h2>
+{% endif -%}
 
 <form method="POST" action="/accounts/{{security.AccountID}}/securities">
 {% include "securities/security_form.html" -%}
