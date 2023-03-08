@@ -78,9 +78,10 @@ func (a *Account) TotalPortfolio(securities []Security) {
 	}
 }
 
-func cacheAccounts(u *User, accounts []Account) {
+// goroutine: store account.Names in userCache
+func cacheAccountNames(u *User, accounts []Account) {
 	for i := 0; i < len(accounts); i++ {
-		u.cacheAccount(&accounts[i])
+		u.cacheAccountName(&accounts[i])
 	}
 }
 
@@ -112,7 +113,7 @@ func List(session *Session, all bool) []Account {
 	   Where(&Account{UserID: u.ID}).Find(&entries)
 	log.Printf("[MODEL] LIST ACCOUNTS(%d)", len(entries))
 
-	cacheAccounts(u, entries)
+	go cacheAccountNames(u, entries)
 	return entries
 }
 
@@ -504,6 +505,7 @@ func (a *Account) Update() error {
 	db := getDbManager()
 	spewModel(a)
 	result := db.Omit(clause.Associations).Save(a)
+	a.User.clearAccountName(a)
 	return result.Error
 }
 

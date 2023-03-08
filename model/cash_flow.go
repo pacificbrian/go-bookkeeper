@@ -180,13 +180,13 @@ func (c *CashFlow) setCategoryName(db *gorm.DB) {
 	} else if c.CategoryID > 0 {
 		c.CategoryName = c.Category.Name
 		if c.CategoryName == "" && c.Account.Verified {
-			c.CategoryName = c.Account.User.lookupCategory(c.CategoryID)
+			c.CategoryName = c.Account.User.lookupCategoryName(c.CategoryID)
 		}
 		if c.CategoryName == "" {
 			c.Category.ID = c.CategoryID
 			db.First(&c.Category)
 			if c.Account.Verified {
-				c.Account.User.cacheCategory(&c.Category)
+				c.Account.User.cacheCategoryName(&c.Category)
 			}
 			c.CategoryName = c.Category.Name
 		}
@@ -208,14 +208,14 @@ func (c *CashFlow) Preload(db *gorm.DB) {
 	if c.Transfer {
 		assert(c.PayeeID > 0, "CashFlow.Preload: (Transfer) no PayeeID!")
 		if c.Account.Verified {
-			c.PayeeName = c.Account.User.lookupAccount(c.PayeeID)
+			c.PayeeName = c.Account.User.lookupAccountName(c.PayeeID)
 		}
 		if c.PayeeName == "" {
 			a := new(Account)
 			db.First(&a, c.PayeeID)
 			c.PayeeName = a.Name
 			if c.Account.Verified && a.ID > 0 {
-				c.Account.User.cacheAccount(a)
+				c.Account.User.cacheAccountName(a)
 			}
 		}
 		c.CategoryName = "Transfer"

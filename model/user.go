@@ -8,9 +8,10 @@ package model
 
 import (
 	"log"
-	"golang.org/x/crypto/bcrypt"
 	"github.com/pacificbrian/go-bookkeeper/config"
 	gormdb "github.com/pacificbrian/go-bookkeeper/db"
+	"github.com/shopspring/decimal"
+	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +20,7 @@ const (
 )
 
 type UserCache struct {
+	AccountBalances map[uint]decimal.Decimal
 	AccountNames map[uint]string
 	CategoryNames map[uint]string
 }
@@ -52,20 +54,36 @@ func (u *User) Cache() *UserCache {
 	return &u.Session.Cache
 }
 
-func (u *User) cacheAccount(a *Account) {
+func (u *User) cacheAccountBalance(a *Account) {
+	u.Cache().AccountBalances[a.ID] = a.Balance
+}
+
+func (u *User) clearAccountBalance(a *Account) {
+	delete(u.Cache().AccountBalances, a.ID)
+}
+
+func (u *User) cacheAccountName(a *Account) {
 	u.Cache().AccountNames[a.ID] = a.Name
 }
 
-func (u *User) cacheCategory(c *Category) {
+func (u *User) clearAccountName(a *Account) {
+	delete(u.Cache().AccountNames, a.ID)
+}
+
+func (u *User) cacheCategoryName(c *Category) {
 	u.Cache().CategoryNames[c.ID] = c.Name
 	log.Printf("[CACHE] ADD CATEGORY(%d: %s)", c.ID, c.Name)
 }
 
-func (u *User) lookupAccount(id uint) string {
+func (u *User) lookupAccountBalance(id uint) decimal.Decimal {
+	return u.Cache().AccountBalances[id]
+}
+
+func (u *User) lookupAccountName(id uint) string {
 	return u.Cache().AccountNames[id]
 }
 
-func (u *User) lookupCategory(id uint) string {
+func (u *User) lookupCategoryName(id uint) string {
 	return u.Cache().CategoryNames[id]
 }
 
@@ -74,6 +92,7 @@ func getDbManager() *gorm.DB {
 }
 
 func (uc *UserCache) init() {
+	uc.AccountBalances = map[uint]decimal.Decimal{}
 	uc.AccountNames = map[uint]string{}
 	uc.CategoryNames = map[uint]string{}
 }
