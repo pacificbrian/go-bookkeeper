@@ -178,7 +178,9 @@ func (c *TaxConstant) Get(db *gorm.DB) *TaxConstant {
 
 func (y *TaxYear) Get(db *gorm.DB, year int) *TaxYear {
 	y.Year = year
-	db.Where(&y).First(&y)
+	if year != 0 {
+		db.Where(&y).First(&y)
+	}
 	return y
 }
 

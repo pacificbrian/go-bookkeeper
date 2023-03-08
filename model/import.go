@@ -44,7 +44,9 @@ func (i *Import) HaveAccessPermission(session *Session) bool {
 func (im *Import) Get(session *Session) *Import {
 	db := session.DB
 	// Verify we have access to Import
-	db.Preload("Account").First(&im)
+	if im.ID > 0 {
+		db.Preload("Account").First(&im)
+	}
 	if !im.HaveAccessPermission(session) {
 		return nil
 	}

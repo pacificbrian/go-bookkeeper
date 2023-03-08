@@ -1025,10 +1025,13 @@ func (c *CashFlow) Create(session *Session) error {
 // c.Account needs to be preloaded
 func (c *CashFlow) Get(session *Session, edit bool) *CashFlow {
 	db := session.DB
-	if edit {
-		db.Preload("Payee").Preload("Category").Preload("Account").First(&c)
-	} else {
-		db.Preload("Account").First(&c)
+	if c.ID > 0 {
+		if edit {
+			db.Preload("Payee").Preload("Category").
+			   Preload("Account").First(&c)
+		} else {
+			db.Preload("Account").First(&c)
+		}
 	}
 
 	// Verify we have access to CashFlow

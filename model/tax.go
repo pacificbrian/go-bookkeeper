@@ -318,11 +318,13 @@ func (te *TaxEntry) HaveAccessPermission(session *Session) bool {
 
 func (te *TaxEntry) Get(session *Session) *TaxEntry {
 	db := session.DB
-	db.Table("taxes").First(&te)
-	te.DateYear = te.Year.Year()
+	if te.ID > 0 {
+		db.Table("taxes").First(&te)
+	}
 	if !te.HaveAccessPermission(session) {
 		return nil
 	}
+	te.DateYear = te.Year.Year()
 	return te
 }
 
@@ -378,8 +380,9 @@ func (t *TaxReturn) Create(session *Session) error {
 
 func (item *TaxItem) GetByName(db *gorm.DB, name string) *TaxItem {
 	item.Name = name
-	db.Where(&item).First(&item)
-
+	if item.Name != "" {
+		db.Where(&item).First(&item)
+	}
 	if item.ID == 0 {
 		return nil
 	}
@@ -387,7 +390,9 @@ func (item *TaxItem) GetByName(db *gorm.DB, name string) *TaxItem {
 }
 
 func (item *TaxItem) Get(db *gorm.DB) *TaxItem {
-	db.First(&item, item.ID)
+	if item.ID > 0 {
+		db.First(&item, item.ID)
+	}
 	if item.ID == 0 {
 		return nil
 	}
@@ -395,7 +400,9 @@ func (item *TaxItem) Get(db *gorm.DB) *TaxItem {
 }
 
 func (tt *TaxType) Get(db *gorm.DB) *TaxType {
-	db.First(&tt, tt.ID)
+	if tt.ID > 0 {
+		db.First(&tt, tt.ID)
+	}
 	if tt.ID == 0 {
 		return nil
 	}
@@ -581,7 +588,9 @@ func (r *TaxReturn) HaveAccessPermission(session *Session) bool {
 
 func (r *TaxReturn) Get(session *Session) *TaxReturn {
 	db := session.DB
-	db.Table("tax_users").First(&r)
+	if r.ID > 0 {
+		db.Table("tax_users").First(&r)
+	}
 	if !r.HaveAccessPermission(session) {
 		return nil
 	}

@@ -94,7 +94,9 @@ func GetAccount(c echo.Context) error {
 	entry := new(model.Account)
 	entry.Model.ID = uint(id)
 	entry = entry.Get(session, true)
-	// set status based on if Get failed
+	if entry == nil {
+		return c.NoContent(http.StatusUnauthorized)
+	}
 
 	if get_json {
 		return c.JSON(http.StatusOK, entry)

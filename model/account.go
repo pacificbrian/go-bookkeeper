@@ -194,8 +194,10 @@ func accountGetByName(session *Session, name string) *Account {
 	a := new(Account)
 	a.Name = name
 	a.UserID = u.ID
-	// need Where because these are not primary keys
-	db.Where(&a).First(&a)
+	if a.Name != "" {
+		// need Where because these are not primary keys
+		db.Where(&a).First(&a)
+	}
 
 	if a.ID == 0 || !a.HaveAccessPermission(session) {
 		return nil
@@ -214,9 +216,11 @@ func (a *Account) GetSecurity(session *Session, company *Company) (*Security, er
 	security.CompanyID = c.ID
 	security.AccountID = a.ID
 
-	// need Where because these are not primary keys
-	db.Preload("Account").
-	   Where(&security).First(&security)
+	if security.AccountID > 0 {
+		// need Where because these are not primary keys
+		db.Preload("Account").
+		   Where(&security).First(&security)
+	}
 	log.Printf("[MODEL] ACCOUNT(%d) COMPANY(%d) GET SECURITY(%d)",
 		   a.ID, c.ID, security.ID)
 
@@ -236,11 +240,13 @@ func (a *Account) securityGetByImportName(session *Session, name string) *Securi
 	db := session.DB
 
 	importName := security.sanitizeSecurityName(name)
-	db.Preload("Account").
-	   // need Where because these are not primary keys
-	   Where("import_name = ? OR name = ?", importName, importName).
-	   Where(&Security{AccountID: a.ID}).
-	   Joins("Company").First(&security)
+	if a.ID > 0 && importName != "" {
+		// need Where because these are not primary keys
+		db.Preload("Account").
+		   Where("import_name = ? OR name = ?", importName, importName).
+		   Where(&Security{AccountID: a.ID}).
+		   Joins("Company").First(&security)
+	}
 	log.Printf("[MODEL] ACCOUNT(%d) IMPORT GET SECURITY for (%s:%d)",
 		   a.ID, importName, security.ID)
 
@@ -450,12 +456,14 @@ func (a *Account) Get(session *Session, preload bool) *Account {
 	db := session.DB
 
 	// Load and Verify we have access to Account
-	if preload {
-		// Get (Show)
-		db.Preload("AccountType").First(&a)
-	} else {
-		// Edit, Delete, Update
-		db.First(&a)
+	if a.ID > 0 {
+		if preload {
+			// Get (Show)
+			db.Preload("AccountType").First(&a)
+		} else {
+			// Edit, Delete, Update
+			db.First(&a)
+		}
 	}
 	if !a.HaveAccessPermission(session) {
 		return nil

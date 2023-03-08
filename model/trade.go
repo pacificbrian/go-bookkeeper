@@ -428,7 +428,7 @@ func (t *Trade) Create(session *Session) error {
 		// verify access to Security
 		t.Security.ID = t.SecurityID
 		security = t.Security.Get(session)
-	} else {
+	} else if t.AccountID > 0 {
 		// verifies Account, creates Security if none exists
 		security = t.securityGetBySymbol(session)
 	}
@@ -469,9 +469,11 @@ func (t *Trade) postQueryInit() {
 // Edit, Delete, Update use Get
 func (t *Trade) Get(session *Session) *Trade {
 	db := session.DB
-	db.Preload("TradeType").Preload("Account").
-	   Preload("Security.Company").Joins("Security").
-	   First(&t)
+	if t.ID > 0 {
+		db.Preload("TradeType").Preload("Account").
+		   Preload("Security.Company").Joins("Security").
+		   First(&t)
+	}
 
 	// Verify we have access to Trade
 	if !t.HaveAccessPermission(session) {

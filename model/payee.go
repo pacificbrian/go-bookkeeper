@@ -92,7 +92,9 @@ func (p *Payee) HaveAccessPermission(session *Session) bool {
 // Edit, Delete, Update use Get
 func (p *Payee) Get(session *Session) *Payee {
 	db := session.DB
-	db.Preload("User").First(&p)
+	if p.ID > 0 {
+		db.Preload("User").First(&p)
+	}
 	// Verify we have access to Payee
 	if !p.HaveAccessPermission(session) {
 		return nil

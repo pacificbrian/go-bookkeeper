@@ -385,7 +385,10 @@ func (s *Security) Get(session *Session) *Security {
 	db := session.DB
 	debugShares := false
 
-	db.Preload("SecurityType").Preload("Company").Preload("Account").First(&s)
+	if s.ID > 0 {
+		db.Preload("SecurityType").Preload("Company").
+		   Preload("Account").First(&s)
+	}
 	// Verify we have access to Security
 	if !s.HaveAccessPermission(session) {
 		return nil
