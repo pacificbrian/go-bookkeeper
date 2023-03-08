@@ -172,40 +172,56 @@ func updateSecurities(securities *[]Security) {
 	}
 }
 
-// with account argument, Account access already verified by caller
-func (s *Security) List(session *Session, account *Account, openPositions bool) []Security {
-	entries := []Security{}
-	db := session.DB
-
-	if account == nil {
-		// Verify we have access to Account
-		s.Account.ID = s.AccountID
-		account = s.Account.Get(session, false)
-	}
-	if account == nil || !account.Verified || !account.IsInvestment() {
-		return entries
+// update Security.Values and update Account.Balance from cached Quotes
+func (a *Account) getSecurities(openPositions bool, async bool) {
+	updated := false
+	db := getDbManager()
+	if !a.Verified || !a.IsInvestment() {
+		return
 	}
 
 	// Find Securities for Account
 	if (openPositions) {
 		db.Order("Company.Symbol").
-		   Where("shares > 0 AND account_id = ?", account.ID).
+		   Where("shares > 0 AND account_id = ?", a.ID).
 		   Joins("Company").
-		   Find(&account.Securities)
+		   Find(&a.Securities)
 	} else {
 		db.Preload("Company").
-		   Where(&Security{AccountID: account.ID}).
-		   Find(&account.Securities)
+		   Where(&Security{AccountID: a.ID}).
+		   Find(&a.Securities)
 	}
 
-	// initiate fetching of Security Quotes
-	go updateSecurities(&account.Securities)
-
-	for i := 0; i < len(account.Securities); i++ {
-		entry := &account.Securities[i]
-		entry.postQueryInit()
+	if async {
+		// initiate background fetching of Security Quotes
+		go updateSecurities(&a.Securities)
+	} else {
+		log.Printf("[MODEL] GET SECURITIES ACCOUNT(%d:%d)", a.ID,
+			   len(a.Securities))
+		updateSecurities(&a.Securities)
 	}
-	account.updateValue(true)
+
+	for i := 0; i < len(a.Securities); i++ {
+		entry := &a.Securities[i]
+		updated = entry.postQueryInit() || updated
+	}
+	if updated {
+		a.updateValue(true)
+	}
+}
+
+// with account argument, Account access already verified by caller
+func (s *Security) List(session *Session, account *Account, openPositions bool) []Security {
+	entries := []Security{}
+	if account == nil {
+		// Verify we have access to Account
+		s.Account.ID = s.AccountID
+		account = s.Account.Get(session, false)
+		if account == nil  {
+			return entries
+		}
+	}
+	account.getSecurities(openPositions, true)
 
 	log.Printf("[MODEL] LIST SECURITIES ACCOUNT(%d:%d)", account.ID,
 		   len(account.Securities))
@@ -355,31 +371,35 @@ func (s *Security) HaveAccessPermission(session *Session) bool {
 	return s.Account.Verified
 }
 
-func (s *Security) updateValue(debugValue bool) {
+func (s *Security) updateValue(debugValue bool) bool {
+	updated := false
 	// don't update when no Shares
 	if s.Company.Symbol == "" || s.Shares.IsZero() ||
 	   GetQuoteCache() == nil {
-		return
+		return updated
 	}
 
 	quote := GetQuoteCache().Get(s.Company.Symbol)
 	if quote.Price.IsPositive() {
 		s.setValue(quote.Price)
+		updated = true
 	}
+
 	if debugValue {
-		log.Printf("[MODEL] SECURITY(%d:%s) UPDATE VALUE(%f) (%f)",
-			   s.ID, s.Company.Symbol,
+		log.Printf("[MODEL] SECURITY(%d:%s) UPDATE VALUE(%t:%f) (%f)",
+			   s.ID, s.Company.Symbol, updated,
 			   s.Value.InexactFloat64(), quote.Price.InexactFloat64())
 	}
+	return updated
 }
 
-func (s *Security) postQueryInit() {
+func (s *Security) postQueryInit() bool {
 	debugValue := false
 
 	s.Company.oldSymbol = s.Company.Symbol
 	s.Company.oldName = s.Company.Name
 	// updates s.Value (if have Shares) from latest Quote
-	s.updateValue(debugValue)
+	return s.updateValue(debugValue)
 }
 
 // controllers(Get, Edit, Delete, Update) use Get
