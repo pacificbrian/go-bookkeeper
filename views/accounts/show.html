@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content -%}
 
+{% if account -%}
 <div class="show">
 <h2>{{ account.Name }}</h2>
 
@@ -74,6 +75,7 @@
 </table>
 
 </div>
+{% endif -%}
 
 <ul id="footmenu">
 <li><a href=/accounts>Back to Accounts</a></li>

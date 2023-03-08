@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% block content -%}
 
-<div class="show">
 {% if trade -%}
+<div class="show">
 <h2>{{ trade.Security.Company.Name }}</h2>
 
 <h3>Gain for Sell Trade</h3>
@@ -52,8 +52,8 @@
 </tr>
 {% endfor -%}
 </table>
-{% endif -%}
 </div>
+{% endif -%}
 
 {% if trade -%}
 <ul id="footmenu">

@@ -185,16 +185,18 @@ func EditCashFlow(c echo.Context) error {
 	entry := new(model.CashFlow)
 	entry.Model.ID = uint(id)
 	entry = entry.Get(session, true)
+
+	dh := new(helpers.DateHelper)
+	dh.Init()
+
 	if entry != nil {
+		dh.SetDate(entry.Date)
+
 		cash_flows, cash_flow_total = entry.ListSplit(db)
 		if entry.IsScheduled() {
 			repeat_interval_types = new(model.RepeatIntervalType).List(db)
 		}
 	}
-
-	dh := new(helpers.DateHelper)
-	dh.Init()
-	dh.SetDate(entry.Date)
 
 	data := map[string]any{ "cash_flow": entry,
 				"date_helper": dh,

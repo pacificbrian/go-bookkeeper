@@ -4,12 +4,14 @@
 <div class="edit">
 <h2>Edit Tax Entry</h2>
 
+{% if entry -%}
 <form method="POST" action="/tax_entries/{{entry.ID}}">
 {% include "taxes/tax_entry.html" -%}
 <fieldset class="submit">
 <input type="submit" value="Update"/>
 </fieldset>
 </form>
+{% endif -%}
 </div>
 
 <ul id="footmenu" data-controller="tax">

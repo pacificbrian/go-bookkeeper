@@ -4,6 +4,7 @@
 <div class="edit">
 <h2>Edit Trade Transaction</h2>
 
+{% if trade -%}
 <fieldset class="first">
 <table>
 <tr/>
@@ -70,6 +71,7 @@
 </p>
 </fieldset>
 </form>
+{% endif -%}
 </div>
 
 <ul id="footmenu" data-controller="trade">

@@ -4,9 +4,11 @@
 <div class="edit">
 <h2>Edit Account</h2>
 
+{% if account -%}
 <form method="POST" action="/accounts/{{ account.ID }}">
 {% include "accounts/account_form.html" -%}
 </form>
+{% endif -%}
 
 </div>
 

@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 {% block content -%}
 
+{% if security -%}
 <div class="show">
 <h2>{{ security.Company.GetName() }}</h2>
 <table>
@@ -29,6 +30,7 @@
 {% include "securities/_security_trade_form.html" -%}
 </form>
 </div>
+{% endif -%}
 
 <ul id="footmenu">
 {% if security.AccountID > 0 -%}

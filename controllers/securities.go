@@ -98,7 +98,9 @@ func GetSecurity(c echo.Context) error {
 	entry := new(model.Security)
 	entry.ID = uint(id)
 	entry = entry.Get(session)
-	// set status based on if Get failed
+	if entry == nil {
+		return c.NoContent(http.StatusUnauthorized)
+	}
 
 	if get_json {
 		return c.JSON(http.StatusOK, entry)

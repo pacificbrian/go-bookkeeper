@@ -116,10 +116,11 @@ func EditTrade(c echo.Context) error {
 
 	dh := new(helpers.DateHelper)
 	dh.Init()
-	dh.SetDate(entry.Date)
-
-	if entry.IsBuy() {
-		tradeTypes = new(model.TradeType).ListBuys(session.DB)
+	if entry != nil {
+		dh.SetDate(entry.Date)
+		if entry.IsBuy() {
+			tradeTypes = new(model.TradeType).ListBuys(session.DB)
+		}
 	}
 
 	data := map[string]any{ "trade": entry,

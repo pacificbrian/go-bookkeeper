@@ -4,6 +4,7 @@
 <div class="edit">
 <h2>Edit Security</h2>
 
+{% if security -%}
 <form method="POST" action="/securities/{{security.ID}}">
 {% include "securities/security_form.html" -%}
 <fieldset class="submit">
@@ -12,6 +13,7 @@
 </p>
 </fieldset>
 </form>
+{% endif -%}
 </div>
 
 <ul id="footmenu">
