@@ -58,8 +58,10 @@ func (u *User) cacheAccountBalance(a *Account) {
 	u.Cache().AccountBalances[a.ID] = a.Balance
 }
 
-func (u *User) clearAccountBalance(a *Account) {
-	delete(u.Cache().AccountBalances, a.ID)
+func (u *User) updateAccountBalance(a *Account) {
+	if !u.Cache().AccountBalances[a.ID].IsZero() {
+		u.Cache().AccountBalances[a.ID] = a.Balance
+	}
 }
 
 func (u *User) cacheAccountName(a *Account) {

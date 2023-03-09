@@ -210,6 +210,10 @@ func (a *Account) getSecurities(openPositions bool, async bool) {
 	}
 }
 
+func (a *Account) getOpenSecurities(async bool) {
+	a.getSecurities(true, async)
+}
+
 // with account argument, Account access already verified by caller
 func (s *Security) List(session *Session, account *Account, openPositions bool) []Security {
 	entries := []Security{}

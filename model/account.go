@@ -88,9 +88,17 @@ func cacheAccountNames(u *User, accounts []Account) {
 
 // goroutine: this checks and applies ScheduledCashFlows which are ready
 func updateAccounts(accounts []Account, session *Session) {
+	log.Printf("[MODEL] UPDATE ACCOUNTS(%d)", len(accounts))
 	for i := 0; i < len(accounts); i++ {
 		a := &accounts[i]
-		a.updateAccount(session)
+		a.updateAccount(session, true)
+	}
+}
+
+func (a *Account) postQueryInit() {
+	balance := a.User.lookupAccountBalance(a.ID)
+	if !balance.IsZero() {
+		a.Balance = balance
 	}
 }
 
@@ -113,6 +121,12 @@ func List(session *Session, all bool) []Account {
 	   Where(hidden_clause).
 	   Where(&Account{UserID: u.ID}).Find(&entries)
 	log.Printf("[MODEL] LIST ACCOUNTS(%d)", len(entries))
+
+	for i := 0; i < len(entries); i++ {
+		a := &entries[i]
+		a.setSession(session)
+		a.postQueryInit()
+	}
 
 	go cacheAccountNames(u, entries)
 	return entries
@@ -337,7 +351,7 @@ func (a *Account) addScheduled(db *gorm.DB) {
 }
 
 func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
-	if !c.mustUpdateBalance() {
+	if !a.Verified || !c.mustUpdateBalance() {
 		return
 	}
 
@@ -351,6 +365,7 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 	// If we didn't have accurate Balance, these will be unused in caller.
 	a.Balance = a.Balance.Add(adjustAmount)
 	a.CashBalance = a.CashBalance.Add(adjustAmount)
+	a.User.updateAccountBalance(a)
 
 	if c.oldAmount.IsZero() || a.CashBalance.IsZero() {
 		// This case intended to handle when we don't know if we have
@@ -422,7 +437,7 @@ func (a *Account) HaveAccessPermission(session *Session) bool {
 	return a.Verified
 }
 
-func (a *Account) updateAccount(session *Session) {
+func (a *Account) updateAccountScheduled(session *Session) {
 	var amountAdded decimal.Decimal
 	var repeat *CashFlow
 	db := session.DB
@@ -430,7 +445,7 @@ func (a *Account) updateAccount(session *Session) {
 
 	// test if any ScheduledCashFlows need to post
 	scheduled := a.ListScheduled(session, true)
-	if len(scheduled) == 0 {
+	if !a.Verified || len(scheduled) == 0 {
 		return
 	}
 
@@ -450,11 +465,30 @@ func (a *Account) updateAccount(session *Session) {
 	}
 	a.Balance = a.Balance.Add(amountAdded)
 	a.CashBalance = a.CashBalance.Add(amountAdded)
+	a.User.updateAccountBalance(a)
+}
+
+func (a *Account) updateAccount(session *Session, async bool) {
+	if !a.HaveAccessPermission(session) {
+		return
+	}
+
+	a.postQueryInit()
+	a.updateAccountScheduled(session)
+
+	// invoked only when run from a goroutine, should
+	// avoid extra database access from Account.Get
+	if async {
+		// updates any Security.Values and Account.Balance, we do
+		// !async because if aready async then we don't want nested
+		// goroutines to complete and not also run in background
+		a.getOpenSecurities(!async)
+	}
 }
 
 // update Account.Balance from Securities.Value
 func (a *Account) updateValue(debugValue bool) {
-	if !a.IsInvestment() {
+	if !a.Verified || !a.IsInvestment() || len(a.Securities) == 0 {
 		return
 	}
 
@@ -464,6 +498,7 @@ func (a *Account) updateValue(debugValue bool) {
 		s :=  &a.Securities[i]
 		a.Balance = a.Balance.Add(s.Value)
 	}
+	a.User.cacheAccountBalance(a)
 
 	if debugValue {
 		log.Printf("[MODEL] ACCOUNT(%d:%d) REFRESH BALANCE(%f -> %f)",
@@ -493,7 +528,7 @@ func (a *Account) Get(session *Session, preload bool) *Account {
 	}
 
 	if preload {
-		a.updateAccount(session)
+		a.updateAccount(session, false)
 		spewModel(a)
 	}
 	return a
