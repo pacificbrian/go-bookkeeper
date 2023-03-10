@@ -51,6 +51,9 @@ type Session struct {
 }
 
 func (u *User) Cache() *UserCache {
+	if u.Session == nil {
+		return nil
+	}
 	return &u.Session.Cache
 }
 
@@ -69,7 +72,10 @@ func (u *User) cacheAccountName(a *Account) {
 }
 
 func (u *User) clearAccountName(a *Account) {
-	delete(u.Cache().AccountNames, a.ID)
+	uc := u.Cache()
+	if uc != nil {
+		delete(uc.AccountNames, a.ID)
+	}
 }
 
 func (u *User) cacheCategoryName(c *Category) {

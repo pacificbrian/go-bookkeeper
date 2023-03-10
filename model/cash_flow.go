@@ -509,6 +509,7 @@ func (c *CashFlow) cloneTransfer(src *CashFlow) {
 	c.TaxYear = src.TaxYear
 	c.Memo = src.Memo
 	c.Transnum = src.Transnum
+	c.Account.cloneVerified(&src.Account)
 	c.oldAccountID = c.AccountID // used if Update
 	c.AccountID = src.PayeeID
 	c.PayeeID = src.AccountID
@@ -526,6 +527,7 @@ func (c *CashFlow) pairFrom(src *CashFlow) {
 	c.ID = src.PairID
 	// keep split details accurate, and decrement SplitCount in Parent (Delete)
 	c.setSplit(src.SplitFrom)
+	c.Account.cloneVerified(&src.Account)
 	c.AccountID = src.PayeeID
 	c.Amount = src.oldAmount.Neg()
 	c.oldAmount = c.Amount // used if Delete

@@ -351,7 +351,9 @@ func (a *Account) addScheduled(db *gorm.DB) {
 }
 
 func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
-	if !a.Verified || !c.mustUpdateBalance() {
+	// catastrophic if we end up here without a.Verified
+	assert(a.Verified, "Unexpected: Account.Verified Unset!")
+	if !c.mustUpdateBalance() {
 		return
 	}
 
