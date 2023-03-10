@@ -93,6 +93,18 @@ func redirectToLogin(c echo.Context) error {
 	return c.Redirect(http.StatusSeeOther, "/")
 }
 
+// run via signal.ContextNotify from main
+func CloseActiveSessions() {
+	if sessionManager == nil {
+		defaultSession.CloseSession()
+		return
+	}
+
+	for _,v := range activeSessions {
+		v.CloseSession()
+	}
+}
+
 func Login(c echo.Context) error {
 	authenticated := true
 	if authenticated {

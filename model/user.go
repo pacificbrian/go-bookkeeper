@@ -127,6 +127,12 @@ func (session *Session) GetCurrentUser() *User {
 	return &session.User
 }
 
+func (session *Session) CloseSession() {
+	u := session.GetCurrentUser()
+	log.Printf("[MODEL] CLOSE SESSION FOR USER(%d)", u.ID)
+	// emptyUserCache
+}
+
 func (u *User) NewSession() *Session {
 	newSession := new(Session)
 	newSession.init()

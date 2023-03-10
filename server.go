@@ -7,10 +7,33 @@
 package main
 
 import (
+	"context"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"github.com/labstack/echo/v4"
+	"github.com/pacificbrian/go-bookkeeper/controllers"
 	"github.com/pacificbrian/go-bookkeeper/route"
 )
 
+func userSignal(ctx context.Context, e *echo.Echo) {
+	select {
+	case <-ctx.Done():
+		log.Printf("[SERVER] CAUGHT SIGTERM")
+		controllers.CloseActiveSessions()
+		e.Shutdown(ctx)
+	}
+}
+
 func main() {
 	e := route.Init()
-	e.Logger.Fatal(e.Start(":3000"))
+
+	ctx, stop := signal.NotifyContext(context.Background(),
+					  os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go userSignal(ctx, e)
+
+	err := e.Start(":3000")
+	log.Printf("[SERVER] EXIT: %v", err)
 }
