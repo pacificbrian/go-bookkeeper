@@ -130,7 +130,15 @@ func (session *Session) GetCurrentUser() *User {
 func (session *Session) CloseSession() {
 	u := session.GetCurrentUser()
 	log.Printf("[MODEL] CLOSE SESSION FOR USER(%d)", u.ID)
-	// emptyUserCache
+
+	// empty Session Caches
+	a := new(Account)
+	a.setSession(session)
+	for k,v := range session.Cache.AccountBalances {
+		a.ID = k
+		a.Balance = v
+		a.writeBalance()
+	}
 }
 
 func (u *User) NewSession() *Session {

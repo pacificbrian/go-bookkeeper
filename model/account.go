@@ -389,6 +389,18 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 	}
 }
 
+func (a *Account) writeBalance() {
+	if !a.Verified {
+		return
+	}
+	db := getDbManager()
+
+	db.Omit(clause.Associations).Model(a).
+	   Update("Balance", a.Balance)
+	log.Printf("[MODEL] ACCOUNT(%d) WRITE CACHED BALANCE(%f)",
+		   a.ID, a.Balance.InexactFloat64())
+}
+
 func (a *Account) Create(session *Session) error {
 	db := session.DB
 	u := session.GetCurrentUser()
