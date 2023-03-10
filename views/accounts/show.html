@@ -83,6 +83,9 @@
 <li><a href=/accounts/{{account.ID}}/payees>Account Payees</a></li>
 <li><a href=/accounts/{{account.ID}}/imported>Import From File</a></li>
 {% if account.IsInvestment() -%}
+{% if !allSecurities -%}
+<li><a href=/accounts/{{account.ID}}?all=1>All Securities</a></li>
+{% endif -%}
 <li><a href=/accounts/{{account.ID}}/securities/new>New Security</a></li>
 <li><a href=/years/{{date_helper.Year()}}/accounts/{{account.ID}}/gains>Trade Gains</a></li>
 {% endif -%}

@@ -187,8 +187,9 @@ func (a *Account) getSecurities(openPositions bool, async bool) {
 		   Joins("Company").
 		   Find(&a.Securities)
 	} else {
-		db.Preload("Company").
+		db.Order("Company.Symbol").
 		   Where(&Security{AccountID: a.ID}).
+		   Joins("Company").
 		   Find(&a.Securities)
 	}
 

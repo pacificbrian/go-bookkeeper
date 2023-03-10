@@ -82,11 +82,12 @@ func DeleteAccount(c echo.Context) error {
 
 func GetAccount(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
+	all, _ := strconv.Atoi(c.QueryParam("all"))
 	session := getSession(c)
 	if session == nil {
 		return redirectToLogin(c)
 	}
-	log.Printf("GET ACCOUNT(%d)", id)
+	log.Printf("GET ACCOUNT(%d) ALL(%d)", id, all)
 	get_json := false
 	debugAB := false
 
@@ -109,7 +110,7 @@ func GetAccount(c echo.Context) error {
 		if entry != nil {
 			// List will order returned results
 			if entry.IsInvestment() {
-				securities = new(model.Security).List(session, entry, true)
+				securities = new(model.Security).List(session, entry, all == 0)
 				cashflows = new(model.Trade).ListCashFlows(db, entry)
 				tradeTypes = new(model.TradeType).List(db)
 				entry.TotalPortfolio(securities)
@@ -129,7 +130,7 @@ func GetAccount(c echo.Context) error {
 					"button_text": "Add CashFlow",
 					"cash_flows": cashflows,
 					"securities": securities,
-					"allSecurities": true,
+					"allSecurities": all > 0,
 					"total_amount": nil,
 					"cash_flow_types": new(model.CashFlowType).List(db),
 					"categories": new(model.Category).List(db),

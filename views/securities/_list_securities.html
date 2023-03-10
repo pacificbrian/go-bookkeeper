@@ -10,7 +10,7 @@
 <th>Total ROC</th>
 <th></th>
 {% for s in securities -%}
-{% if allSecurities || s.Shares > 0 -%}
+{% if allSecurities || s.Shares.IsPositive() -%}
 <tr>
 <td>{{ s.Company.Name }}</td>
 <td>{{ s.Company.Symbol }}</td>
