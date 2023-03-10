@@ -231,7 +231,7 @@ func (entry *TaxEntry) setAmount(total decimal.Decimal) {
 
 func (taxCat *TaxCategory) makeTaxEntry(session *Session, year int, total decimal.Decimal) *TaxEntry {
 	db := session.DB
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	entry := new(TaxEntry)
 	entry.Year = yearToDate(year)
 	entry.UserID = u.ID
@@ -259,7 +259,7 @@ func (taxCat *TaxCategory) makeTaxEntry(session *Session, year int, total decima
 
 func (*TaxEntry) List(session *Session, year int) []TaxEntry {
 	db := session.DB
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	autoEntries := []TaxEntry{}
 	entries := []TaxEntry{}
 
@@ -299,7 +299,7 @@ func (*TaxEntry) List(session *Session, year int) []TaxEntry {
 
 func (t *TaxEntry) Create(session *Session) error {
 	db := session.DB
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	if u == nil {
 		return errors.New("Permission Denied")
 	}
@@ -312,7 +312,7 @@ func (t *TaxEntry) Create(session *Session) error {
 }
 
 func (te *TaxEntry) HaveAccessPermission(session *Session) bool {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	return !(u == nil || u.ID != te.UserID)
 }
 
@@ -351,7 +351,7 @@ func (te *TaxEntry) Update() error {
 
 func (*TaxReturn) List(session *Session, year int) []TaxReturn {
 	db := session.DB
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	entries := []TaxReturn{}
 	db.Preload("TaxRegion").
 	   Table("tax_users").
@@ -363,7 +363,7 @@ func (*TaxReturn) List(session *Session, year int) []TaxReturn {
 
 func (t *TaxReturn) Create(session *Session) error {
 	db := session.DB
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	if u == nil {
 		return errors.New("Permission Denied")
 	}
@@ -415,7 +415,7 @@ func (tt *TaxType) Get(db *gorm.DB) *TaxType {
 func (it *TaxItem) listTaxCashFlows(session *Session, year int,
 				    wantEntries bool) ([]CashFlow, decimal.Decimal) {
 	db := session.DB
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	var total decimal.Decimal
 	var entries []CashFlow
 
@@ -578,7 +578,7 @@ func (r *TaxReturn) calculate(db *gorm.DB) {
 }
 
 func (r *TaxReturn) HaveAccessPermission(session *Session) bool {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	valid := !(u == nil || u.ID != r.UserID)
 	if valid {
 		r.Session = session

@@ -30,7 +30,7 @@ func (p *Payee) ClearBooleans() {
 }
 
 func (*Payee) List(session *Session) []Payee {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	entries := []Payee{}
 	if u == nil {
 		return entries
@@ -43,7 +43,7 @@ func (*Payee) List(session *Session) []Payee {
 }
 
 func payeeGetByName(session *Session, name string, importing bool) (error, *Payee) {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	if u == nil {
 		return errors.New("Permission Denied"), nil
 	}
@@ -73,7 +73,7 @@ func payeeGetByName(session *Session, name string, importing bool) (error, *Paye
 
 func (p *Payee) Create(session *Session) error {
 	db := session.DB
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	if u != nil {
 		// Payee.User is set to CurrentUser()
 		p.UserID = u.ID
@@ -85,7 +85,7 @@ func (p *Payee) Create(session *Session) error {
 }
 
 func (p *Payee) HaveAccessPermission(session *Session) bool {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	return !(u == nil || u.ID != p.UserID)
 }
 

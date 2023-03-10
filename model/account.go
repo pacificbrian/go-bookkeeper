@@ -104,7 +104,7 @@ func (a *Account) postQueryInit() {
 
 func List(session *Session, all bool) []Account {
 	db := session.DB
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	entries := []Account{}
 	hidden_clause := ""
 	if u == nil {
@@ -202,7 +202,7 @@ func (account *Account) ListScheduled(session *Session, canRecordOnly bool) []Ca
 
 func accountGetByName(session *Session, name string) *Account {
 	db := session.DB
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	if u == nil {
 		return nil
 	}
@@ -403,7 +403,7 @@ func (a *Account) writeBalance() {
 
 func (a *Account) Create(session *Session) error {
 	db := session.DB
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	if u != nil {
 		// Account.User is set to CurrentUser()
 		a.UserID = u.ID
@@ -428,7 +428,7 @@ func (a *Account) cloneVerified(src *Account) {
 
 // Account.User is populated from Session
 func (a *Account) setSession(session *Session) bool {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	a.Verified = (u != nil)
 	if a.Verified {
 		a.UserID = u.ID
@@ -439,7 +439,7 @@ func (a *Account) setSession(session *Session) bool {
 }
 
 func (a *Account) HaveAccessPermission(session *Session) bool {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	// store in a.Verified if this Account is trusted
 	a.Verified = !(u == nil || a.ID == 0 || u.ID != a.UserID)
 	if a.Verified {

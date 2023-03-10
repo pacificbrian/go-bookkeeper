@@ -123,12 +123,12 @@ func (sn *Session) init() {
 	sn.DB = gormdb.DbManager()
 }
 
-func (session *Session) GetCurrentUser() *User {
+func (session *Session) GetUser() *User {
 	return &session.User
 }
 
 func (session *Session) CloseSession() {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	log.Printf("[MODEL] CLOSE SESSION FOR USER(%d)", u.ID)
 
 	// empty Session Caches

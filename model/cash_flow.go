@@ -432,7 +432,7 @@ func (u *User) ListTaxCategoryTotal(db *gorm.DB, year int, taxCat *TaxCategory) 
 
 // c.Account must be preloaded
 func (c *CashFlow) HaveAccessPermission(session *Session) bool {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	c.Account.Verified = !(u == nil || c.Account.ID == 0 || u.ID != c.Account.UserID)
 	if c.Account.Verified {
 		c.Account.User = *u

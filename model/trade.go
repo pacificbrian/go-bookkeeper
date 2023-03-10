@@ -195,7 +195,7 @@ func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]decima
 		   Order("date asc").
 		   Where("date >= ? AND date < ?", t.Date, yearToDate(year+1)).
 		   Where(TradeTypeQueries[tradeType]).
-		   Where("user_id = ?", session.GetCurrentUser().ID).
+		   Where("user_id = ?", session.GetUser().ID).
 		   Joins("Account").Find(&entries)
 	}
 
@@ -442,7 +442,7 @@ func (t *Trade) Create(session *Session) error {
 
 // t.Account must be preloaded
 func (t *Trade) HaveAccessPermission(session *Session) bool {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	t.Account.Verified = !(u == nil || t.Account.ID == 0 || u.ID != t.Account.UserID)
 	if t.Account.Verified {
 		t.Account.User = *u

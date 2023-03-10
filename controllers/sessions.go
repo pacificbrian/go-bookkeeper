@@ -108,7 +108,7 @@ func CloseActiveSessions() {
 func Login(c echo.Context) error {
 	authenticated := true
 	if authenticated {
-		newSession(c, defaultSession.GetCurrentUser())
+		newSession(c, defaultSession.GetUser())
 		return c.Redirect(http.StatusSeeOther, "/accounts")
 	} else {
 		return c.NoContent(http.StatusUnauthorized)

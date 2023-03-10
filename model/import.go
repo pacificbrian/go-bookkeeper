@@ -32,7 +32,7 @@ type Import struct {
 
 // i.Account must be preloaded
 func (i *Import) HaveAccessPermission(session *Session) bool {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	i.Account.Verified = !(u == nil || i.Account.ID == 0 || u.ID != i.Account.UserID)
 	if i.Account.Verified {
 		i.Account.User = *u

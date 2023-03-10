@@ -367,7 +367,7 @@ func (s *Security) Create(session *Session) error {
 
 // s.Account must be preloaded
 func (s *Security) HaveAccessPermission(session *Session) bool {
-	u := session.GetCurrentUser()
+	u := session.GetUser()
 	s.Account.Verified = !(u == nil || s.Account.ID == 0 || u.ID != s.Account.UserID)
 	if s.Account.Verified {
 		s.Account.User = *u
