@@ -6,7 +6,7 @@
 
 package config
 
-import "flag"
+import flag "github.com/spf13/pflag"
 
 type GlobalConfiguration struct {
 	Sessions bool `toml:"sessions"`
@@ -23,7 +23,7 @@ func GlobalConfig() *GlobalConfiguration {
 }
 
 func init() {
-	flag.BoolVar(&DebugFlag, "debug", false, "run in debug mode")
+	flag.BoolVarP(&DebugFlag, "debug", "d", false, "run in debug mode")
 	flag.Parse()
 
 	globalConfig = &GetConfig(DebugFlag).GlobalConfiguration
