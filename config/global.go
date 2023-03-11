@@ -6,12 +6,7 @@
 
 package config
 
-import (
-	"log"
-	"github.com/ilyakaznacheev/cleanenv"
-)
-
-var globalConfig *GlobalConfiguration
+import "flag"
 
 type GlobalConfiguration struct {
 	Sessions bool `toml:"sessions"`
@@ -20,23 +15,16 @@ type GlobalConfiguration struct {
 	EnableImportTradeFixups bool `toml:"enable_import_trade_fixups" env-default:"false"`
 }
 
-type Configuration struct {
-	GlobalConfiguration GlobalConfiguration `toml:"global"`
-}
+var DebugFlag bool
+var globalConfig *GlobalConfiguration
 
 func GlobalConfig() *GlobalConfiguration {
 	return globalConfig
 }
 
-func getConfig() *Configuration {
-	c := Configuration{}
-	err := cleanenv.ReadConfig("config/database.toml", &c)
-	if err != nil {
-		log.Panic(err)
-	}
-	return &c
-}
-
 func init() {
-	globalConfig = &getConfig().GlobalConfiguration
+	flag.BoolVar(&DebugFlag, "debug", false, "run in debug mode")
+	flag.Parse()
+
+	globalConfig = &GetConfig(DebugFlag).GlobalConfiguration
 }

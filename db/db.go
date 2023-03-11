@@ -11,45 +11,31 @@ import (
 	"fmt"
 	"log"
 	"database/sql"
-	"github.com/ilyakaznacheev/cleanenv"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"github.com/pacificbrian/go-bookkeeper/config"
 	"github.com/pacificbrian/go-bookkeeper/db/mysql"
 	"github.com/pacificbrian/go-bookkeeper/db/sqlite"
 )
 
-type Configuration struct {
-	DB struct {
-		DB string `toml:"db" env:"GOBOOK_DB" env-default:"sqlite"`
-	} `toml:"db"`
-}
-
 var sqldb *sql.DB
 var db *gorm.DB
-
-func getConfig() *Configuration {
-	c := Configuration{}
-	err := cleanenv.ReadConfig("config/database.toml", &c)
-	if err != nil {
-		log.Panic(err)
-	}
-	return &c
-}
 
 func init() {
 	var err error
 	var name string
+	debug := config.DebugFlag
 
-	config := &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)}
+	gormConfig := &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)}
 
-	driver := getConfig().DB.DB
+	driver := config.GetConfig(debug).DB.DB
 	switch driver {
 	case "sqlite":
 		name = sqlite.Name()
-		db, err = gorm.Open(sqlite.Open(), config)
+		db, err = gorm.Open(sqlite.Open(debug), gormConfig)
 	case "mysql":
 		name = mysql.Name()
-		db, err = gorm.Open(mysql.Open(), config)
+		db, err = gorm.Open(mysql.Open(debug), gormConfig)
 	default:
 		err = errors.New(fmt.Sprintf("Unknown Database choice (%s)!", driver))
 	}
