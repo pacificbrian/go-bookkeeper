@@ -30,5 +30,5 @@ func sqlMigrate(db *sql.DB, name string) {
 	if err != nil {
 		log.Panic(err)
 	}
-	log.Printf("MIGRATIONS APPLIED(%d)", n)
+	log.Printf("[DB] MIGRATIONS APPLIED(%d)", n)
 }

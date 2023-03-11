@@ -13,14 +13,15 @@ import (
 	"github.com/pacificbrian/go-bookkeeper/config"
 )
 
-const defaultDatabaseName string = "db/gobook_test.db"
+const defaultDatabaseName string = "/gobook_test.db"
 
 func Open(debug bool) gorm.Dialector {
 	c := config.GetConfig(debug)
 	if c.DB.Name == "" {
-		c.DB.Name = defaultDatabaseName
+		dir := config.GetConfigDir(debug, "db")
+		c.DB.Name = dir + defaultDatabaseName
 	}
-	log.Printf("OPEN DATABASE(%s)", c.DB.Name)
+	log.Printf("[DB] OPEN DATABASE(%s)", c.DB.Name)
 	return sqlite.Open(c.DB.Name)
 }
 

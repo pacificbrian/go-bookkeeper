@@ -58,7 +58,7 @@ func GetConfigDir(debug bool, localDir string) string {
 	}
 
 	configurationPath = homeDir
-	log.Printf("[CONFIG] USING DIRECTORY %s/", homeDir)
+	log.Printf("[CONFIG] USING DIRECTORY(%s/)", homeDir)
 	return homeDir
 }
 
