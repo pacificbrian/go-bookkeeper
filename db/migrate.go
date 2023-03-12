@@ -7,26 +7,35 @@
 package db
 
 import (
+	"embed"
+	"io/fs"
 	"log"
+	"net/http"
 	"database/sql"
 	"github.com/rubenv/sql-migrate"
 )
 
-func sqlMigrate(db *sql.DB, name string) {
-	var migrations *migrate.FileMigrationSource
-	use_packr := false
+//go:embed migrations/*.sql
+var migrationDir embed.FS
 
-	if use_packr {
-		//migrations = &migrate.PackrMigrationSource{
-		//    Box: packr.New("migrations", "./migrations"),
-		//}
+func sqlMigrate(db *sql.DB, name string) {
+	var err error
+	n := 0
+	useFS := true
+
+	if useFS {
+		httpDir,_ := fs.Sub(migrationDir, "migrations")
+		migrations := &migrate.HttpFileSystemMigrationSource {
+		    FileSystem: http.FS(httpDir),
+		}
+		n, err = migrate.Exec(db, name, migrations, migrate.Up)
 	} else {
-		migrations = &migrate.FileMigrationSource{
+		migrations := &migrate.FileMigrationSource{
 		    Dir: "db/migrations",
 		}
+		n, err = migrate.Exec(db, name, migrations, migrate.Up)
 	}
 
-	n, err := migrate.Exec(db, name, migrations, migrate.Up)
 	if err != nil {
 		log.Panic(err)
 	}
