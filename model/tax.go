@@ -282,7 +282,7 @@ func (*TaxEntry) List(session *Session, year int) []TaxEntry {
 			total = u.ListTaxCategoryTotal(db, year, taxCategory)
 		} else if taxCategory.TradeTypeID > 0 {
 			// Get Capital Gains
-			gain := gainTrade.ListByTypeTotal(session, taxCategory.TradeTypeID)
+			gain := gainTrade.ListByTypeTotal(session, taxCategory.TradeTypeID, 0)
 			total = gain[1]
 		}
 
@@ -534,11 +534,29 @@ func (r *TaxReturn) calculate(db *gorm.DB) {
 	if taxYear == nil {
 		return
 	}
+	constants := new(TaxConstant).Get(db)
 
 	r.Income = new(TaxType).Sum(db, r, TaxTypeIncome)
 	// qualified dividends double-counted, so remove from Income
 	qualDividends := new(TaxItem).Sum(db, r, "Qualified Dividends")
 	r.Income = r.Income.Sub(qualDividends)
+
+	capGainTotal := new(TaxItem).Sum(db, r, "Capital Gain")
+	gainTrade := new(Trade)
+	gainTrade.Date = yearToDate(r.Year)
+	gainTotals := gainTrade.ListByTypeTotal(r.Session, Sell, 365)
+	//gainTotals[1] is Taxable Gain
+	longGainTotal := decimal.Min(capGainTotal, gainTotals[1])
+
+	capGainIncome := qualDividends
+	if longGainTotal.IsPositive() {
+		log.Printf("[MODEL] CALCULATE TAX CAP_GAIN(%f) LT_CAP_GAIN(%f)",
+			   capGainTotal.InexactFloat64(), longGainTotal.InexactFloat64())
+		capGainIncome = capGainIncome.Add(longGainTotal)
+	}
+	capGainTax := capGainIncome.Mul(constants.CapgainRate)
+	log.Printf("[MODEL] CALCULATE TAX CAP_GAIN_INCOME(%f) CAP_GAIN_TAX(%f)",
+		   capGainIncome.InexactFloat64(), capGainTax.InexactFloat64())
 
 	r.ForAGI = new(TaxType).Sum(db, r, TaxTypeDeductionsForAGI)
 	r.Credits = new(TaxType).Sum(db, r, TaxTypeCredits)
@@ -566,13 +584,16 @@ func (r *TaxReturn) calculate(db *gorm.DB) {
 	// if user provided FromAGI use it, otherwise we auto-calculate
 	r.FromAGI = new(TaxType).Sum(db, r, TaxTypeDeductionFromAGI)
 	if r.FromAGI.IsZero() {
-		r.FromAGI = decimal.Max(r.StandardDeduction, r.ItemizedDeduction).Add(r.Exemption)
+		r.FromAGI = decimal.Max(r.StandardDeduction, r.ItemizedDeduction).
+			    Add(r.Exemption)
 	}
 
 	// Calculate Tax Result
 	r.AgiIncome = decimal.Max(r.Income.Sub(r.ForAGI), decimal.Zero)
 	r.TaxableIncome = decimal.Max(r.AgiIncome.Sub(r.FromAGI), decimal.Zero)
-	r.BaseTax = taxYear.calculateTax(db, r.FilingStatus, r.TaxableIncome)
+	r.BaseTax = taxYear.calculateTax(db, r.FilingStatus,
+					 r.TaxableIncome.Sub(capGainIncome))
+	r.BaseTax = r.BaseTax.Add(capGainTax)
 	r.OwedTax = r.BaseTax.Add(r.OtherTax).Sub(r.Credits)
 	r.UnpaidTax = r.OwedTax.Sub(r.Payments)
 }

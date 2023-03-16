@@ -31,7 +31,7 @@ func ListTradeGains(c echo.Context) error {
 	entry := new(model.Trade)
 	entry.AccountID = uint(account_id)
 	entry.Date = helpers.YearToDate(year)
-	entries, totals := entry.ListByType(session, model.Sell)
+	entries, totals := entry.ListByType(session, model.Sell, 0)
 
 	if get_json {
 		return c.JSON(http.StatusOK, entries)

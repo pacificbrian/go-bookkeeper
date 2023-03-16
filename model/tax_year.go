@@ -15,6 +15,7 @@ import (
 type TaxConstant struct {
 	Model
 	TaxTableMax int32
+	CapgainRate decimal.Decimal
 	TaxL1Rate decimal.Decimal
 	TaxL2Rate decimal.Decimal
 	TaxL3Rate decimal.Decimal

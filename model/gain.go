@@ -27,8 +27,6 @@ type TradeGain struct {
 	Gain decimal.Decimal `gorm:"-:all"`
 	GainPS decimal.Decimal `gorm:"-:all"`
 	BuyDate time.Time `gorm:"-:all"`
-	Sell Trade
-	Buy Trade
 }
 
 func (t *Trade) ListGains(db *gorm.DB) []TradeGain {
@@ -44,10 +42,7 @@ func (t *Trade) ListGains(db *gorm.DB) []TradeGain {
 		db.Where(&TradeGain{SellID: t.ID}).Find(&entries)
 		for i := 0; i < len(entries); i++ {
 			tg := &entries[i]
-			tg.Amount = t.Amount.Div(t.Shares).Mul(tg.Shares).Round(2)
-			tg.Gain = tg.Amount.Sub(tg.Basis)
-			tg.GainPS = tg.Gain.Div(tg.Shares)
-			tg.BasisPS = tg.Basis.Div(tg.Shares)
+			tg.postQueryInit(t)
 			if tg.DaysHeld > 0 {
 				tg.BuyDate = t.Date.AddDate(0,0,int(-tg.DaysHeld))
 			} else {
@@ -61,6 +56,13 @@ func (t *Trade) ListGains(db *gorm.DB) []TradeGain {
 		   t.AccountID, t.TradeTypeID, len(entries))
 
 	return entries
+}
+
+func (tg *TradeGain) postQueryInit(sold *Trade) {
+	tg.Amount = sold.Amount.Div(sold.Shares).Mul(tg.Shares).Round(2)
+	tg.Gain = tg.Amount.Sub(tg.Basis)
+	tg.GainPS = tg.Gain.Div(tg.Shares)
+	tg.BasisPS = tg.Basis.Div(tg.Shares)
 }
 
 func (tg *TradeGain) recordGain(sell *Trade, buy *Trade,
@@ -94,6 +96,19 @@ func (*TradeGain) Find(ID uint) *TradeGain {
 	tg := new(TradeGain)
 	db.First(&tg, ID)
 	return tg
+}
+
+func (*TradeGain) FindForSale(ID uint) []TradeGain {
+	db := getDbManager()
+	entries := []TradeGain{}
+	db.Where(&TradeGain{SellID: ID}).Find(&entries)
+	return entries
+}
+
+func (tg *TradeGain) Save() error {
+	db := getDbManager()
+	result := db.Omit(clause.Associations).Save(tg)
+	return result.Error
 }
 
 func (tg *TradeGain) Print() {

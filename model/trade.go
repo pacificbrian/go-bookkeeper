@@ -46,6 +46,7 @@ type Trade struct {
 	TradeType TradeType
 	Account Account
 	Security Security
+	TradeGains []TradeGain `gorm:"foreignKey:SellID"`
 }
 
 func (Trade) Currency(value decimal.Decimal) string {
@@ -163,8 +164,27 @@ func (*Trade) List(db *gorm.DB, account *Account) []Trade {
 	return entries
 }
 
+func (t *Trade) totalGains(daysHeld uint) decimal.Decimal {
+	if len(t.TradeGains) == 0 {
+		return  t.Gain
+	}
+
+	gain := decimal.Zero
+	for i := 0; i < len(t.TradeGains); i++ {
+		tg := &t.TradeGains[i]
+		tg.postQueryInit(t)
+		if uint(tg.DaysHeld) >= daysHeld {
+			log.Printf("[MODEL] TOTAL GAIN(%d) TRADE(%d) AMOUNT(%f) BASIS(%f)",
+				   tg.ID, t.ID, tg.Amount.InexactFloat64(),
+				   tg.Basis.InexactFloat64())
+			gain = gain.Add(tg.Gain)
+		}
+	}
+	return gain
+}
+
 // Filtered Account or User Trades for just single Year (t.Date.Year)
-func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]decimal.Decimal) {
+func (t *Trade) ListByType(session *Session, tradeType uint, daysHeld uint) ([]Trade, [2]decimal.Decimal) {
 	var gain [2]decimal.Decimal
 	entries := []Trade{}
 	year := t.Date.Year()
@@ -190,7 +210,11 @@ func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]decima
 		   Where(TradeTypeQueries[tradeType]).
 		   Where(&Trade{AccountID: t.AccountID}).Find(&entries)
 	} else {
-		db.Preload("TradeType").Preload("Security.Company").
+		dbPreload := db.Preload("TradeType").Preload("Security.Company")
+		if daysHeld > 0 {
+			dbPreload = dbPreload.Preload("TradeGains")
+		}
+		dbPreload.
 		   Order("Account.Name").
 		   Order("date asc").
 		   Where("date >= ? AND date < ?", t.Date, yearToDate(year+1)).
@@ -204,7 +228,8 @@ func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]decima
 		entry.postQueryInit()
 		gain[0] = gain[0].Add(entry.Gain)
 		if entry.Account.Taxable {
-			gain[1] = gain[1].Add(entry.Gain)
+			capGain := entry.totalGains(daysHeld)
+			gain[1] = gain[1].Add(capGain)
 		}
 	}
 
@@ -213,8 +238,8 @@ func (t *Trade) ListByType(session *Session, tradeType uint) ([]Trade, [2]decima
 	return entries, gain
 }
 
-func (t *Trade) ListByTypeTotal(session *Session, tradeType uint) [2]decimal.Decimal {
-	_,total := t.ListByType(session, tradeType)
+func (t *Trade) ListByTypeTotal(session *Session, tradeType uint, daysHeld uint) [2]decimal.Decimal {
+	_,total := t.ListByType(session, tradeType, daysHeld)
 	return total
 }
 
@@ -223,7 +248,7 @@ func (t *Trade) ListByTypeTotal(session *Session, tradeType uint) [2]decimal.Dec
 func (t *Trade) ListCashFlowByType(session *Session, tradeType uint) ([]CashFlow, decimal.Decimal) {
 	entries := []CashFlow{}
 
-	trades, total := t.ListByType(session, tradeType)
+	trades, total := t.ListByType(session, tradeType, 0)
 	for i := 0; i < len(trades); i++ {
 		t := trades[i]
 		if !t.Account.Taxable {
