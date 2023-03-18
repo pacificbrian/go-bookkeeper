@@ -15,6 +15,13 @@ import (
 type TaxConstant struct {
 	Model
 	TaxTableMax int32
+	TaxL1Rate decimal.Decimal
+	TaxL2Rate decimal.Decimal
+	TaxL3Rate decimal.Decimal
+	TaxL4Rate decimal.Decimal
+	TaxL5Rate decimal.Decimal
+	TaxL6Rate decimal.Decimal
+	TaxL7Rate decimal.Decimal
 }
 
 type TaxYear struct {
@@ -219,6 +226,35 @@ func (y *TaxYear) calculateTax(db *gorm.DB, filingStatus uint,
 	}
 
 	if income.IsPositive() {
+		taxL1Rate := y.TaxL1Rate
+		taxL2Rate := y.TaxL2Rate
+		taxL3Rate := y.TaxL3Rate
+		taxL4Rate := y.TaxL4Rate
+		taxL5Rate := y.TaxL5Rate
+		taxL6Rate := y.TaxL6Rate
+		taxL7Rate := y.TaxL7Rate
+		if !taxL1Rate.IsPositive() {
+			taxL1Rate = constants.TaxL1Rate
+		}
+		if !taxL2Rate.IsPositive() {
+			taxL2Rate = constants.TaxL2Rate
+		}
+		if !taxL3Rate.IsPositive() {
+			taxL3Rate = constants.TaxL3Rate
+		}
+		if !taxL4Rate.IsPositive() {
+			taxL4Rate = constants.TaxL4Rate
+		}
+		if !taxL5Rate.IsPositive() {
+			taxL5Rate = constants.TaxL5Rate
+		}
+		if !taxL6Rate.IsPositive() {
+			taxL6Rate = constants.TaxL6Rate
+		}
+		if !taxL7Rate.IsPositive() {
+			taxL7Rate = constants.TaxL7Rate
+		}
+
 		taxIncomeL1 := y.taxIncomeL1(filingStatus)
 		taxIncomeL2 := y.taxIncomeL2(filingStatus)
 		taxIncomeL3 := y.taxIncomeL3(filingStatus)
@@ -226,13 +262,13 @@ func (y *TaxYear) calculateTax(db *gorm.DB, filingStatus uint,
 		taxIncomeL5 := y.taxIncomeL5(filingStatus)
 		taxIncomeL6 := y.taxIncomeL6(filingStatus)
 
-		tax = tax.Add(calculateBracket(income, taxIncomeL1, decimal.Zero, y.TaxL1Rate))
-		tax = tax.Add(calculateBracket(income, taxIncomeL2, taxIncomeL1, y.TaxL2Rate))
-		tax = tax.Add(calculateBracket(income, taxIncomeL3, taxIncomeL2, y.TaxL3Rate))
-		tax = tax.Add(calculateBracket(income, taxIncomeL4, taxIncomeL3, y.TaxL4Rate))
-		tax = tax.Add(calculateBracket(income, taxIncomeL5, taxIncomeL4, y.TaxL5Rate))
-		tax = tax.Add(calculateBracket(income, taxIncomeL6, taxIncomeL5, y.TaxL6Rate))
-		tax = tax.Add(calculateBracket(income, decimal.Zero, taxIncomeL6, y.TaxL7Rate))
+		tax = tax.Add(calculateBracket(income, taxIncomeL1, decimal.Zero, taxL1Rate))
+		tax = tax.Add(calculateBracket(income, taxIncomeL2, taxIncomeL1, taxL2Rate))
+		tax = tax.Add(calculateBracket(income, taxIncomeL3, taxIncomeL2, taxL3Rate))
+		tax = tax.Add(calculateBracket(income, taxIncomeL4, taxIncomeL3, taxL4Rate))
+		tax = tax.Add(calculateBracket(income, taxIncomeL5, taxIncomeL4, taxL5Rate))
+		tax = tax.Add(calculateBracket(income, taxIncomeL6, taxIncomeL5, taxL6Rate))
+		tax = tax.Add(calculateBracket(income, decimal.Zero, taxIncomeL6, taxL7Rate))
 
 		if income.LessThan(tableMax) {
 			tax = tax.Round(0)
