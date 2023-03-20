@@ -59,7 +59,8 @@ func (a *Account) GetRouting() string {
 
 func (a *Account) IsInvestment() bool {
 	a.AccountType.ID = a.AccountTypeID
-	return a.AccountType.isInvestment()
+	return a.AccountType.isCrypto() ||
+	       a.AccountType.isInvestment()
 }
 
 func (a Account) PortfolioTotalReturn() decimal.Decimal {

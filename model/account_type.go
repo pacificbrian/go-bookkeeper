@@ -62,6 +62,10 @@ func (a AccountType) GetIconPath() string {
 	return path
 }
 
+func (a *AccountType) isCrypto() bool {
+	return a.ID == AccountTypeCrypto
+}
+
 func (a *AccountType) isInvestment() bool {
 	return a.ID == AccountTypeInvestment
 }
