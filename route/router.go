@@ -7,22 +7,29 @@
 package route
 
 import (
+	"embed"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/mayowa/echo-pongo2"
 	"github.com/spazzymoto/echo-scs-session"
+	"github.com/pacificbrian/go-bookkeeper/config"
 	"github.com/pacificbrian/go-bookkeeper/controllers"
 )
 
-func usePongo2(e *echo.Echo) echo.Renderer {
-	r, err := echopongo2.NewRenderer("views/")
+func usePongo2(e *echo.Echo, useEmbed *embed.FS) echo.Renderer {
+	if config.DebugFlag {
+		useEmbed = nil
+	}
+	opts := echopongo2.Options{UseEmbed: useEmbed,
+				   Debug: config.DebugFlag}
+	r, err := echopongo2.NewRenderer("views/", opts)
 	if err != nil {
 		r = nil
 	}
 	return r
 }
 
-func Init() *echo.Echo {
+func Init(useEmbed *embed.FS) *echo.Echo {
 	sMan := controllers.StartSessionManager()
 	e := echo.New()
 
@@ -33,7 +40,7 @@ func Init() *echo.Echo {
 		e.Use(session.LoadAndSave(sMan))
 	}
 	e.Static("/", "public")
-	e.Renderer = usePongo2(e)
+	e.Renderer = usePongo2(e, useEmbed)
 
 	// Login (or default)
 	e.GET("/", controllers.Login)

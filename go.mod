@@ -21,6 +21,8 @@ require (
 	gorm.io/gorm v1.23.8
 )
 
+replace github.com/mayowa/echo-pongo2 => github.com/pacificbrian/echo-pongo2 v1.1.5
+
 require (
 	github.com/BurntSushi/toml v1.1.0 // indirect
 	github.com/aclindsa/xml v0.0.0-20201125035057-bbd5c9ec99ac // indirect
