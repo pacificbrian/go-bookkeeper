@@ -22,12 +22,12 @@
 {% if (trades|length > 0) -%}
 <p>
 <div id="trades">
-{% include "securities/_list_security_trades.html" -%}
+{% include "securities/list_security_trades.html" -%}
 </div>
 {% endif -%}
 
 <form method="POST" action="/securities/{{security.ID}}/trades">
-{% include "securities/_security_trade_form.html" -%}
+{% include "securities/security_trade_form.html" -%}
 </form>
 </div>
 {% endif -%}

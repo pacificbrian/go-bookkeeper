@@ -28,7 +28,7 @@
 {% if account.IsInvestment() && (securities|length > 0) -%}
 <h3>Securities Held</h3>
 <div id="securities">
-{% include "securities/_list_securities.html" -%}
+{% include "securities/list_securities.html" -%}
 </div>
 <p>
 {% endif -%}
@@ -36,7 +36,7 @@
 {% if (cash_flows|length > 0) -%}
 <h3>Transaction Ledger</h3>
 <div id="cash_flows">
-{% include "cash_flows/_list_cash_flows.html" -%}
+{% include "cash_flows/list_cash_flows.html" -%}
 </div>
 {% endif -%}
 
@@ -46,7 +46,7 @@
 {% if account.IsInvestment() -%}
 <td>
 <form method="POST" action="/accounts/{{account.ID}}/trades">
-{% include "securities/_security_trade_form.html" -%}
+{% include "securities/security_trade_form.html" -%}
 </form>
 </td>
 <td class="vertical-bar">
