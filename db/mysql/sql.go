@@ -15,8 +15,8 @@ import (
 
 const defaultDatabaseName string = "gobook_production"
 
-func Open(debug bool) gorm.Dialector {
-	c := config.GetConfig(debug)
+func Open() gorm.Dialector {
+	c := config.GetConfig()
 	if c.DB.Name == "" {
 		c.DB.Name = defaultDatabaseName
 	}

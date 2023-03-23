@@ -26,5 +26,5 @@ func init() {
 	flag.BoolVarP(&DebugFlag, "debug", "d", false, "run in debug mode")
 	flag.Parse()
 
-	globalConfig = &GetConfig(DebugFlag).GlobalConfiguration
+	globalConfig = &GetConfig().GlobalConfiguration
 }

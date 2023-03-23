@@ -15,10 +15,10 @@ import (
 
 const defaultDatabaseName string = "/gobook_test.db"
 
-func Open(debug bool) gorm.Dialector {
-	c := config.GetConfig(debug)
+func Open() gorm.Dialector {
+	c := config.GetConfig()
 	if c.DB.Name == "" {
-		dir := config.GetConfigDir(debug, "db")
+		dir := config.GetConfigDir("db")
 		c.DB.Name = dir + defaultDatabaseName
 	}
 	log.Printf("[DB] OPEN DATABASE(%s)", c.DB.Name)

@@ -28,8 +28,8 @@ type Configuration struct {
 	GlobalConfiguration GlobalConfiguration `toml:"global"`
 }
 
-func GetConfigDir(debug bool, localDir string) string {
-	if debug {
+func GetConfigDir(localDir string) string {
+	if DebugFlag {
 		return localDir
 	}
 	var err error
@@ -62,9 +62,9 @@ func GetConfigDir(debug bool, localDir string) string {
 	return homeDir
 }
 
-func GetConfig(debug bool) *Configuration {
+func GetConfig() *Configuration {
 	c := Configuration{}
-	homeDir := GetConfigDir(debug, "config")
+	homeDir := GetConfigDir("config")
 
 	err := cleanenv.ReadConfig(homeDir + configurationFile, &c)
 	if err != nil {

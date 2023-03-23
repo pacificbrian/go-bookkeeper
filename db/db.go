@@ -24,18 +24,17 @@ var db *gorm.DB
 func init() {
 	var err error
 	var name string
-	debug := config.DebugFlag
 
 	gormConfig := &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)}
 
-	driver := config.GetConfig(debug).DB.DB
+	driver := config.GetConfig().DB.DB
 	switch driver {
 	case "sqlite":
 		name = sqlite.Name()
-		db, err = gorm.Open(sqlite.Open(debug), gormConfig)
+		db, err = gorm.Open(sqlite.Open(), gormConfig)
 	case "mysql":
 		name = mysql.Name()
-		db, err = gorm.Open(mysql.Open(debug), gormConfig)
+		db, err = gorm.Open(mysql.Open(), gormConfig)
 	default:
 		err = errors.New(fmt.Sprintf("Unknown Database choice (%s)!", driver))
 	}
