@@ -455,7 +455,6 @@ func (a *Account) HaveAccessPermission(session *Session) bool {
 func (a *Account) updateAccountScheduled(session *Session) {
 	var amountAdded decimal.Decimal
 	var repeat *CashFlow
-	db := session.DB
 	enableScheduledCashFlow := true
 
 	// test if any ScheduledCashFlows need to post
@@ -473,7 +472,7 @@ func (a *Account) updateAccountScheduled(session *Session) {
 	for i := 0; i < len(scheduled); i++ {
 		repeat = &scheduled[i]
 		repeat.Account.cloneVerified(a)
-		total, err := repeat.tryInsertRepeatCashFlow(db)
+		total, err := repeat.tryInsertRepeatCashFlow()
 		if err == nil {
 			amountAdded = amountAdded.Add(total)
 		}

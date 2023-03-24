@@ -912,11 +912,28 @@ func (repeat *CashFlow) advance(db *gorm.DB, updateDB bool) (bool, int) {
 	return time.Now().After(repeat.Date), days
 }
 
-func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) (decimal.Decimal, error) {
+func (c CashFlow) insertRepeatSplits(splits []CashFlow, ch chan uint) {
+	count := <- ch
+	log.Printf("[MODEL] APPLYING REPEAT SPLITS (%d)", count)
+	for i := 0; i < len(splits); i++ {
+		split := &splits[i]
+		split.SplitFrom = c.ID
+		split.tryInsertRepeatCashFlow()
+	}
+	ch <- count + 1
+}
+
+func (repeat *CashFlow) tryInsertRepeatCashFlow() (decimal.Decimal, error) {
 	var amountAdded decimal.Decimal
 	var splits []CashFlow
 	var err error
+	db := getDbManager()
 	updateDB := true
+
+	// channel so background Splits processed in order
+	splitsChan := make(chan uint, 1)
+	chanSignaled := false
+	chanPending := 0
 
 	c := new(CashFlow)
 	for {
@@ -958,11 +975,22 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) (decimal.Decimal, e
 			if len(splits) == 0 {
 				splits, _ = repeat.ListSplit(db)
 			}
-			// now add SplitCashFlows
-			for i := 0; i < len(splits); i++ {
-				split := &splits[i]
-				split.SplitFrom = c.ID
-				split.tryInsertRepeatCashFlow(db)
+
+			// now add Repeat's SplitCashFlows (in background)
+			if len(splits) > 0 {
+				if chanPending> 0 && !chanSignaled {
+					// If multiple goroutines, it's nice
+					// if they run in order, so signal to
+					// start executing the first goroutine
+					// here.
+					splitsChan <- 1
+					chanSignaled = true
+				}
+				// If single goroutine, it is started later
+				// before we return, as we'd like to defer
+				// associated database operations.
+				chanPending += 1
+				go c.insertRepeatSplits(splits, splitsChan)
 			}
 		}
 
@@ -977,6 +1005,11 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow(db *gorm.DB) (decimal.Decimal, e
 			break
 		}
 		c.ID = 0
+	}
+
+	// signal to start addng SplitCashFlows if not started above
+	if !chanSignaled {
+		splitsChan <- 1
 	}
 
 	return amountAdded, err
@@ -1134,7 +1167,7 @@ func (c *CashFlow) Put(session *Session, request map[string]interface{}) error {
 	if request["apply"] != nil {
 		delete(request, "apply")
 		if c.IsScheduledEnterable(true) {
-			_,err := c.tryInsertRepeatCashFlow(db)
+			_,err := c.tryInsertRepeatCashFlow()
 			return err
 		}
 	}
