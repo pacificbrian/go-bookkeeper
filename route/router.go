@@ -8,6 +8,7 @@ package route
 
 import (
 	"embed"
+	"net/http"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/mayowa/echo-pongo2"
@@ -29,7 +30,7 @@ func usePongo2(e *echo.Echo, useEmbed *embed.FS) echo.Renderer {
 	return r
 }
 
-func Init(useEmbed *embed.FS) *echo.Echo {
+func Init(staticFS *embed.FS, viewFS *embed.FS) *echo.Echo {
 	sMan := controllers.StartSessionManager()
 	e := echo.New()
 
@@ -39,8 +40,18 @@ func Init(useEmbed *embed.FS) *echo.Echo {
 	if sMan != nil {
 		e.Use(session.LoadAndSave(sMan))
 	}
-	e.Static("/", "public")
-	e.Renderer = usePongo2(e, useEmbed)
+
+	if config.DebugFlag {
+		e.Static("/", "public")
+	} else {
+		staticConfig := middleware.StaticConfig {
+			Root:       "public",
+			Filesystem: http.FS(staticFS),
+		}
+		e.Use(middleware.StaticWithConfig(staticConfig))
+	}
+
+	e.Renderer = usePongo2(e, viewFS)
 
 	// Login (or default)
 	e.GET("/", controllers.Login)

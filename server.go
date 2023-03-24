@@ -18,6 +18,9 @@ import (
 	"github.com/pacificbrian/go-bookkeeper/route"
 )
 
+//go:embed public
+var publicStore embed.FS
+
 //go:embed views
 var templateStore embed.FS
 
@@ -31,7 +34,7 @@ func userSignal(ctx context.Context, e *echo.Echo) {
 }
 
 func main() {
-	e := route.Init(&templateStore)
+	e := route.Init(&publicStore, &templateStore)
 
 	ctx, stop := signal.NotifyContext(context.Background(),
 					  os.Interrupt, syscall.SIGTERM)
