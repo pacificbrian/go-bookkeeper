@@ -155,6 +155,11 @@ func (account *Account) ListImports(session *Session, limit int) []Import {
 
 	db.Order("created_on desc").Limit(limit).
 	   Where(&Import{AccountID: account.ID}).Find(&entries)
+	for i := 0; i < len(entries); i++ {
+		imp := &entries[i]
+		imp.Account.cloneVerified(account)
+		imp.CountImported(session)
+	}
 	return entries
 }
 

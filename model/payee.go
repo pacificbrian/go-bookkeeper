@@ -56,7 +56,7 @@ func payeeGetByName(session *Session, name string, importing bool) (error, *Paye
 	// need Where because these are not primary keys
 	db.Where(&payee).First(&payee)
 
-	if payee.SkipOnImport {
+	if importing && payee.SkipOnImport {
 		log.Printf("[MODEL] GET PAYEE(%d) BY NAME(%s) SKIP(1)",
 			   payee.ID, name)
 		return errors.New("Payee has SkipOnImport"), nil

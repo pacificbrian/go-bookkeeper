@@ -58,6 +58,7 @@ func (im *Import) ListImported(session *Session) []CashFlow {
 	if !im.Account.Verified {
 		return entries
 	}
+	priorBalance := decimal.Zero
 	db := session.DB
 
 	db.Order("date asc").Preload("Payee").
@@ -67,11 +68,37 @@ func (im *Import) ListImported(session *Session) []CashFlow {
 		c := &entries[i]
 		c.Account.cloneVerified(&im.Account)
 		c.Preload(db)
+		c.Balance = priorBalance.Add(c.Amount)
+		priorBalance = c.Balance
 	}
 
-	log.Printf("[MODEL] LIST IMPORTED CASHFLOWS ACCOUNT(%d:%d)",
-		   im.AccountID, len(entries))
+	log.Printf("[MODEL] LIST IMPORT(%d) CASHFLOWS ACCOUNT(%d:%d)",
+		   im.ID, im.AccountID, len(entries))
 	return entries
+}
+
+func (im *Import) CountImported(session *Session) {
+	var count int64 = 0
+	if !im.Account.Verified {
+		return
+	}
+	db := session.DB
+
+	if im.Account.IsInvestment() {
+		db.Model(&Trade{}).
+		   Where(&Trade{AccountID: im.AccountID, ImportID: im.ID}).
+		   Count(&count)
+		im.TradeCount = uint(count)
+		log.Printf("[MODEL] COUNT IMPORT(%d) TRADES ACCOUNT(%d:%d)",
+			   im.ID, im.AccountID, im.TradeCount)
+
+	}
+	db.Model(&CashFlow{}).
+	   Where(&CashFlow{AccountID: im.AccountID, ImportID: im.ID}).
+	   Count(&count)
+	im.CashFlowCount = uint(count)
+	log.Printf("[MODEL] COUNT IMPORT(%d) CASHFLOWS ACCOUNT(%d:%d)",
+		   im.ID, im.AccountID, im.CashFlowCount)
 }
 
 func (c *CashFlow) makeCashFlowOFX(ofxTran *ofxgo.Transaction) {
