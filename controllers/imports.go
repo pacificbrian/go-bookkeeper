@@ -64,7 +64,7 @@ func ListImportedCashFlows(c echo.Context) error {
 
 	data := map[string]any{ "import": entry,
 				"cash_flows": cashflows,
-				"disallow_delete": true }
+				"disallow_cashflow_delete": true }
 	return c.Render(http.StatusOK, "accounts/list_imported.html", data)
 }
 

@@ -4,14 +4,17 @@
 <tr>
 <th id="date">Date</th>
 <th id="transnum">#</th>
+{% if with_cashflow_account -%}
+<th id="account_name">Account</th>
+{% endif -%}
 <th id="payee_name">Payee</th>
 <th id="category_id">Category</th>
 <th id="amount">Amount</th>
-{% if !total_amount -%}
+{% if !total_amount && !no_cashflow_balance -%}
 <th id="balance" class="noedit">Balance</th>
 {% endif -%}
 <th class="noedit"></th>
-{% if !disallow_delete -%}
+{% if !disallow_cashflow_delete -%}
 <th class="noedit"></th>
 {% endif -%}
 </tr>
@@ -25,6 +28,9 @@
 {% endif -%}
 <td>{{ c.Date.Format("2006-01-02") }}</td>
 <td>{{ c.GetTransnum() }}</td>
+{% if with_cashflow_account -%}
+<td>{{ c.Account.Name }}</td>
+{% endif -%}
 {% if c.Transfer -%}
 <td><a href=/accounts/{{ c.PayeeID }}>{{ c.PayeeName }}</a></td>
 {% elif c.ShowTradeLinks() -%}
@@ -43,7 +49,7 @@
 </div>
 <input hidden autofocus type="text" name="amount" value="{{c.Amount}}" data-cashflow-target="cashflowNewAmount" data-cashflow-id="{{ c.ID }}" data-action="keydown->cashflow#actionPutNewAmount"/>
 </td>
-{% if !total_amount -%}
+{% if !total_amount && !no_cashflow_balance -%}
 <td class="currency" data-cashflow-target="cashflowTableRowBalance" data-cashflow-id="{{ c.ID }}">{{ c.Currency(c.Balance) }}</td>
 {% endif -%}
 {% if c.ID > 0 -%}
@@ -53,7 +59,7 @@
 {% else -%}
 <td></td>
 {% endif -%}
-{% if !disallow_delete -%}
+{% if !disallow_cashflow_delete -%}
 {% if c.ID > 0 -%}
 <td><a href=/cash_flows/{{ c.ID }} data-cashflow-id="{{ c.ID }}" data-action="cashflow#actionDelete">Delete</a></td>
 {% else -%}

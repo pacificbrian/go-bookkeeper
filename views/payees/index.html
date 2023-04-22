@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block content -%}
 
-<div class="show">
+<div class="listing">
 <h2>Payees</h2>
 
 <table>
@@ -12,17 +12,23 @@
 {% else -%}
 <td><a href=/payees/{{ p.ID }}>{{ p.Name }}</a></td>
 {% endif -%}
-<td>{{ p.Category.Name }}</td>
-<td>{{ p.use_count(account) }}</td>
-{% if p.use_count(account) == 0 -%}
-<td><a href=/payees/{{ p.ID }} method="delete">Delete</a></td>
+<td>{{ p.CategoryName() }}</td>
+{% if show_use_count -%}
+<td>{{ p.UseCount() }}</td>
+{% if p.UseCount() == 0 -%}
+<td><a href=/payees/{{ p.ID }} data-payee-id="{{ p.ID }}" data-action="payee#actionDelete">Delete</a></td>
 {% else -%}
+<td></td>
+{% endif -%}
+{% else -%}
+<td></td>
 <td></td>
 {% endif -%}
 </tr>
 {% endfor -%}
 </table>
 
+<h3>Add New Payee</h3>
 <form method="POST" action="/payees">
 <fieldset>
 <label>Payee Name</label>

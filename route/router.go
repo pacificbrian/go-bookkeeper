@@ -83,8 +83,8 @@ func Init(staticFS *embed.FS, viewFS *embed.FS) *echo.Echo {
 	// Payee
 	e.GET("/payees", controllers.ListPayees)
 	e.POST("/payees", controllers.CreatePayee)
-	//e.GET("/payees/:id/edit", controllers.EditPayee)
-	//e.GET("/payees/:id", controllers.GetPayee)
+	e.GET("/payees/:id/edit", controllers.EditPayee)
+	e.GET("/payees/:id", controllers.GetPayee)
 	e.POST("/payees/:id", controllers.UpdatePayee)
 
 	// Security

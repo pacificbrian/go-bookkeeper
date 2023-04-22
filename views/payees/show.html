@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block content -%}
+
+{% if payee -%}
+<div class="show">
+<h2>Payee: {{ payee.Name }}</h2>
+
+{% if (cash_flows|length > 0) -%}
+<h3>Payee Transactions</h3>
+<div id="cash_flows">
+{% include "cash_flows/list_cash_flows.html" -%}
+</div>
+{% endif -%}
+
+<h3>Update Payee Category</h3>
+<form method="POST" action="/payees/{{ payee.ID }}">
+<fieldset class="last">
+<label>Default Category</label>
+{{ form_select_type(categories, "payee.category_id", payee.CategoryID) }}
+</fieldset>
+<fieldset class="submit">
+<table>
+<td>
+<input type="submit" value="Apply to All"/>
+</td>
+<td>
+<input type="submit" value="Apply to Unset Only"/>
+</td>
+</table>
+</fieldset>
+</form>
+</div>
+{% endif -%}
+
+<ul id="footmenu">
+<li><a href=/payees>Back to Payees</a></li>
+<li><a href=/payees/{{ payee.ID }}/edit>Edit Payee</a></li>
+{% if !payee.InUse() -%}
+<li><a href=/payees/{{ payee.ID }} data-payee-id="{{ payee.ID }}" data-action="payee#actionDelete">Delete Payee</a></li>
+{% endif -%}
+</ul>
+
+{% endblock -%}

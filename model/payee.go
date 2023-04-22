@@ -17,9 +17,10 @@ type Payee struct {
 	UserID uint `gorm:"not null"`
 	CategoryID uint `form:"payee.category_id"`
 	Name string `form:"payee.Name"`
-	Address string
+	Address string `form:"payee.Address"`
 	ImportName string `form:"payee.ImportName"`
 	SkipOnImport bool `form:"payee.SkipOnImport"`
+	Verified bool `gorm:"-:all"`
 	User User
 	Category Category
 }
@@ -27,6 +28,21 @@ type Payee struct {
 // for Bind() and setting from input/checkboxes */
 func (p *Payee) ClearBooleans() {
 	p.SkipOnImport = false
+}
+
+func (p *Payee) InUse() bool {
+	return p.countCashFlows() > 0
+}
+
+func (p Payee) UseCount() uint {
+	return p.countCashFlows()
+}
+
+func (p Payee) CategoryName() string {
+	if p.CategoryID == 1 {
+		return ""
+	}
+	return p.Category.Name
 }
 
 func (*Payee) List(session *Session) []Payee {
@@ -38,7 +54,46 @@ func (*Payee) List(session *Session) []Payee {
 	db := session.DB
 
 	// Find Payees for CurrentUser()
-	db.Where(&Payee{UserID: u.ID}).Find(&entries)
+	db.Preload("Category").
+	   Where(&Payee{UserID: u.ID}).Find(&entries)
+	return entries
+}
+
+func (p *Payee) countCashFlows() uint {
+	var count int64 = 0
+
+	db := getDbManager()
+	query := map[string]interface{}{"payee_id": p.ID, "transfer": false}
+	db.Model(&CashFlow{}).
+	   Where("(type != ? OR type IS NULL)", "RCashFlow"). // not Repeats
+	   Where("NOT (split_from > 0 AND split = 0)"). // not HasSplits
+	   Where("user_id = ?", p.UserID).Where(query).
+	   Joins("Account").Count(&count)
+	log.Printf("[MODEL] COUNT CASHFLOWS PAYEE(%d:%d)", p.ID, count)
+
+	// TODO need to cache this result
+	return uint(count)
+}
+
+func (p *Payee) ListCashFlows() []CashFlow {
+	var entries []CashFlow
+
+	if !p.Verified {
+		return entries
+	}
+
+	db := getDbManager()
+	query := map[string]interface{}{"payee_id": p.ID, "transfer": false}
+	db.Order("date desc").Preload("Payee").Preload("Category").
+	   Where("(type != ? OR type IS NULL)", "RCashFlow"). // not Repeats
+	   Where("NOT (split_from > 0 AND split = 0)"). // not HasSplits
+	   Where("user_id = ?", p.UserID).
+	   Joins("Account").Find(&entries, query)
+	log.Printf("[MODEL] LIST CASHFLOWS PAYEE(%d:%d)", p.ID, len(entries))
+
+	for i := 0; i < len(entries); i++ {
+		entries[i].Preload(db)
+	}
 	return entries
 }
 
@@ -86,7 +141,8 @@ func (p *Payee) Create(session *Session) error {
 
 func (p *Payee) HaveAccessPermission(session *Session) bool {
 	u := session.GetUser()
-	return !(u == nil || u.ID != p.UserID)
+	p.Verified = !(u == nil || u.ID != p.UserID)
+	return p.Verified
 }
 
 // Edit, Delete, Update use Get
@@ -103,15 +159,16 @@ func (p *Payee) Get(session *Session) *Payee {
 }
 
 func (p *Payee) Delete(session *Session) error {
-	db := session.DB
 	// Verify we have access to Payee
 	p = p.Get(session)
-	if p != nil {
-		spewModel(p)
-		db.Delete(p)
-		return nil
+	if p == nil {
+		return errors.New("Permission Denied")
 	}
-	return errors.New("Permission Denied")
+	db := session.DB
+
+	spewModel(p)
+	db.Delete(p)
+	return nil
 }
 
 // Payee access already verified with Get

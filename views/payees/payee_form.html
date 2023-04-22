@@ -1,0 +1,23 @@
+<fieldset>
+<label>Payee Name</label>
+<input type="text" name="payee.Name" value="{{payee.Name}}"/>
+</fieldset>
+<fieldset>
+<label>Payee Location</label>
+<input type="text" name="payee.Address" value="{{payee.Address}}"/>
+</fieldset>
+<fieldset class="last">
+<table>
+<td>
+<label>Default Category</label>
+{{ form_select_type(categories, "payee.category_id", payee.CategoryID) }}
+</td>
+<td>
+<label>Skip On Import</label>
+{{ form_checkbox("payee.SkipOnImport", payee.SkipOnImport) }}
+</td>
+</table>
+</fieldset>
+<fieldset class="submit">
+<input type="submit" value="Update"/>
+</fieldset>

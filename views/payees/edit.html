@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="edit">
+<h2>Edit Payee</h2>
+
+{% if payee -%}
+<form method="POST" action="/payees/{{ payee.ID }}">
+{% include "payees/payee_form.html" -%}
+</form>
+{% endif -%}
+
+</div>
+
+<ul id="footmenu">
+<li><a href=/payees/{{ payee.ID }}>Back To Payee</a></li>
+<li><a href=/payees>Back to Payees</a></li>
+{% if !payee.InUse() -%}
+<li><a href=/payees/{{ payee.ID }} data-payee-id="{{ payee.ID }}" data-action="payee#actionDelete">Delete Payee</a></li>
+{% endif -%}
+</ul>
+
+{% endblock -%}

@@ -94,7 +94,7 @@ func ListTaxCashFlows(c echo.Context) error {
 					"tax_item": taxItem,
 					"tax_type": taxType,
 					"account": nil,
-					"disallow_delete": true,
+					"disallow_cashflow_delete": true,
 					"year": year }
 		return c.Render(http.StatusOK, "taxes/list_entries.html", data)
 	}
