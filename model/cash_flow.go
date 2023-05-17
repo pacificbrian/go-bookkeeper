@@ -978,6 +978,8 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow() (decimal.Decimal, error) {
 
 			// now add Repeat's SplitCashFlows (in background)
 			if len(splits) > 0 {
+				var splitsCopy = make([]CashFlow, len(splits))
+
 				if chanPending> 0 && !chanSignaled {
 					// If multiple goroutines, it's nice
 					// if they run in order, so signal to
@@ -990,7 +992,8 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow() (decimal.Decimal, error) {
 				// before we return, as we'd like to defer
 				// associated database operations.
 				chanPending += 1
-				go c.insertRepeatSplits(splits, splitsChan)
+				copy(splitsCopy, splits)
+				go c.insertRepeatSplits(splitsCopy, splitsChan)
 			}
 		}
 
