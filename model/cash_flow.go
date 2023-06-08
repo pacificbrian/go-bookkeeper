@@ -503,13 +503,15 @@ func (c *CashFlow) cloneScheduled(src *CashFlow) {
 	c.Amount = src.Amount
 }
 
+// Using src CashFlow, construct the Pair (other side of a Transfer).
+// This is used during Create or Update.
 func (c *CashFlow) cloneTransfer(src *CashFlow) {
 	c.Transfer = true
 	c.Date = src.Date
 	c.TaxYear = src.TaxYear
 	c.Memo = src.Memo
 	c.Transnum = src.Transnum
-	c.Account.cloneVerified(&src.Account)
+	c.Account.cloneVerifiedFrom(&src.Account)
 	c.oldAccountID = c.AccountID // used if Update
 	c.AccountID = src.PayeeID
 	c.PayeeID = src.AccountID
@@ -519,7 +521,8 @@ func (c *CashFlow) cloneTransfer(src *CashFlow) {
 }
 
 // Using src CashFlow, construct the Pair (other side of a Transfer).
-// This is used during Update or Delete.
+// This is used during Update, Put, or Delete and only fill in minimum.
+// Update will call cloneTransfer to complete Pair CashFlow.
 // We can even reconstruct Splits (careful: old transactions in DB
 // don't store this!)
 func (c *CashFlow) pairFrom(src *CashFlow) {
@@ -527,10 +530,10 @@ func (c *CashFlow) pairFrom(src *CashFlow) {
 	c.ID = src.PairID
 	// keep split details accurate, and decrement SplitCount in Parent (Delete)
 	c.setSplit(src.SplitFrom)
-	c.Account.cloneVerified(&src.Account)
+	c.Account.cloneVerifiedFrom(&src.Account)
 	c.AccountID = src.PayeeID
 	c.Amount = src.oldAmount.Neg()
-	c.oldAmount = c.Amount // used if Delete
+	c.oldAmount = c.Amount // used if Delete or Put
 }
 
 // prepare CashFlow to write to DB (used by both Create and Update)

@@ -359,6 +359,7 @@ func (a *Account) addScheduled(db *gorm.DB) {
 func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 	// catastrophic if we end up here without a.Verified
 	assert(a.Verified, "Unexpected: Account.Verified Unset!")
+	assert(a.ID > 0, "Unexpected: Account.ID Unset!")
 	if !c.mustUpdateBalance() {
 		return
 	}
@@ -375,7 +376,7 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 	a.CashBalance = a.CashBalance.Add(adjustAmount)
 	a.User.updateAccountBalance(a)
 
-	if c.oldAmount.IsZero() || a.CashBalance.IsZero() {
+	if c.oldAmount.IsZero() || oldCashBalance.IsZero() {
 		// This case intended to handle when we don't know if we have
 		// accurate Account Balances, and so just use +delta.
 		// (Such as updates for Transfer/Pair).
@@ -422,16 +423,20 @@ func (a *Account) Create(session *Session) error {
 	return errors.New("Permission Denied")
 }
 
-func (a *Account) cloneVerified(src *Account) {
-	a.ID = src.ID
+func (a *Account) cloneVerifiedFrom(src *Account) {
 	a.User.ID = src.User.ID
 	a.User.Session = src.User.Session
 	a.User.UserSettings = src.User.UserSettings
 	a.Session = src.Session
-	a.Balance = src.Balance
-	a.CashBalance = src.CashBalance
 	a.Verified = src.Verified
 	assert(a.Session == a.User.Session, "Account/User Corrupt!")
+}
+
+func (a *Account) cloneVerified(src *Account) {
+	a.cloneVerifiedFrom(src)
+	a.ID = src.ID
+	a.Balance = src.Balance
+	a.CashBalance = src.CashBalance
 }
 
 // Account.User is populated from Session
