@@ -14,6 +14,7 @@ import { distinctUntilChanged, map, switchMap } from 'rxjs/operators';
 
 export default class extends Controller {
   static targets = [ "cashflowTableRow", "cashflowTableRowBalance",
+                     "cashflowTableSingleBalance",
                      "cashflowAmount", "cashflowNewAmount" ]
 
   cashflowDelete$ = new Subject();
@@ -83,8 +84,10 @@ export default class extends Controller {
   }
 
   adjustBalances(tableIdx, adjustAmount) {
-    // iterate and fixup Balance amounts until we pass modified row
     const cashflowBalances = this.cashflowTableRowBalanceTargets;
+    const cashflowSingleBalance = this.cashflowTableSingleBalanceTargets;
+
+    // iterate and fixup Balance amounts until we pass modified row
     for (let i in cashflowBalances) {
       if (parseInt(i) > tableIdx) {
         break
@@ -96,6 +99,17 @@ export default class extends Controller {
       // overwrite c.Balance
       cashflowBalances[i].innerHTML = "$"+(newBalance.toFixed(2))
     }
+
+    // fixup any SingleBalance
+    for (let i in cashflowSingleBalance) {
+      let oldAmountHTML = cashflowSingleBalance[i].innerHTML
+      let amountStart = oldAmountHTML.search(/[$]/)
+      let oldBalance = parseFloat(oldAmountHTML.slice(amountStart+1))
+      let newBalance = oldBalance + adjustAmount
+      cashflowSingleBalance[i].innerHTML = "$"+(newBalance.toFixed(2))
+      break
+    }
+
     console.log("Stimulus[CASHFLOW]: UPDATE BALANCES[%d] adjustAmount: %f", tableIdx, adjustAmount)
   }
 
