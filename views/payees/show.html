@@ -32,7 +32,7 @@
 </div>
 {% endif -%}
 
-<ul id="footmenu">
+<ul id="footmenu" data-controller="payee">
 <li><a href=/payees>Back to Payees</a></li>
 <li><a href=/payees/{{ payee.ID }}/edit>Edit Payee</a></li>
 {% if !payee.InUse() -%}

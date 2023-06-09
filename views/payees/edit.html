@@ -12,7 +12,7 @@
 
 </div>
 
-<ul id="footmenu">
+<ul id="footmenu" data-controller="payee">
 <li><a href=/payees/{{ payee.ID }}>Back To Payee</a></li>
 <li><a href=/payees>Back to Payees</a></li>
 {% if !payee.InUse() -%}

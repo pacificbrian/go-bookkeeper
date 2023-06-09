@@ -167,7 +167,11 @@ func (p *Payee) Delete(session *Session) error {
 	db := session.DB
 
 	spewModel(p)
-	db.Delete(p)
+	count := p.countCashFlows()
+	log.Printf("[MODEL] DELETE PAYEE(%d) IF COUNT(%d == 0)", p.ID, count)
+	if count == 0 {
+		db.Delete(p)
+	}
 	return nil
 }
 

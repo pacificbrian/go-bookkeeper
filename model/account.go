@@ -571,13 +571,13 @@ func (a *Account) Delete(session *Session) error {
 		a.Hidden = true
 		db.Omit(clause.Associations).Save(a)
 	} else {
+		spewModel(a)
 		count := new(CashFlow).Count(db, a)
-		log.Printf("[MODEL] DELETE ACCOUNT(%d) IF (%d == 0)", a.ID, count)
+		log.Printf("[MODEL] DELETE ACCOUNT(%d) IF COUNT(%d == 0)", a.ID, count)
 		if count == 0 {
 			db.Delete(a)
 		}
 	}
-	spewModel(a)
 	return nil
 }
 
