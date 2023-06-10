@@ -15,25 +15,41 @@ import (
 	"github.com/pacificbrian/go-bookkeeper/model"
 )
 
+func getAccount(session *model.Session, id uint) *model.Account {
+	account := new(model.Account)
+	if (id > 0) {
+		account.Model.ID = id
+		account = account.Get(session, false)
+	}
+	return account
+}
+
 // For http.Status, see:
 // https://go.dev/src/net/http/status.go
 
 func ListPayees(c echo.Context) error {
 	usage, _ := strconv.Atoi(c.QueryParam("usage"))
+	account_id, _ := strconv.Atoi(c.Param("account_id"))
 	session := getSession(c)
 	if session == nil {
 		return redirectToLogin(c)
 	}
-	log.Printf("LIST PAYEES USAGE(%d)", usage)
 	get_json := false
 
-	entries := new(model.Payee).List(session)
+	var entries []model.Payee
+	log.Printf("LIST ACCOUNT(%d) PAYEES, USAGE(%d)", account_id, usage)
+
+	account := getAccount(session, uint(account_id))
+	// account nil if access denied
+	if account_id == 0 || account != nil {
+		entries = new(model.Payee).List(session, account)
+	}
 
 	if get_json {
 		return c.JSON(http.StatusOK, entries)
 	} else {
 		data := map[string]any{ "payees": entries,
-					"account": nil,
+					"account": account,
 					"show_use_count": usage > 0,
 					"categories": new(model.Category).List(session.DB) }
 		return c.Render(http.StatusOK, "payees/index.html", data)
@@ -74,11 +90,12 @@ func DeletePayee(c echo.Context) error {
 
 func GetPayee(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
+	account_id, _ := strconv.Atoi(c.Param("account_id"))
 	session := getSession(c)
 	if session == nil {
 		return redirectToLogin(c)
 	}
-	log.Printf("GET PAYEE(%d)", id)
+	log.Printf("GET ACCOUNT(%d) PAYEE(%d)", account_id, id)
 	get_json := false
 
 	entry := new(model.Payee)
@@ -93,9 +110,13 @@ func GetPayee(c echo.Context) error {
 	} else {
 		var cash_flows []model.CashFlow
 
-		cash_flows = entry.ListCashFlows()
+		account := getAccount(session, uint(account_id))
+		// account nil if access denied
+		if account_id == 0 || account != nil {
+			cash_flows = entry.ListCashFlows(account)
+		}
 		data := map[string]any{ "payee": entry,
-					"account": nil,
+					"account": account,
 					"disallow_cashflow_delete": true,
 					"no_cashflow_balance": true,
 					"with_cashflow_account": true,

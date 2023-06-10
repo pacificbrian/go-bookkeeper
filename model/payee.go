@@ -31,11 +31,15 @@ func (p *Payee) ClearBooleans() {
 }
 
 func (p *Payee) InUse() bool {
-	return p.countCashFlows() > 0
+	return p.countCashFlows(nil) > 0
+}
+
+func (p Payee) UseByAccount(a *Account) uint {
+	return p.countCashFlows(a)
 }
 
 func (p Payee) UseCount() uint {
-	return p.countCashFlows()
+	return p.countCashFlows(nil)
 }
 
 func (p Payee) CategoryName() string {
@@ -45,7 +49,7 @@ func (p Payee) CategoryName() string {
 	return p.Category.Name
 }
 
-func (*Payee) List(session *Session) []Payee {
+func (*Payee) List(session *Session, account *Account) []Payee {
 	u := session.GetUser()
 	entries := []Payee{}
 	if u == nil {
@@ -53,17 +57,35 @@ func (*Payee) List(session *Session) []Payee {
 	}
 	db := session.DB
 
-	// Find Payees for CurrentUser()
-	db.Preload("Category").
-	   Where(&Payee{UserID: u.ID}).Find(&entries)
+	if account != nil && account.ID > 0 {
+		var payee_ids []uint
+
+		// Find Payees for CurrentUser() used with Account
+		db.Model(&CashFlow{}).
+		   Where("(type != ? OR type IS NULL)", "RCashFlow"). // not Repeats
+		   Where("NOT (split_from > 0 AND split = 0)"). // not HasSplits
+		   Where("transfer = ?", false).
+		   Where("account_id = ?", account.ID).
+		   Distinct().Pluck("payee_id", &payee_ids)
+
+		db.Order("id asc").Preload("Category").
+		   Find(&entries, payee_ids)
+	} else {
+		// Find Payees for CurrentUser()
+		db.Preload("Category").
+		   Where(&Payee{UserID: u.ID}).Find(&entries)
+	}
 	return entries
 }
 
-func (p *Payee) countCashFlows() uint {
+func (p *Payee) countCashFlows(account *Account) uint {
 	var count int64 = 0
 
 	db := getDbManager()
 	query := map[string]interface{}{"payee_id": p.ID, "transfer": false}
+	if account != nil && account.ID > 0 {
+	   query["account_id"] = account.ID
+	}
 	db.Model(&CashFlow{}).
 	   Where("(type != ? OR type IS NULL)", "RCashFlow"). // not Repeats
 	   Where("NOT (split_from > 0 AND split = 0)"). // not HasSplits
@@ -75,7 +97,7 @@ func (p *Payee) countCashFlows() uint {
 	return uint(count)
 }
 
-func (p *Payee) ListCashFlows() []CashFlow {
+func (p *Payee) ListCashFlows(account *Account) []CashFlow {
 	var entries []CashFlow
 
 	if !p.Verified {
@@ -84,6 +106,9 @@ func (p *Payee) ListCashFlows() []CashFlow {
 
 	db := getDbManager()
 	query := map[string]interface{}{"payee_id": p.ID, "transfer": false}
+	if account != nil && account.ID > 0 {
+	   query["account_id"] = account.ID
+	}
 	db.Order("date desc").Preload("Payee").Preload("Category").
 	   Where("(type != ? OR type IS NULL)", "RCashFlow"). // not Repeats
 	   Where("NOT (split_from > 0 AND split = 0)"). // not HasSplits
@@ -167,7 +192,7 @@ func (p *Payee) Delete(session *Session) error {
 	db := session.DB
 
 	spewModel(p)
-	count := p.countCashFlows()
+	count := p.countCashFlows(nil)
 	log.Printf("[MODEL] DELETE PAYEE(%d) IF COUNT(%d == 0)", p.ID, count)
 	if count == 0 {
 		db.Delete(p)

@@ -7,14 +7,18 @@
 <table>
 {% for p in payees -%}
 <tr>
-{% if account -%}
-<td><a href=/accounts/{{ account.ID }}/payees/{{ p.Name }}>{{ p.Name }}</a></td>
+{% if account && account.ID > 0 -%}
+<td><a href=/accounts/{{ account.ID }}/payees/{{ p.ID }}>{{ p.Name }}</a></td>
 {% else -%}
 <td><a href=/payees/{{ p.ID }}>{{ p.Name }}</a></td>
 {% endif -%}
 <td>{{ p.CategoryName() }}</td>
 {% if show_use_count -%}
+{% if account && account.ID > 0 -%}
+<td>{{ p.UseByAccount(account) }}</td>
+{% else -%}
 <td>{{ p.UseCount() }}</td>
+{% endif -%}
 {% if p.UseCount() == 0 -%}
 <td><a href=/payees/{{ p.ID }} data-payee-id="{{ p.ID }}" data-action="payee#actionDelete">Delete</a></td>
 {% else -%}
@@ -48,7 +52,7 @@
 </form>
 </div>
 
-{% if account -%}
+{% if account && account.ID > 0 -%}
 <ul id="footmenu">
 <li><a href=/accounts/{{ account.ID }}>Back to Account</a></li>
 </ul>

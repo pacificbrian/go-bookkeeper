@@ -82,9 +82,11 @@ func Init(staticFS *embed.FS, viewFS *embed.FS) *echo.Echo {
 
 	// Payee
 	e.GET("/payees", controllers.ListPayees)
+	e.GET("/accounts/:account_id/payees", controllers.ListPayees)
 	e.POST("/payees", controllers.CreatePayee)
 	e.GET("/payees/:id/edit", controllers.EditPayee)
 	e.GET("/payees/:id", controllers.GetPayee)
+	e.GET("/accounts/:account_id/payees/:id", controllers.GetPayee)
 	e.POST("/payees/:id", controllers.UpdatePayee)
 	e.DELETE("/payees/:id", controllers.DeletePayee)
 
