@@ -147,20 +147,26 @@ func (session *Session) CloseSession() {
 	}
 }
 
+func (u *User) GetByLogin(login string) *User {
+	db := getDbManager()
+
+	u.Login = login
+	db.Where(&u).First(&u)
+	if u.ID == 0 {
+		return nil
+	}
+
+	log.Printf("[MODEL] GET USER(%d) BY LOGIN(%s)", u.ID, login)
+	return u
+}
+
 func (u *User) NewSession() *Session {
 	newSession := new(Session)
 	newSession.init()
 	newSession.User.ID = u.ID
 	newSession.User.init(newSession)
 
-	// example of using bcrypt for passwords
-	// overwrite u.PasswordDigest just for testing
-	password := "Gopher"
-	u.setPassword(password)
-	validPassword := u.Authenticate(password)
-
-	log.Printf("[MODEL] NEW SESSION USER(%d) AUTH(%t)", u.ID,
-		   validPassword)
+	log.Printf("[MODEL] NEW SESSION USER(%d) AUTH(%t)", u.ID, true)
 	return newSession
 }
 
@@ -174,6 +180,11 @@ func (u *User) setPassword(password string) error {
 }
 
 func (u *User) Authenticate(password string) bool {
+	// special case to allow empty password if user wants no security
+	if u.PasswordDigest == "" && password == "" {
+		return true
+	}
+
 	err := bcrypt.CompareHashAndPassword([]byte(u.PasswordDigest),
 					     []byte(password))
 	return err == nil

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="new">
+<h2>Welcome!</h2>
+
+<form method="POST" action="/sessions">
+<fieldset>
+<label>User Login</label>
+<input type="text" name="user.Login" value="{{user.Login}}"/>
+</fieldset>
+<fieldset class="last">
+<label>User Password</label>
+<input type="password" name="user.Password"/>
+</fieldset>
+<fieldset class="submit">
+<input type="submit" value="SIGN IN"/>
+</fieldset>
+</form>
+</div>
+
+<ul id="footmenu">
+<li><a href=/users/new>Register New User</a></li>
+</ul>
+
+{% endblock -%}

@@ -55,6 +55,7 @@ func Init(staticFS *embed.FS, viewFS *embed.FS) *echo.Echo {
 
 	// Login (or default)
 	e.GET("/", controllers.Login)
+	e.POST("/sessions", controllers.CreateSession)
 
 	// Account
 	e.GET("/accounts", controllers.ListAccounts)   // Index/List

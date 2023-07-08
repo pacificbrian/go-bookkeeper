@@ -23,6 +23,12 @@ var sessionManager *scs.SessionManager
 var activeSessions map[uint]*model.Session
 var defaultSession *model.Session
 
+// could have separate config variable for multi-user, but as this is what
+// sessions are used to managed, just tie to if sessions are enabled.
+func IsEnabledMultiUser() bool {
+	return sessionManager != nil
+}
+
 func StartSessionManager() *scs.SessionManager {
 	if !config.GlobalConfig().Sessions {
 		return nil
@@ -38,7 +44,7 @@ func getSession(c echo.Context) *model.Session {
 		return defaultSession
 	}
 
-	msg := sessionManager.GetString(c.Request().Context(), "message")
+	msg := sessionManager.GetString(c.Request().Context(), "tag")
 	uID := sessionManager.GetInt(c.Request().Context(), "user_id")
 	sessionPtr, valid := sessionManager.Get(c.Request().Context(), "session").(uintptr)
 	if !valid {
@@ -53,7 +59,7 @@ func getSession(c echo.Context) *model.Session {
 		return nil
 	}
 
-	log.Printf("GET SESSION FOUND FOR([%d,%d]: Hello! from %s)", uID, sessionUserID, msg)
+	log.Printf("GET SESSION FOR([%d,%d]) FOUND TAG(%s)", uID, sessionUserID, msg)
 	return userSession
 }
 
@@ -61,8 +67,8 @@ func newSession(c echo.Context, u *model.User) {
 	if sessionManager == nil {
 		return
 	}
-	msg := fmt.Sprintf("Session[%d] %s", u.ID, timeToString(time.Now()))
-	sessionManager.Put(c.Request().Context(), "message", msg)
+	msg := fmt.Sprintf("[%d] created at: %s", u.ID, timeToString(time.Now()))
+	sessionManager.Put(c.Request().Context(), "tag", msg)
 	sessionManager.Put(c.Request().Context(), "user_id", int(u.ID))
 	// Creation session and store in map so not garbage collected.
 	// Note, the goal was to not have to maintain activeSessions and only
@@ -79,7 +85,7 @@ func newSession(c echo.Context, u *model.User) {
 	// Why is Go afraid of pointers?
 	userSessionPtr := (uintptr)(unsafe.Pointer(userSession))
 	sessionManager.Put(c.Request().Context(), "session", userSessionPtr)
-	log.Printf("CREATE NEW SESSION FOR(%d)", u.ID)
+	log.Printf("CREATE NEW SESSION FOR(%d) TAG(%s)", u.ID, msg)
 }
 
 func init() {
@@ -105,10 +111,21 @@ func CloseActiveSessions() {
 	}
 }
 
-func Login(c echo.Context) error {
-	authenticated := true
+func CreateSession(c echo.Context) error {
+	authenticated := false
+	user := new(model.User)
+
+	if IsEnabledMultiUser() {
+		user = user.GetByLogin(c.FormValue("user.Login"))
+		authenticated = user != nil &&
+				user.Authenticate(c.FormValue("user.Password"))
+	} else {
+		user = defaultSession.GetUser()
+		authenticated = true
+	}
+
 	if authenticated {
-		newSession(c, defaultSession.GetUser())
+		newSession(c, user)
 		return c.Redirect(http.StatusSeeOther, "/accounts")
 	} else {
 		return c.NoContent(http.StatusUnauthorized)
