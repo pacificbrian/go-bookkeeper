@@ -23,8 +23,8 @@ type Model struct {
         ID        uint `gorm:"primaryKey"`
 }
 
-const timeFormatCompare string = "2006-01-02 08:00:00 -0700"
-const timeFormatPrint string = "2006-01-02 08:00:00"
+const timeFormatCompare string = "2006-01-02 15:04:05 -0700"
+const timeFormatPrint string = "2006-01-02 15:04:05"
 
 var useSpew bool = false
 
@@ -86,7 +86,7 @@ func daysBetweenDates(from *time.Time, to *time.Time, onlyBusinessDays bool) int
 	days = int32(numWholeWeekdays+extraWeekdays)
 	if debugEnabled {
 		log.Printf("[HELPER] DAYS(%d) INBETWEEN: (%s) - (%s)",
-			   days, to.Format(timeFormatPrint), from.Format(timeFormatPrint))
+			   days, timeToString(to), timeToString(from))
 	}
 	return days
 }

@@ -13,7 +13,7 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
-const timeFormatPrint string = "2006-01-02 08:00:00"
+const timeFormatPrint string = "2006-01-02 15:04:05"
 
 type PutKeyValue struct {
 	Key string `json:"key"`
