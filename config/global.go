@@ -9,6 +9,7 @@ package config
 import flag "github.com/spf13/pflag"
 
 type GlobalConfiguration struct {
+	ServerPort int `toml:"server_port" env:"GOBOOK_SERVER_PORT" env-default:"3000"`
 	Sessions bool `toml:"sessions"`
 	CashFlowLimit int `toml:"cashflow_limit"`
 	EnableAutoTaxes bool `toml:"enable_auto_taxes" env-default:"true"`

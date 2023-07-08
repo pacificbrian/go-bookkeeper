@@ -9,11 +9,13 @@ package main
 import (
 	"context"
 	"embed"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 	"github.com/labstack/echo/v4"
+	"github.com/pacificbrian/go-bookkeeper/config"
 	"github.com/pacificbrian/go-bookkeeper/controllers"
 	"github.com/pacificbrian/go-bookkeeper/route"
 )
@@ -34,6 +36,8 @@ func userSignal(ctx context.Context, e *echo.Echo) {
 }
 
 func main() {
+	globals := config.GlobalConfig()
+
 	e := route.Init(&publicStore, &templateStore)
 
 	ctx, stop := signal.NotifyContext(context.Background(),
@@ -41,6 +45,6 @@ func main() {
 	defer stop()
 	go userSignal(ctx, e)
 
-	err := e.Start(":3000")
+	err := e.Start(fmt.Sprintf(":%d", globals.ServerPort))
 	log.Printf("[SERVER] EXIT: %v", err)
 }
