@@ -44,6 +44,9 @@ export default class extends Controller {
     let payeeID = target.getAttribute('data-payee-id')
     console.log("Stimulus[PAYEE]: actionDelete", payeeID)
     event.preventDefault()
+
+    if (!confirm("Are you sure?"))
+      return
     // add to RXJS stream processed with payeeDelete.pipe above
     this.payeeDelete$.next(payeeID)
   }

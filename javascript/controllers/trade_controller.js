@@ -44,6 +44,9 @@ export default class extends Controller {
     let tradeID = target.getAttribute('data-trade-id')
     console.log("Stimulus[TRADE]: actionDelete", tradeID)
     event.preventDefault()
+
+    if (!confirm("Are you sure?"))
+      return
     // add to RXJS stream processed with tradeDelete.pipe above
     this.tradeDelete$.next(tradeID)
   }

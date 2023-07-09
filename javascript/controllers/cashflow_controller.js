@@ -159,6 +159,9 @@ export default class extends Controller {
 
     console.log("Stimulus[CASHFLOW]: actionDelete", cashflowID)
     event.preventDefault()
+
+    if (!confirm("Are you sure?"))
+      return
     // add to RXJS stream processed with cashflowDelete.pipe above
     this.cashflowDelete$.next(cashflowID)
 

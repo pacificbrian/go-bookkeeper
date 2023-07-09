@@ -44,6 +44,9 @@ export default class extends Controller {
     let accountID = target.getAttribute('data-account-id')
     console.log("Stimulus[ACCOUNT]: actionDelete", accountID)
     event.preventDefault()
+
+    if (!confirm("Are you sure?"))
+      return
     // add to RXJS stream processed with accountDelete.pipe above
     this.accountDelete$.next(accountID)
   }

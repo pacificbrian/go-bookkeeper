@@ -96,6 +96,9 @@ export default class extends Controller {
     let taxID = target.getAttribute('data-tax-id')
     console.log("Stimulus[TAX]: actionDelete", taxID)
     event.preventDefault()
+
+    if (!confirm("Are you sure?"))
+      return
     // add to RXJS stream processed with taxReturnDelete.pipe above
     this.taxReturnDelete$.next(taxID)
 
@@ -114,6 +117,9 @@ export default class extends Controller {
     let taxID = target.getAttribute('data-tax-entry-id')
     console.log("Stimulus[TAX]: actionEntryDelete", taxID)
     event.preventDefault()
+
+    if (!confirm("Are you sure?"))
+      return
     // add to RXJS stream processed with taxEntryDelete.pipe above
     this.taxEntryDelete$.next(taxID)
 
