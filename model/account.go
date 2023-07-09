@@ -566,18 +566,18 @@ func (a *Account) Delete(session *Session) error {
 	}
 	db := session.DB
 
-	// on first delete, we only make Hidden
-	if !a.Hidden {
+	spewModel(a)
+	count := new(CashFlow).Count(a) +
+		 new(Trade).Count(a)
+	log.Printf("[MODEL] DELETE ACCOUNT(%d) IF COUNT(%d == 0)", a.ID, count)
+	if count == 0 {
+		db.Delete(a)
+	} else if !a.Hidden {
+		// if cannot delete, then make Hidden
 		a.Hidden = true
 		db.Omit(clause.Associations).Save(a)
-	} else {
-		spewModel(a)
-		count := new(CashFlow).Count(db, a)
-		log.Printf("[MODEL] DELETE ACCOUNT(%d) IF COUNT(%d == 0)", a.ID, count)
-		if count == 0 {
-			db.Delete(a)
-		}
 	}
+
 	return nil
 }
 

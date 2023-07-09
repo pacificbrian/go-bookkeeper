@@ -321,7 +321,8 @@ func (ca *Account) mergeCashFlows(db *gorm.DB, A []CashFlow, B []CashFlow,
 	return (*entries)[0:limit]
 }
 
-func (c *CashFlow) Count(db *gorm.DB, account *Account) int64 {
+func (c *CashFlow) Count(account *Account) int64 {
+	db := getDbManager()
 	var count int64
 
 	db.Model(c).Where(&CashFlow{AccountID: account.ID}).Count(&count)

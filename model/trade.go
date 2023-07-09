@@ -150,6 +150,14 @@ func (t *Trade) toCashFlow(preload bool) *CashFlow {
 	return c
 }
 
+func (t *Trade) Count(account *Account) int64 {
+	db := getDbManager()
+	var count int64
+
+	db.Model(t).Where(&Trade{AccountID: account.ID}).Count(&count)
+	return count
+}
+
 // Account Trades, Account access already verified by caller
 // For Security Trades, use security.ListTrades
 func (*Trade) List(db *gorm.DB, account *Account) []Trade {

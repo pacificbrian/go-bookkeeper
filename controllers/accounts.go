@@ -25,6 +25,7 @@ import (
 // Need Input Validation after Bind
 
 func ListAccounts(c echo.Context) error {
+	all, _ := strconv.Atoi(c.QueryParam("all"))
 	session := getSession(c)
 	if session == nil {
 		return redirectToLogin(c)
@@ -32,7 +33,7 @@ func ListAccounts(c echo.Context) error {
 	log.Println("LIST ACCOUNTS")
 	get_json := false
 
-	entries := model.ListAccounts(session, false)
+	entries := model.ListAccounts(session, all > 0)
 
 	dh := new(helpers.DateHelper)
 	dh.Init()
