@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="new">
+<h2>Create New Account</h2>
+
+<form method="POST" action="/users">
+<fieldset>
+<label>User Login</label>
+<input type="text" name="user.Login" value="{{user.Login}}"/>
+</fieldset>
+<fieldset>
+<label>Email Address</label>
+<input type="text" name="user.Email" value="{{user.Email}}"/>
+</fieldset>
+<fieldset>
+<label>Password</label>
+<input type="password" name="user.Password"/>
+</fieldset>
+<fieldset class="last">
+<label>Re-Enter Password (Confirmation)</label>
+<input type="password" name="user.PasswordConfirmation"/>
+</fieldset>
+<fieldset class="submit">
+<input type="submit" value="SIGN UP!"/>
+</fieldset>
+</form>
+</div>
+
+<ul id="footmenu">
+<li><a href=/>Back to Login</a></li>
+</ul>
+
+{% endblock -%}
