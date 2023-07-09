@@ -1,6 +1,6 @@
 [global]
 #server_port = 3000 # (default = 3000)
-sessions = true
+#sessions = true (default = true)
 #cashflow_limit = 200 # (default = 200)
 #enable_auto_taxes = true # (default = true)
 [db]
