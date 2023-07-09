@@ -23,6 +23,13 @@ func Login(c echo.Context) error {
 	return c.Render(http.StatusOK, "users/login.html", data)
 }
 
+func Logout(c echo.Context) error {
+	if IsEnabledMultiUser() {
+		endSession(c)
+	}
+	return redirectToLogin(c)
+}
+
 func CreateUser(c echo.Context) error {
 	var password [2]string
 
@@ -37,6 +44,8 @@ func CreateUser(c echo.Context) error {
 		log.Printf("CREATE USER FAILED: %v", err)
 		return c.Redirect(http.StatusSeeOther, "/users/new")
 	}
+
+	endSession(c)
 	return c.Redirect(http.StatusSeeOther, "/accounts")
 }
 

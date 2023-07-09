@@ -63,10 +63,28 @@ func getSession(c echo.Context) *model.Session {
 	return userSession
 }
 
+func endSession(c echo.Context) {
+	if sessionManager == nil {
+		return
+	}
+
+	session := getSession(c)
+	if session == nil {
+		return
+	}
+	session.CloseSession()
+	sessionManager.Destroy(c.Request().Context())
+	delete(activeSessions, session.User.ID)
+}
+
 func newSession(c echo.Context, u *model.User) {
 	if sessionManager == nil {
 		return
 	}
+
+	// close any existing Session first
+	endSession(c)
+
 	msg := fmt.Sprintf("[%d] created at: %s", u.ID, timeToString(time.Now()))
 	sessionManager.Put(c.Request().Context(), "tag", msg)
 	sessionManager.Put(c.Request().Context(), "user_id", int(u.ID))
@@ -128,6 +146,6 @@ func CreateSession(c echo.Context) error {
 		newSession(c, user)
 		return c.Redirect(http.StatusSeeOther, "/accounts")
 	} else {
-		return c.NoContent(http.StatusUnauthorized)
+		return redirectToLogin(c)
 	}
 }
