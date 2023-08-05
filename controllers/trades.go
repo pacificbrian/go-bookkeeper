@@ -30,11 +30,15 @@ func CreateTrade(c echo.Context) error {
 		   account_id, security_id)
 
 	entry := new(model.Trade)
-	c.Bind(entry)
+	err := c.Bind(entry)
+	assert(err == nil, "CREATE TRADE BIND FAILED")
 	entry.AccountID = uint(account_id)
 	entry.SecurityID = uint(security_id)
 	entry.Date = getFormDate(c)
-	err := entry.Create(session)
+	entry.Amount = getFormDecimal(c, "amount")
+	entry.Price = getFormDecimal(c, "price")
+	entry.Shares = getFormDecimal(c, "shares")
+	err = entry.Create(session)
 	account_id = int(entry.AccountID)
 	if err != nil {
 		log.Printf("CREATE TRADE ACCOUNT(%d) SECURITY(%d) FAILED: %v",
@@ -87,8 +91,12 @@ func UpdateTrade(c echo.Context) error {
 		return c.NoContent(http.StatusUnauthorized)
 	}
 
-	c.Bind(entry)
+	err := c.Bind(entry)
+	assert(err == nil, "UPDATE TRADE BIND FAILED")
 	entry.Date = getFormDate(c)
+	entry.Amount = getFormDecimal(c, "amount")
+	entry.Price = getFormDecimal(c, "price")
+	entry.Shares = getFormDecimal(c, "shares")
 	entry.Update()
 	a_id := entry.AccountID
 	s_id := entry.SecurityID

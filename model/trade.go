@@ -27,10 +27,10 @@ type Trade struct {
 	Date time.Time
 	oldDate time.Time `gorm:"-:all"`
 	TaxYear int `form:"tax_year"`
-	Amount decimal.Decimal `form:"amount" gorm:"not null"`
+	Amount decimal.Decimal `gorm:"not null"`
 	oldAmount decimal.Decimal `gorm:"-:all"`
-	Price decimal.Decimal `form:"price"`
-	Shares decimal.Decimal `form:"shares"`
+	Price decimal.Decimal
+	Shares decimal.Decimal
 	// AdjustedShares is remaining unsold shares, split adjusted
 	AdjustedShares decimal.Decimal
 	// Basis is accumulated (used) basis from Sells (starts at 0)

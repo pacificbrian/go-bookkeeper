@@ -17,7 +17,7 @@ import (
 )
 
 type SecurityValue struct {
-	Basis decimal.Decimal `form:"security.Basis"`
+	Basis decimal.Decimal
 	Shares decimal.Decimal
 	Value decimal.Decimal
 }

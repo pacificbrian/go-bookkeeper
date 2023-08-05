@@ -108,7 +108,8 @@ func CreateTaxEntry(c echo.Context) error {
 	log.Println("CREATE TAX ENTRY")
 
 	entry := new(model.TaxEntry)
-	c.Bind(entry)
+	err := c.Bind(entry)
+	assert(err == nil, "CREATE TAX ENTRY BIND FAILED")
 	entry.Amount = getFormDecimal(c, "amount")
 	entry.Create(session)
 
@@ -153,7 +154,8 @@ func UpdateTaxEntry(c echo.Context) error {
 		return c.NoContent(http.StatusUnauthorized)
 	}
 
-	c.Bind(entry)
+	err := c.Bind(entry)
+	assert(err == nil, "UPDATE TAX ENTRY BIND FAILED")
 	entry.Amount = getFormDecimal(c, "amount")
 	entry.Update()
 	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/years/%d/taxes",entry.DateYear))

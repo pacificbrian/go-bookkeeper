@@ -162,8 +162,10 @@ func UpdateSecurity(c echo.Context) error {
 		return c.NoContent(http.StatusUnauthorized)
 	}
 
-	c.Bind(entry)
+	err := c.Bind(entry)
+	assert(err == nil, "UPDATE SECURITY BIND FAILED")
 	c.Bind(&entry.Company)
+	entry.Basis = getFormDecimal(c, "security.Basis")
 	entry.Update()
 	a_id := entry.AccountID
 	return c.Redirect(http.StatusSeeOther,

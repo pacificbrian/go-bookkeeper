@@ -39,6 +39,8 @@ func getFormDate(c echo.Context) time.Time {
 	return date.Add(time.Hour * 8)
 }
 
+// echo.Bind will try type.UnmarshalParam(), but we cannot
+// define for lon-local types
 func getFormDecimal(c echo.Context, name string) decimal.Decimal {
 	valueStr := c.FormValue(name)
 	value,_ := decimal.NewFromString(valueStr)
