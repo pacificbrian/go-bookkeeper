@@ -10,7 +10,7 @@ require (
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/mayowa/echo-pongo2 v1.1.4
 	github.com/pacificbrian/qif v1.1.0
-	github.com/piquette/finance-go v1.0.0
+	github.com/piquette/finance-go v1.1.0
 	github.com/rubenv/sql-migrate v1.2.0
 	github.com/shopspring/decimal v1.3.1
 	github.com/spazzymoto/echo-scs-session v1.0.0
@@ -20,6 +20,8 @@ require (
 	gorm.io/driver/sqlite v1.3.6
 	gorm.io/gorm v1.23.8
 )
+
+replace github.com/piquette/finance-go => github.com/joce/finance-go v0.0.0-20230701203135-40d4ac6e73cf
 
 replace github.com/mayowa/echo-pongo2 => github.com/pacificbrian/echo-pongo2 v1.1.5
 
