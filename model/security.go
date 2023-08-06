@@ -126,7 +126,14 @@ func (s *Security) updateTrade(db *gorm.DB, trade *Trade) {
 	updates := make(map[string]interface{})
 	price := s.Price()
 
-	if trade.IsBuy() {
+	if trade.IsSell() {
+		s.Basis = s.Basis.Add(trade.oldBasis)
+		s.Basis = s.Basis.Sub(trade.Basis)
+		s.Shares = s.Shares.Add(trade.oldShares)
+		s.Shares = s.Shares.Sub(trade.Shares)
+		updates["basis"] = s.Basis
+		updates["shares"] = s.Shares
+	} else if trade.IsBuy() {
 		s.Basis = s.Basis.Sub(trade.oldAmount)
 		s.Basis = s.Basis.Add(trade.Amount)
 		s.Shares = s.Shares.Sub(trade.oldShares)
@@ -233,6 +240,24 @@ func (s *Security) List(session *Session, account *Account, openPositions bool) 
 	return account.Securities
 }
 
+// Find only most recent Trade for Security
+func (s *Security) LatestTradeBy(db *gorm.DB, tradeType uint) *Trade {
+	entry := &Trade{}
+
+	if s.Account.Verified {
+		dbQuery := db.Order("date desc").Order("id desc")
+		if tradeType > 0 {
+			dbQuery = dbQuery.Where(TradeTypeQueries[tradeType])
+		}
+
+		dbQuery.Where(&Trade{SecurityID: s.ID}).
+			First(&entry)
+	}
+	log.Printf("[MODEL] LIST SINGLE TRADE SECURITY(%d:%d)", s.ID, entry.ID)
+	return entry
+}
+
+// Find Trades for Security
 // Security access already verified by caller
 func (s *Security) ListTradesBy(db *gorm.DB, tradeType uint, openOnly bool) []Trade {
 	entries := []Trade{}
@@ -245,7 +270,6 @@ func (s *Security) ListTradesBy(db *gorm.DB, tradeType uint, openOnly bool) []Tr
 			}
 			dbQuery = dbQuery.Where(TradeTypeQueries[tradeType])
 		}
-		// Find Trades for Security
 		dbQuery.Where(&Trade{SecurityID: s.ID}).
 			Find(&entries)
 

@@ -7,6 +7,7 @@
 package model
 
 import (
+	"errors"
 	"log"
 	"time"
 	"github.com/shopspring/decimal"
@@ -84,6 +85,22 @@ func (tg *TradeGain) recordGain(sell *Trade, buy *Trade,
 		db := getDbManager()
 		db.Omit(clause.Associations).Create(tg)
 	}
+}
+
+func (tg *TradeGain) Delete(session *Session) error {
+	db := getDbManager()
+
+	buy := &Trade{}
+	buy.ID = tg.BuyID
+	buy = buy.Get(session)
+	if buy == nil {
+		return errors.New("Permission Denied")
+	}
+	buy.revertBasis(tg.Basis, tg.Shares)
+
+	db.Delete(tg)
+	log.Printf("[MODEL] DELETE GAIN(%d) FOR BUY(%d)", tg.ID, buy.ID)
+	return nil
 }
 
 

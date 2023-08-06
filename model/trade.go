@@ -298,6 +298,25 @@ func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
 	return entries
 }
 
+func (t *Trade) revertBasis(basis decimal.Decimal, soldShares decimal.Decimal) {
+	db := getDbManager()
+	updates := make(map[string]interface{})
+	if t.IsBuy() {
+		t.AdjustedShares = t.AdjustedShares.Add(soldShares)
+		updates["adjusted_shares"] = t.AdjustedShares
+		updates["closed"] = 0
+	}
+
+	if basis.IsPositive() {
+		assert(t.Basis.GreaterThanOrEqual(basis),
+		       "Revert Trade Basis Corruption (1)")
+		t.Basis = t.Basis.Sub(basis)
+		updates["basis"] = t.Basis
+	}
+
+	db.Omit(clause.Associations).Model(t).Updates(updates)
+}
+
 func (t *Trade) updateBasis(basis decimal.Decimal, soldShares decimal.Decimal) {
 	db := getDbManager()
 	updates := make(map[string]interface{})
@@ -306,6 +325,8 @@ func (t *Trade) updateBasis(basis decimal.Decimal, soldShares decimal.Decimal) {
 			assert(t.Basis.IsZero(), "Trade Basis Corrupted (1)")
 			t.AdjustedShares = t.Shares
 		}
+		assert(t.AdjustedShares.GreaterThanOrEqual(soldShares),
+		       "Update Trade Basis Corruption (1)")
 		t.AdjustedShares = t.AdjustedShares.Sub(soldShares)
 		updates["adjusted_shares"] = t.AdjustedShares
 
@@ -323,7 +344,7 @@ func (t *Trade) updateBasis(basis decimal.Decimal, soldShares decimal.Decimal) {
 
 // t is Sell trade and was already tested to be Valid
 func (t *Trade) recordGain(activeBuys []Trade) {
-	var sellBasis decimal.Decimal
+	sellBasis := decimal.Zero
 	sharesRemain := t.Shares
 	updateDB := true
 
@@ -480,6 +501,7 @@ func (t *Trade) HaveAccessPermission(session *Session) bool {
 	if t.Account.Verified {
 		t.Account.User = *u
 		t.Account.Session = session
+		t.Security.Account.cloneVerified(&t.Account)
 	}
 	return t.Account.Verified
 }
@@ -525,9 +547,31 @@ func (t *Trade) Get(session *Session) *Trade {
 	return t
 }
 
-// TODO
-func (t *Trade) reverseGain(db *gorm.DB) ([]Trade, error) {
-	return nil, nil
+func (t *Trade) reverseGain(db *gorm.DB, isDelete bool) error {
+	sellBasis := decimal.Zero
+	entries := []TradeGain{}
+
+	// validate is newest Sell Trade
+	sell := t.Security.LatestTradeBy(db, Sell)
+	if sell == nil || sell.ID != t.ID {
+		return errors.New("Only support reversing of newest Sell Trades!")
+	}
+
+	// Find Gains for Trade, update Basis in Buys
+	db.Where(&TradeGain{SellID: t.ID}).Find(&entries)
+	for i := 0; i < len(entries); i++ {
+		tg := &entries[i]
+		sellBasis = sellBasis.Add(tg.Basis)
+		tg.Delete(t.Account.Session)
+	}
+
+	// update Basis in Sell (don't bother if Trade will be deleted)
+	if !isDelete {
+		t.revertBasis(sellBasis, t.Shares)
+	}
+
+	log.Printf("[MODEL] REVERSED TRADE(%d) AND %d GAINS", t.ID, len(entries))
+	return nil
 }
 
 // TODO
@@ -550,7 +594,7 @@ func (t *Trade) Delete(session *Session) error {
 	t.Shares = decimal.Zero
 
 	if t.IsSell() {
-		err = errors.New("Don't yet support Delete of Sell Trades!")
+		err = t.reverseGain(db, true)
 	} else if t.IsBuy() && !t.oldBasis.IsZero() {
 		err = errors.New("Don't yet support Delete of Partially Sold Buy Trades!")
 	} else if t.IsSplit() {
@@ -604,8 +648,10 @@ func (t *Trade) Update() error {
 		// and Split or TradeGain is now wrong...
 		logSimple = " (SIMPLE)"
 	} else if t.IsSell() {
-		activeBuys, err = t.reverseGain(db)
-		err = errors.New("Don't yet support Updating of Sell Trades!")
+		err = t.reverseGain(db, false)
+		if err == nil {
+			activeBuys, err = t.Security.validateTrade(db, t)
+		}
 	} else if t.IsBuy() && !t.oldBasis.IsZero() {
 		err = errors.New("Don't yet support Updating of Partially Sold Buy Trades!")
 	} else if t.IsBuy() && !t.oldShares.Equal(t.AdjustedShares) {
