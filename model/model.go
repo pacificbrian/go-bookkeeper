@@ -91,6 +91,11 @@ func daysBetweenDates(from *time.Time, to *time.Time, onlyBusinessDays bool) int
 	return days
 }
 
+func daysInMonth(dx *time.Time) uint {
+	t := time.Date(dx.Year(), dx.Month(), 32, 0, 0, 0, 0, time.Local)
+	return uint(32 - t.Day())
+}
+
 func decimalToPercentage(num decimal.Decimal) decimal.Decimal {
 	return num.Mul(decimal.NewFromInt32(100))
 }

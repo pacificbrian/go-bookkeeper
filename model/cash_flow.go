@@ -752,11 +752,27 @@ func (repeat *CashFlow) getMonthlyRate(db *gorm.DB) decimal.Decimal {
 	if repeat.RepeatInterval.RepeatIntervalType.Days != 30 {
 		return decimal.Zero
 	}
+	debugRate := false
 
 	// returns decimal.Zero if not set
 	rate := repeat.RepeatInterval.Rate
 	rate = rate.Div(decimal.NewFromInt32(100))
-	return rate.Div(decimal.NewFromInt32(12))
+	simpleRate := rate.DivRound(decimal.NewFromInt32(12), 4)
+
+	// monthly rate depends on number of days in month
+	rateDate := repeat.Date
+	if rateDate.Day() < 15 {
+		rateDate = rateDate.AddDate(0, -1, 0)
+	}
+	rate = rate.Mul(decimal.NewFromInt32(int32(daysInMonth(&rateDate))))
+	rate = rate.DivRound(decimal.NewFromInt32(365), 4)
+
+	if debugRate {
+		log.Printf("[MODEL] MONTHLY RATE (%f, %f) days %d",
+			   simpleRate.InexactFloat64(),
+			   rate.InexactFloat64(), daysInMonth(&rateDate))
+	}
+	return rate
 }
 
 func (repeat *CashFlow) applyRate(db *gorm.DB) bool {
@@ -781,7 +797,7 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 	var interestCF *CashFlow
 	var splits []CashFlow
 	var fees decimal.Decimal
-	debugPI := false
+	debugRate := false
 	matched := 0
 
 	if !repeat.HasSplits() {
@@ -842,7 +858,7 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 		interestCF.Amount = averageDailyBalance.Mul(monthlyRate).RoundBank(2)
 		assert(interestCF.Amount.IsNegative(), "LoanPI: bad Interest Amount")
 		principleCF.Amount = paymentCF.Amount.Add(fees).Add(interestCF.Amount)
-		if debugPI {
+		if debugRate {
 			log.Printf("[MODEL] CPI INTEREST CASHFLOW(%d) (%f)", interestCF.ID,
 				   interestCF.Amount.InexactFloat64())
 			log.Printf("[MODEL] CPI PRINCIPLE CASHFLOW(%d) (%f)", principleCF.ID,
