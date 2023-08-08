@@ -792,9 +792,10 @@ func (repeat *CashFlow) applyRate(db *gorm.DB) bool {
 }
 
 func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
-	var paymentCF *CashFlow
-	var principleCF *CashFlow
 	var interestCF *CashFlow
+	var paymentCF *CashFlow
+	var principleAccount *Account
+	var principleCF *CashFlow
 	var splits []CashFlow
 	var fees decimal.Decimal
 	debugRate := false
@@ -820,12 +821,27 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 				/* both are Credits */
 				paymentCF = split
 				principleCF = repeat
+				principleAccount = &repeat.Account
 			} else {
 				/* both are Debits, flip to Credit (reversed below) */
 				paymentCF = repeat
 				principleCF = split
 				paymentCF.Amount = paymentCF.Amount.Neg()
 				principleCF.Amount = principleCF.Amount.Neg()
+				// retrieve PairAccount for principle balance
+				if principleCF.PayeeID > 0 {
+					a := new(Account)
+					a.ID = principleCF.PayeeID
+					a = a.Get(repeat.getSession(), false)
+					principleAccount = a
+				}
+			}
+
+			if principleAccount == nil ||
+			   !principleCF.Amount.IsPositive() ||
+			   !paymentCF.Amount.IsPositive() {
+				matched = 0
+				break
 			}
 			assert(principleCF.Amount.IsPositive(), "LoanPI: bad Principle Amount")
 			assert(paymentCF.Amount.IsPositive(), "LoanPI: bad Payment Amount")
@@ -846,7 +862,7 @@ func (repeat *CashFlow) calculateLoanPI(db *gorm.DB) ([]CashFlow, bool) {
 
 	// we have valid ScheduledCashFlow for determining P and I
 	for updateAmounts {
-		averageDailyBalance := interestCF.Account.averageDailyBalance(db, repeat.Date)
+		averageDailyBalance := principleAccount.averageDailyBalance(db, repeat.Date)
 		// This is loan, so we should return if loan amount is somehow non-negative
 		if !averageDailyBalance.IsNegative() {
 			updateAmounts = false
@@ -982,6 +998,10 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow() (decimal.Decimal, error) {
 			}
 		}
 		c.cloneScheduled(repeat)
+		// update repeat.Account Balances so will have accurate Balance
+		// if loop and continue to insert additional repeat CashFlows
+		repeat.Account.Balance = repeat.Account.Balance.Add(c.Amount)
+		repeat.Account.CashBalance = repeat.Account.CashBalance.Add(c.Amount)
 
 		if updateDB {
 			// add scheduled CashFlow

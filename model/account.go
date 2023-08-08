@@ -293,11 +293,12 @@ func (a *Account) Init() *Account {
 // If Account is less than 30 days old, this will add Zeros for those days which
 // gives the correct behavior for Interest calculations.
 func (a *Account) averageDailyBalance(db *gorm.DB, endDate time.Time) decimal.Decimal {
-	var total decimal.Decimal
 	var daysLeft int32 = 30
 	var days int32
 	var validEntries uint
+	total := decimal.Zero
 
+	latestBalance := a.CashBalance
 	lastBalance := a.CashBalance
 	lastTime := endDate
 	thirtyDaysAgo := lastTime.AddDate(0, 0, int(-daysLeft))
@@ -332,15 +333,16 @@ func (a *Account) averageDailyBalance(db *gorm.DB, endDate time.Time) decimal.De
 
 	if daysLeft > 0 {
 		balanceBeforeFirstCashFlow := lastBalance.Mul(decimal.NewFromInt32(daysLeft))
-		log.Printf("[MODEL] ACCOUNT(%d) BALANCE ACTIVE ($%f) IDLE ($%f DAYS:%d)",
+		log.Printf("[MODEL] ACCOUNT(%d) BALANCE ACTIVE($%f) IDLE($%f DAYS:%d)",
 			   a.ID, total.InexactFloat64(),
 			   balanceBeforeFirstCashFlow.InexactFloat64(), daysLeft)
 		total = total.Add(balanceBeforeFirstCashFlow)
 	}
 
 	balance := total.DivRound(decimal.NewFromInt32(30), 2)
-	log.Printf("[MODEL] ACCOUNT(%d) 30-DAY AVERAGE BALANCE ($%f from %d/%d entries)",
-		   a.ID, balance.InexactFloat64(), validEntries, len(entries))
+	log.Printf("[MODEL] ACCOUNT(%d) BALANCE($%f) 30-DAY AVG($%f from %d/%d entries)",
+		   a.ID, latestBalance.InexactFloat64(),
+		   balance.InexactFloat64(), validEntries, len(entries))
 	return balance
 }
 
@@ -463,7 +465,6 @@ func (a *Account) HaveAccessPermission(session *Session) bool {
 }
 
 func (a *Account) updateAccountScheduled(session *Session) {
-	var amountAdded decimal.Decimal
 	var repeat *CashFlow
 	enableScheduledCashFlow := true
 
@@ -484,12 +485,12 @@ func (a *Account) updateAccountScheduled(session *Session) {
 		repeat.Account.cloneVerified(a)
 		total, err := repeat.tryInsertRepeatCashFlow()
 		if err == nil {
-			amountAdded = amountAdded.Add(total)
+			// update inside loop so cloneVerified carries Balance
+			// changes forward to next repeat
+			a.Balance = a.Balance.Add(total)
+			a.CashBalance = a.CashBalance.Add(total)
 		}
 	}
-	a.Balance = a.Balance.Add(amountAdded)
-	a.CashBalance = a.CashBalance.Add(amountAdded)
-	a.User.updateAccountBalance(a)
 }
 
 func (a *Account) updateAccount(session *Session, async bool) {
