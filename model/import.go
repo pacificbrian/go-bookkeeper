@@ -101,16 +101,20 @@ func (im *Import) CountImported(session *Session) {
 		   im.ID, im.AccountID, im.CashFlowCount)
 }
 
-func (c *CashFlow) makeCashFlowOFX(ofxTran *ofxgo.Transaction) {
+func dateFromOFX(ofxTran *ofxgo.Transaction) time.Time {
 	//dateStr := ofxTran.DtPosted.String()
-	c.Date = time.Date(ofxTran.DtPosted.Year(),
-			   ofxTran.DtPosted.Month(),
-			   ofxTran.DtPosted.Day(),
-			   ofxTran.DtPosted.Hour(),
-			   ofxTran.DtPosted.Minute(),
-			   ofxTran.DtPosted.Second(),
-			   ofxTran.DtPosted.Nanosecond(),
-			   ofxTran.DtPosted.Location())
+	return time.Date(ofxTran.DtPosted.Year(),
+			 ofxTran.DtPosted.Month(),
+			 ofxTran.DtPosted.Day(),
+			 ofxTran.DtPosted.Hour(),
+			 ofxTran.DtPosted.Minute(),
+			 ofxTran.DtPosted.Second(),
+			 ofxTran.DtPosted.Nanosecond(),
+			 ofxTran.DtPosted.Location())
+}
+
+func (c *CashFlow) makeCashFlowOFX(ofxTran *ofxgo.Transaction) {
+	c.Date = dateFromOFX(ofxTran)
 	c.setDefaults() // needs c.Date
 	c.Transnum = strings.TrimSpace(string(ofxTran.FiTID))
 	c.PayeeName = strings.TrimSpace(string(ofxTran.Name))
@@ -173,8 +177,30 @@ func (im *Import) ImportFile(session *Session, importFile HttpFile) error {
 				      fileName))
 }
 
+func isReversedQIF(transactions []qif.Transaction) bool {
+	count := len(transactions)
+	reversed := false
+
+	if count > 1 {
+		var dateStart, dateEnd time.Time
+
+		switch transactions[0].TransactionType() {
+		case qif.TransactionTypeBanking:
+			dateStart = transactions[0].(qif.BankingTransaction).Date()
+			dateEnd = transactions[count - 1].(qif.BankingTransaction).Date()
+			break
+		case qif.TransactionTypeInvestment:
+			dateStart = transactions[0].(qif.InvestmentTransaction).Date()
+			dateEnd = transactions[count - 1].(qif.InvestmentTransaction).Date()
+		}
+		reversed = dateStart.After(dateEnd)
+	}
+	return reversed
+}
+
 func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 	var transactions []qif.Transaction
+	var idx, idxIncrement int
 	fileName := importFile.FileName
 	db := session.DebugDB
 	recordImport := true
@@ -203,6 +229,14 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 		goto done
 	}
 
+	if isReversedQIF(transactions) {
+		idx = count - 1
+		idxIncrement = -1
+	} else {
+		idx = 0
+		idxIncrement = 1
+	}
+
 	// convert qif.Transactions to CashFlows or Trades
 	switch transactions[0].TransactionType() {
 	case qif.TransactionTypeBanking:
@@ -212,7 +246,8 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 		im.create(db)
 
 		for i := 0; i < count; i++ {
-			transaction := transactions[i].(qif.BankingTransaction)
+			transaction := transactions[idx].(qif.BankingTransaction)
+			idx = idx + idxIncrement
 			cashflows[i].makeCashFlowQIF(transaction)
 			cashflows[i].AccountID = im.Account.ID
 			cashflows[i].Account.cloneVerified(&im.Account)
@@ -228,7 +263,8 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 		trades := make([]Trade, count)
 
 		for i := 0; i < count; i++ {
-			transaction := transactions[i].(qif.InvestmentTransaction)
+			transaction := transactions[idx].(qif.InvestmentTransaction)
+			idx = idx + idxIncrement
 			securityName := strings.TrimSpace(transaction.SecurityName())
 			security := im.Account.securityGetByImportName(session,
 								       securityName)
@@ -253,6 +289,18 @@ done:
 	log.Printf("[MODEL] IMPORT(%d) [%s] QIF TRANSACTIONS (ACCEPTED %d of %d)",
 		   im.ID, fileName, entered, count)
 	return nil
+}
+
+func isReversedOFX(ofxTran []ofxgo.Transaction) bool {
+	count := len(ofxTran)
+	reversed := false
+
+	if count > 1 {
+		dateStart := dateFromOFX(&ofxTran[0])
+		dateEnd := dateFromOFX(&ofxTran[count - 1])
+		reversed = dateStart.After(dateEnd)
+	}
+	return reversed
 }
 
 func (im *Import) ImportFromQFX(session *Session, importFile HttpFile) error {
@@ -298,11 +346,22 @@ func (im *Import) ImportFromQFX(session *Session, importFile HttpFile) error {
 
 	// write Import, we store ImportID in CashFlows
 	if recordImport && count > 0 {
+		var idx, idxIncrement int
+
 		im.create(db)
+
+		if isReversedOFX(ofxTran) {
+			idx = count - 1
+			idxIncrement = -1
+		} else {
+			idx = 0
+			idxIncrement = 1
+		}
 
 		// convert ofxgo response to CashFlows
 		for i := 0; i < count; i++ {
-			entries[i].makeCashFlowOFX(&ofxTran[i])
+			entries[i].makeCashFlowOFX(&ofxTran[idx])
+			idx = idx + idxIncrement
 			entries[i].AccountID = im.Account.ID
 			entries[i].Account.cloneVerified(&im.Account)
 			entries[i].ImportID = im.ID
