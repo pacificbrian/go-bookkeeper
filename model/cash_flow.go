@@ -102,6 +102,16 @@ func (c *CashFlow) setSplit(SplitFrom uint) {
 	c.SplitFrom = SplitFrom
 }
 
+func (c *CashFlow) setSplitFromPair(pair *CashFlow) {
+	if pair.SplitFrom > 0 && !pair.Split {
+		if !c.IsScheduled() {
+			c.Type = "SplitCashFlow"
+		}
+		c.Split = true
+	}
+	c.SplitFrom = pair.SplitFrom
+}
+
 func (c *CashFlow) IsScheduled() bool {
 	return c.Type == "RCashFlow"
 }
@@ -172,6 +182,10 @@ func (c *CashFlow) SplitCount() uint {
 
 func (c *CashFlow) HasSplits() bool {
 	return c.SplitCount() > 0
+}
+
+func (c *CashFlow) isSplitOrSplitPair() bool {
+	return c.Split || (c.Transfer && c.SplitFrom > 0)
 }
 
 func (c *CashFlow) setCategoryName(db *gorm.DB) {
@@ -530,7 +544,7 @@ func (c *CashFlow) pairFrom(src *CashFlow) {
 	c.Transfer = true
 	c.ID = src.PairID
 	// keep split details accurate, and decrement SplitCount in Parent (Delete)
-	c.setSplit(src.SplitFrom)
+	c.setSplitFromPair(src)
 	c.Account.cloneVerifiedFrom(&src.Account)
 	c.AccountID = src.PayeeID
 	c.Amount = src.oldAmount.Neg()
@@ -1257,7 +1271,7 @@ func (c *CashFlow) Update() error {
 	}
 
 	c.applyCashFlowType()
-	if c.Split {
+	if c.isSplitOrSplitPair() {
 		// don't let Splits mess with date
 		c.Date = c.oldDate
 	}
