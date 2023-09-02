@@ -8,6 +8,7 @@ package controllers
 
 import (
 	"log"
+	"strings"
 	"time"
 	"github.com/shopspring/decimal"
 	"github.com/labstack/echo/v4"
@@ -43,6 +44,8 @@ func getFormDate(c echo.Context) time.Time {
 // define for lon-local types
 func getFormDecimal(c echo.Context, name string) decimal.Decimal {
 	valueStr := c.FormValue(name)
+	valueStr = strings.Trim(valueStr, "$ ")
+	valueStr = strings.Replace(valueStr, ",", "", -1)
 	value,_ := decimal.NewFromString(valueStr)
 	return value
 }

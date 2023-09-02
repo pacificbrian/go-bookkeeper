@@ -20,6 +20,11 @@ type Company struct {
 	UserID uint `gorm:"-:all"`
 }
 
+func (c *Company) sanitizeInputs() {
+	sanitizeString(&c.Name)
+	sanitizeString(&c.Symbol)
+}
+
 func (c Company) GetName() string {
 	if c.Name != "" {
 		return c.Name

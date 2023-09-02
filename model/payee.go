@@ -25,6 +25,12 @@ type Payee struct {
 	Category Category
 }
 
+func (p *Payee) sanitizeInputs() {
+	sanitizeString(&p.Name)
+	sanitizeString(&p.Address)
+	sanitizeString(&p.ImportName)
+}
+
 // for Bind() and setting from input/checkboxes */
 func (p *Payee) ClearBooleans() {
 	p.SkipOnImport = false
@@ -154,14 +160,16 @@ func payeeGetByName(session *Session, name string, importing bool) (error, *Paye
 func (p *Payee) Create(session *Session) error {
 	db := session.DB
 	u := session.GetUser()
-	if u != nil {
-		// Payee.User is set to CurrentUser()
-		p.UserID = u.ID
-		spewModel(p)
-		result := db.Omit(clause.Associations).Create(p)
-		return result.Error
+	if u == nil {
+		return errors.New("Permission Denied")
 	}
-	return errors.New("Permission Denied")
+
+	p.sanitizeInputs()
+	// Payee.User is set to CurrentUser()
+	p.UserID = u.ID
+	spewModel(p)
+	result := db.Omit(clause.Associations).Create(p)
+	return result.Error
 }
 
 func (p *Payee) HaveAccessPermission(session *Session) bool {
@@ -203,6 +211,7 @@ func (p *Payee) Delete(session *Session) error {
 // Payee access already verified with Get
 func (p *Payee) Update() error {
 	db := getDbManager()
+	p.sanitizeInputs()
 	spewModel(p)
 	result := db.Omit(clause.Associations).Save(p)
 	return result.Error

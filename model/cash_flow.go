@@ -38,15 +38,22 @@ type CashFlow struct {
 	SplitFrom uint
 	Split bool
 	Transfer bool
-	PayeeName string `form:"payee_name" gorm:"-:all"`
 	CategoryName string `gorm:"-:all"`
 	Memo string `form:"memo"`
+	PayeeName string `form:"payee_name" gorm:"-:all"`
 	Transnum string `form:"transnum"`
 	Type string `gorm:"default:NULL"`
 	Account Account
 	Category Category
 	Payee Payee
 	RepeatInterval RepeatInterval
+}
+
+func (c *CashFlow) sanitizeInputs() {
+	c.applyCashFlowType()
+	sanitizeString(&c.Memo)
+	sanitizeString(&c.PayeeName)
+	sanitizeString(&c.Transnum)
 }
 
 func (CashFlow) Currency(value decimal.Decimal) string {
@@ -1092,7 +1099,7 @@ func (c *CashFlow) Create(session *Session) error {
 		}
 	}
 
-	c.applyCashFlowType()
+	c.sanitizeInputs()
 	// defaults for DB fields not set during Create (are Edit only)
 	c.setDefaults()
 
@@ -1270,7 +1277,7 @@ func (c *CashFlow) Update() error {
 		return errors.New("!Account.Verified")
 	}
 
-	c.applyCashFlowType()
+	c.sanitizeInputs()
 	if c.isSplitOrSplitPair() {
 		// don't let Splits mess with date
 		c.Date = c.oldDate

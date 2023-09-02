@@ -49,6 +49,10 @@ type Trade struct {
 	TradeGains []TradeGain `gorm:"foreignKey:SellID"`
 }
 
+func (t *Trade) sanitizeInputs() {
+	sanitizeString(&t.Symbol)
+}
+
 func (Trade) Currency(value decimal.Decimal) string {
 	return currency(value)
 }
@@ -483,6 +487,7 @@ func (t *Trade) Create(session *Session) error {
 		t.Security.ID = t.SecurityID
 		security = t.Security.Get(session)
 	} else if t.AccountID > 0 {
+		t.sanitizeInputs()
 		// verifies Account, creates Security if none exists
 		security = t.securityGetBySymbol(session)
 	}

@@ -36,6 +36,11 @@ type Security struct {
 	SecurityType SecurityType
 }
 
+func (s *Security) sanitizeInputs() {
+	s.Company.sanitizeInputs()
+	sanitizeString(&s.ImportName)
+}
+
 func (Security) Currency(value decimal.Decimal) string {
 	return currency(value)
 }
@@ -377,6 +382,7 @@ func (s *Security) create(session *Session, useDefaults bool) error {
 }
 
 func (s *Security) Create(session *Session) error {
+	s.sanitizeInputs()
 	s.Account.ID = s.AccountID
 	existing,err := s.Account.GetSecurity(session, &s.Company)
 	if existing == nil {
@@ -472,6 +478,8 @@ func (s *Security) Delete(session *Session) error {
 func (s *Security) Update() error {
 	db := getDbManager()
 	updatedCompany := false
+
+	s.sanitizeInputs()
 	spewModel(s)
 
 	s.Company.UserID = s.Account.UserID

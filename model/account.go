@@ -40,6 +40,11 @@ type Account struct {
 	Securities []Security
 }
 
+func (a *Account) sanitizeInputs() {
+	sanitizeString(&a.Name)
+	sanitizeString(&a.Number)
+}
+
 func (Account) Currency(value decimal.Decimal) string {
 	return "$" + value.StringFixedBank(2)
 }
@@ -415,14 +420,16 @@ func (a *Account) writeBalance() {
 func (a *Account) Create(session *Session) error {
 	db := session.DB
 	u := session.GetUser()
-	if u != nil {
-		// Account.User is set to CurrentUser()
-		a.UserID = u.ID
-		spewModel(a)
-		result := db.Omit(clause.Associations).Create(a)
-		return result.Error
+	if u == nil {
+		return errors.New("Permission Denied")
 	}
-	return errors.New("Permission Denied")
+
+	a.sanitizeInputs()
+	// Account.User is set to CurrentUser()
+	a.UserID = u.ID
+	spewModel(a)
+	result := db.Omit(clause.Associations).Create(a)
+	return result.Error
 }
 
 func (a *Account) cloneVerifiedFrom(src *Account) {
@@ -585,6 +592,7 @@ func (a *Account) Delete(session *Session) error {
 // Account access already verified with Get
 func (a *Account) Update() error {
 	db := getDbManager()
+	a.sanitizeInputs()
 	spewModel(a)
 	result := db.Omit(clause.Associations).Save(a)
 	a.User.clearAccountName(a)

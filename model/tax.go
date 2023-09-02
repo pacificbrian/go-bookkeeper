@@ -97,6 +97,10 @@ type TaxEntry struct {
 	User User
 }
 
+func (te *TaxEntry) sanitizeInputs() {
+	sanitizeString(&te.Memo)
+}
+
 //db.Table("tax_users")
 type TaxReturn struct {
 	Model
@@ -297,17 +301,18 @@ func (*TaxEntry) List(session *Session, year int) []TaxEntry {
 	return append(autoEntries, entries...)
 }
 
-func (t *TaxEntry) Create(session *Session) error {
+func (te *TaxEntry) Create(session *Session) error {
 	db := session.DB
 	u := session.GetUser()
 	if u == nil {
 		return errors.New("Permission Denied")
 	}
 
-	t.UserID = u.ID
-	t.Year = yearToDate(t.DateYear)
-	spewModel(t)
-	result := db.Omit(clause.Associations).Table("taxes").Create(t)
+	te.sanitizeInputs()
+	te.UserID = u.ID
+	te.Year = yearToDate(te.DateYear)
+	spewModel(te)
+	result := db.Omit(clause.Associations).Table("taxes").Create(te)
 	return result.Error
 }
 

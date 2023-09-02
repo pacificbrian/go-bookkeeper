@@ -52,6 +52,11 @@ type Session struct {
 	DebugDB *gorm.DB
 }
 
+func (u *User) sanitizeInputs() {
+	sanitizeString(&u.Login)
+	sanitizeString(&u.Email)
+}
+
 func (u *User) Cache() *UserCache {
 	if u.Session == nil {
 		return nil
@@ -219,6 +224,7 @@ func (u *User) GetByLogin(login string) *User {
 }
 
 func (u *User) Create(password [2]string) error {
+	u.sanitizeInputs()
 	avail := new(User).GetByLogin(u.Login) == nil
 	if !avail {
 		return errors.New("Duplicate User Login")

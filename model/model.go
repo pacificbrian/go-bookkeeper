@@ -10,6 +10,7 @@ import (
 	"log"
 	"mime/multipart"
 	"time"
+	"strings"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
 )
@@ -44,6 +45,11 @@ func assert(assertion bool, panicString string) {
 	if (!assertion) {
 		log.Panic(panicString)
 	}
+}
+
+// Trim all spaces
+func sanitizeString(input *string) {
+	*input = strings.Join(strings.Fields(*input), " ")
 }
 
 func compareDates(dx *time.Time, dy *time.Time) bool {
