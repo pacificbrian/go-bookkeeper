@@ -17,6 +17,7 @@ import (
 	"github.com/labstack/echo/v4"
 	"github.com/pacificbrian/go-bookkeeper/config"
 	"github.com/pacificbrian/go-bookkeeper/controllers"
+	"github.com/pacificbrian/go-bookkeeper/db"
 	"github.com/pacificbrian/go-bookkeeper/route"
 )
 
@@ -36,8 +37,10 @@ func userSignal(ctx context.Context, e *echo.Echo) {
 }
 
 func main() {
+	log.Println("[SERVER] START")
 	globals := config.GlobalConfig()
 
+	db.Init()
 	e := route.Init(&publicStore, &templateStore)
 
 	ctx, stop := signal.NotifyContext(context.Background(),

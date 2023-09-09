@@ -21,7 +21,7 @@ import (
 var sqldb *sql.DB
 var db *gorm.DB
 
-func init() {
+func Init() {
 	var err error
 	var name string
 

@@ -20,12 +20,13 @@ var DebugFlag bool
 var globalConfig *GlobalConfiguration
 
 func GlobalConfig() *GlobalConfiguration {
+	if globalConfig == nil {
+		globalConfig = &GetConfig().GlobalConfiguration
+	}
 	return globalConfig
 }
 
 func init() {
 	flag.BoolVarP(&DebugFlag, "debug", "d", false, "run in debug mode")
 	flag.Parse()
-
-	globalConfig = &GetConfig().GlobalConfiguration
 }

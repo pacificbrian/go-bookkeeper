@@ -29,7 +29,15 @@ func IsEnabledMultiUser() bool {
 	return sessionManager != nil
 }
 
+func CreateDefaultSession() *model.Session {
+	defaultUser := new(model.User)
+	defaultUser.ID = 1
+	defaultSession = defaultUser.NewSession()
+	return defaultSession
+}
+
 func StartSessionManager() *scs.SessionManager {
+	CreateDefaultSession()
 	if !config.GlobalConfig().Sessions {
 		return nil
 	}
@@ -108,9 +116,6 @@ func newSession(c echo.Context, u *model.User) {
 
 func init() {
 	activeSessions = map[uint]*model.Session{}
-	defaultUser := new(model.User)
-	defaultUser.ID = 1
-	defaultSession = defaultUser.NewSession()
 }
 
 func redirectToLogin(c echo.Context) error {
