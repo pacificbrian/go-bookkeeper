@@ -37,3 +37,9 @@ server:
 
 install: deps build
 	go install
+
+coverage:
+	go test -v -coverpkg=./... ./test/...
+
+testing:
+	go test -v ./test/...
