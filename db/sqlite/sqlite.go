@@ -14,12 +14,14 @@ import (
 )
 
 const defaultDatabaseName string = "/gobook_test.db"
+var IsDefaultDB bool
 
 func Open() gorm.Dialector {
 	c := config.GetConfig()
 	if c.DB.Name == "" {
 		dir := config.GetConfigDir("db")
 		c.DB.Name = dir + defaultDatabaseName
+		IsDefaultDB = true
 	}
 	log.Printf("[DB] OPEN DATABASE(%s)", c.DB.Name)
 	return sqlite.Open(c.DB.Name)

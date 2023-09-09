@@ -232,7 +232,7 @@ INSERT INTO `tax_years` VALUES
 -- +migrate Down
 DELETE FROM `account_types`;
 DELETE FROM `cash_flow_types`;
-DELETE FROM `catgory_types`;
+DELETE FROM `category_types`;
 DELETE FROM `categories`;
 DELETE FROM `currency_types`;
 DELETE FROM `repeat_interval_types`;

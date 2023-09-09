@@ -18,7 +18,7 @@ import (
 //go:embed migrations/*.sql
 var migrationDir embed.FS
 
-func sqlMigrate(db *sql.DB, name string) {
+func sqlMigrate(db *sql.DB, name string, direction migrate.MigrationDirection) int {
 	var err error
 	n := 0
 	useFS := true
@@ -28,16 +28,27 @@ func sqlMigrate(db *sql.DB, name string) {
 		migrations := &migrate.HttpFileSystemMigrationSource {
 		    FileSystem: http.FS(httpDir),
 		}
-		n, err = migrate.Exec(db, name, migrations, migrate.Up)
+		n, err = migrate.Exec(db, name, migrations, direction)
 	} else {
 		migrations := &migrate.FileMigrationSource{
 		    Dir: "db/migrations",
 		}
-		n, err = migrate.Exec(db, name, migrations, migrate.Up)
+		n, err = migrate.Exec(db, name, migrations, direction)
 	}
 
 	if err != nil {
 		log.Panic(err)
 	}
-	log.Printf("[DB] MIGRATIONS APPLIED(%d)", n)
+
+	return n
+}
+
+func sqlMigrateUp(db *sql.DB, name string) {
+	n := sqlMigrate(db, name, migrate.Up)
+	log.Printf("[DB] APPLIED MIGRATIONS(%d)", n)
+}
+
+func sqlMigrateDown(db *sql.DB, name string) {
+	n := sqlMigrate(db, name, migrate.Down)
+	log.Printf("[DB] REVERSED MIGRATIONS(%d)", n)
 }

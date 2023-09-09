@@ -20,20 +20,22 @@ import (
 
 var sqldb *sql.DB
 var db *gorm.DB
+var dbType string
 
 func Init() {
+	allowReset := false
 	var err error
-	var name string
 
 	gormConfig := &gorm.Config{Logger: logger.Default.LogMode(logger.Silent)}
 
 	driver := config.GetConfig().DB.DB
 	switch driver {
 	case "sqlite":
-		name = sqlite.Name()
+		dbType = sqlite.Name()
 		db, err = gorm.Open(sqlite.Open(), gormConfig)
+		allowReset = sqlite.IsDefaultDB
 	case "mysql":
-		name = mysql.Name()
+		dbType = mysql.Name()
 		db, err = gorm.Open(mysql.Open(), gormConfig)
 	default:
 		err = errors.New(fmt.Sprintf("Unknown Database choice (%s)!", driver))
@@ -46,7 +48,17 @@ func Init() {
 		log.Panic(err)
 	}
 
-	sqlMigrate(sqldb, name)
+	sqlMigrateUp(sqldb, dbType)
+	if !allowReset {
+		dbType = ""
+	}
+}
+
+func Reset() {
+	if dbType != "" {
+		log.Printf("[DB] RESET (%s)", dbType)
+		sqlMigrateDown(sqldb, dbType)
+	}
 }
 
 func DbManager() *gorm.DB {
