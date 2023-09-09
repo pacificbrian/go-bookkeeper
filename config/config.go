@@ -68,6 +68,9 @@ func GetConfig() *Configuration {
 
 	err := cleanenv.ReadConfig(homeDir + configurationFile, &c)
 	if err != nil {
+		err = cleanenv.ReadEnv(&c)
+	}
+	if err != nil {
 		log.Panic(err)
 	}
 	return &c
