@@ -42,6 +42,19 @@ func (c *Category) LoanPI() bool {
 	return (c.IsInterest() || c.IsMortgageInterest())
 }
 
+func CategoryGetByName(name string) *Category {
+	db := getDbManager()
+
+	c := new(Category)
+	c.Name = name
+	// need Where because name is not primary keys
+	db.Where(&c).First(&c)
+
+	log.Printf("[MODEL] GET CATEGORY(%d) BY NAME(%s)",
+		   c.ID, name)
+	return c
+}
+
 func (*CategoryType) List(db *gorm.DB) []CategoryType {
 	entries := []CategoryType{}
 	db.Find(&entries)
