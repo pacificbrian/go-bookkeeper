@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"time"
 	"github.com/shopspring/decimal"
+	"github.com/pacificbrian/go-bookkeeper/config"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -139,9 +140,13 @@ func List(session *Session, all bool) []Account {
 }
 
 func ListAccounts(session *Session, all bool) []Account {
+	globals := config.GlobalConfig()
+
 	entries := List(session, all)
 	if entries != nil {
-		go updateAccounts(entries, session)
+		if globals.UpdateAccountsOnLogin {
+			go updateAccounts(entries, session)
+		}
 	}
 	return entries
 }

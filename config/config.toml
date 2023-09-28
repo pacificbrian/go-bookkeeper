@@ -2,6 +2,7 @@
 #server_port = 3000 # (default = 3000)
 #sessions = true (default = true)
 #cashflow_limit = 200 # (default = 200)
+#disable_update_accounts_on_login = false # (default = false)
 #enable_auto_taxes = true # (default = true)
 [db]
 # choices are "sqlite" or "mysql"
