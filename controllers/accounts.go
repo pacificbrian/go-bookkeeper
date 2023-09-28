@@ -25,7 +25,8 @@ import (
 // Need Input Validation after Bind
 
 func ListAccounts(c echo.Context) error {
-	all, _ := strconv.Atoi(c.QueryParam("all"))
+	allParam, _ := strconv.Atoi(c.QueryParam("all"))
+	debugParam, _ := strconv.Atoi(c.QueryParam("debug"))
 	session := getSession(c)
 	if session == nil {
 		return redirectToLogin(c)
@@ -33,7 +34,7 @@ func ListAccounts(c echo.Context) error {
 	log.Println("LIST ACCOUNTS")
 	get_json := false
 
-	entries := model.ListAccounts(session, all > 0)
+	entries := model.ListAccounts(session, allParam > 0)
 
 	dh := new(helpers.DateHelper)
 	dh.Init()
@@ -44,7 +45,8 @@ func ListAccounts(c echo.Context) error {
 		// Test if performance diff w/ map vs pongo2.context
 		//data := pongo2.Context{ "accounts":entries }
 		data := map[string]any{ "accounts": entries,
-					"date_helper": dh }
+					"date_helper": dh,
+					"debug_balance": debugParam > 0 }
 		return c.Render(http.StatusOK, "accounts/index.html", data)
 	}
 }

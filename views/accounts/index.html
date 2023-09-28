@@ -7,10 +7,9 @@
 <td><img width="18" src={{ a.AccountType.GetIconPath() }} alt={{ a.AccountType.GetAltText() }} /></td>
 <td><a href=/accounts/{{a.ID}}>{{ a.Name }}</a></td>
 <td align="right">{{ a.Currency(a.Balance) }}</td>
-<td>
-</td>
-<td>
-</td>
+{% if debug_balance -%}
+<td align="right">{{ a.Currency(a.CashBalance) }}</td>
+{% endif -%}
 </tr>
 {% endmacro -%}
 
