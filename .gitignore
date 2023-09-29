@@ -7,4 +7,5 @@ TODO
 *.lock
 node_modules/
 yarn-error.log
-public/javascript/bundle.js
+public/javascript/*.js
+public/javascript/*.txt

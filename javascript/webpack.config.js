@@ -1,7 +1,11 @@
 const path = require('path');
 
 module.exports = {
-  entry: './javascript/client.js',
+  entry: {
+    client: {
+      import: './javascript/client.js',
+    },
+  },
   // https://www.robinwieruch.de/webpack-babel-setup-tutorial/
   // https://babeljs.io/docs/en/babel-plugin-proposal-class-properties
   module: {
@@ -15,7 +19,7 @@ module.exports = {
     extensions: ['*', '.js']
   },
   output: {
+    filename: '[name].bundle.js',
     path: path.resolve(__dirname, '../public/javascript'),
-    filename: 'bundle.js',
   }
 };
