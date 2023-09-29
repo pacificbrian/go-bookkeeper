@@ -4,7 +4,9 @@ module.exports = {
   entry: {
     client: {
       import: './javascript/client.js',
+      dependOn: 'charts',
     },
+    charts: 'stimulus-chartjs',
   },
   // https://www.robinwieruch.de/webpack-babel-setup-tutorial/
   // https://babeljs.io/docs/en/babel-plugin-proposal-class-properties
