@@ -4,7 +4,13 @@
 {% if security -%}
 <div class="show">
 <h2>{{ security.Company.GetName() }}</h2>
+
+{% if security.ChartsEnabled() -%}
+<div class="chart">
+<table class="left">
+{% else -%}
 <table>
+{% endif -%}
 <tr/>
 <td>Type:</td>
 <td><strong>{{ security.SecurityType.Name }}</strong></td>
@@ -19,13 +25,25 @@
 <td><b>{{ security.TotalReturn() }}%</b></td>
 </table>
 
+{% if security.ChartsEnabled() -%}
+<canvas class="right"
+  data-controller="chart"
+  data-chart-type-value="line"
+  data-chart-data-value="{{ security.GetChartData(180) }}"
+  data-chart-options-value="{{ security.GetChartOptions() }}"
+></canvas>
+</div>
+{% endif -%}
+
 {% if (trades|length > 0) -%}
+<h3>Transaction Ledger</h3>
 <p>
 <div id="trades">
 {% include "securities/list_security_trades.html" -%}
 </div>
 {% endif -%}
 
+<h3>New Transaction</h3>
 <form method="POST" action="/securities/{{security.ID}}/trades">
 {% include "securities/security_trade_form.html" -%}
 </form>

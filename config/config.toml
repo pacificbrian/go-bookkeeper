@@ -1,6 +1,7 @@
 [global]
 #server_port = 3000 # (default = 3000)
 #cashflow_limit = 200 # (default = 200)
+#enable_security_charts = true # (default = false)
 #disable_auto_taxes = false # (default = false)
 #disable_sessions = false # (default = false)
 #disable_update_accounts_on_login = false # (default = false)
