@@ -152,7 +152,7 @@ func (tc *TaxCategory) List(db *gorm.DB, taxType uint) []TaxCategory {
 	entries := []TaxCategory{}
 	globals := config.GlobalConfig()
 
-	if !globals.EnableAutoTaxes {
+	if globals.DisableAutoTaxes {
 		return entries
 	}
 
