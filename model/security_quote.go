@@ -8,10 +8,27 @@ package model
 
 import (
 	"log"
+	"strconv"
 	"time"
+	"github.com/piquette/finance-go/datetime"
+	"github.com/piquette/finance-go/chart"
 	"github.com/piquette/finance-go/quote"
 	"github.com/shopspring/decimal"
 )
+
+var Months = [14]string{"",
+			"Jan ",
+			"Feb ",
+			"Mar ",
+			"Apr ",
+			"May ",
+			"Jun ",
+			"Jul ",
+			"Aug ",
+			"Sep ",
+			"Oct ",
+			"Nov ",
+			"Dec "}
 
 type SecurityQuote struct {
 	lastQuoted time.Time
@@ -100,4 +117,30 @@ func (s *Security) fetchPrice(force bool) *SecurityQuote {
 
 	GetQuoteCache().add(s.Company.Symbol, securityQuote)
 	return securityQuote
+}
+
+func (s *Security) fetchPrices(days int) ([]string, []decimal.Decimal) {
+	labels := []string{}
+	prices := []decimal.Decimal{}
+
+	if s.Company.Symbol == "" {
+		return labels, prices
+	}
+	p := &chart.Params{}
+	p.Symbol = s.Company.Symbol
+	p.Interval = datetime.OneDay
+
+	t2 := time.Now()
+	p.End = datetime.New(&t2)
+	t1 := t2.AddDate(0,0,-days)
+	p.Start = datetime.New(&t1)
+
+	iter := chart.Get(p)
+	for iter.Next() {
+		b := iter.Bar()
+		d := datetime.FromUnix(b.Timestamp)
+		labels = append(labels, Months[d.Month] + strconv.Itoa(d.Day))
+		prices = append(prices, b.AdjClose)
+	}
+	return labels, prices
 }

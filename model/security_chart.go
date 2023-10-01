@@ -22,7 +22,7 @@ type SecurityChartDataSet struct {
 }
 
 type SecurityChart struct {
-	Months []string `json:"labels"`
+	Labels []string `json:"labels"`
 	Datasets []*SecurityChartDataSet `json:"datasets"`
 }
 
@@ -62,8 +62,9 @@ func (s *Security) GetChartOptions() string {
 }
 
 func (s *Security) GetChartDataByte(days int) []byte {
+	labels, prices := s.fetchPrices(days)
+
 	dataset0 := new(SecurityChartDataSet)
-	prices := []decimal.Decimal{decimal.NewFromInt32(10), decimal.NewFromInt32(25)}
 	dataset0.Data = prices
 	dataset0.Label = s.Company.GetName()
 	dataset0.BorderColor = "#3B82F6"
@@ -71,7 +72,7 @@ func (s *Security) GetChartDataByte(days int) []byte {
 	dataset0.Fill = "origin"
 
 	data := new(SecurityChart)
-	data.Months = append(data.Months, "January", "February")
+	data.Labels = labels
 	data.Datasets = append(data.Datasets, dataset0)
 
 	log.Printf("[MODEL] SECURITY(%d) CHART DATA DAYS(%d)", s.ID, days)
