@@ -61,9 +61,15 @@ func (im *Import) ListImported(session *Session) []CashFlow {
 	priorBalance := decimal.Zero
 	db := session.DB
 
-	db.Order("date asc").Preload("Payee").
-			     Where(&CashFlow{AccountID: im.AccountID, ImportID: im.ID}).
-			     Find(&entries)
+	if im.Account.IsInvestment() {
+		entries = new(Trade).ListImportedCashFlows(im)
+	}
+	if (len(entries) == 0) {
+		db.Order("date asc").Preload("Payee").
+		   Where(&CashFlow{AccountID: im.AccountID, ImportID: im.ID}).
+		   Find(&entries)
+	}
+
 	for i := 0; i < len(entries); i++ {
 		c := &entries[i]
 		c.Account.cloneVerified(&im.Account)

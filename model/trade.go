@@ -277,18 +277,24 @@ func (t *Trade) ListCashFlowByType(session *Session, tradeType uint) ([]CashFlow
 }
 
 // Account access already verified by caller
-func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
+func (*Trade) listCashFlows(db *gorm.DB, account *Account, importID uint) []CashFlow {
 	trades := []Trade{}
 	entries := []CashFlow{}
 
 	if account.Verified {
 		// Find Trades for Account
-		db.Preload("TradeType").
-		   Preload("Security.Company").
-		   Order("date desc").
-		   Joins("Security").
-		   Where(TradeTypeCashFlowsQuery).
-		   Where(&Trade{AccountID: account.ID}).Find(&trades)
+		dbQuery := db.Preload("TradeType").
+			      Preload("Security.Company").
+			      Joins("Security").
+			      Where(TradeTypeCashFlowsQuery)
+		if (importID > 0) {
+			dbQuery.Where(&Trade{AccountID: account.ID, ImportID: importID}).
+			        Order("date asc").Find(&trades)
+		} else {
+			dbQuery.Where(&Trade{AccountID: account.ID}).
+			        Order("date desc").Find(&trades)
+		}
+
 		log.Printf("[MODEL] LIST TRADES ACCOUNT(%d:%d)", account.ID, len(trades))
 
 		for i := 0; i < len(trades); i++ {
@@ -300,6 +306,15 @@ func (*Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
 		}
 	}
 	return entries
+}
+
+func (t *Trade) ListCashFlows(db *gorm.DB, account *Account) []CashFlow {
+	return t.listCashFlows(db, account, 0)
+}
+
+func (t *Trade) ListImportedCashFlows(im *Import) []CashFlow {
+	db := getDbManager()
+	return t.listCashFlows(db, &im.Account, im.ID)
 }
 
 func (t *Trade) revertBasis(basis decimal.Decimal, soldShares decimal.Decimal) {

@@ -449,6 +449,7 @@ func (a *Account) cloneVerifiedFrom(src *Account) {
 func (a *Account) cloneVerified(src *Account) {
 	a.cloneVerifiedFrom(src)
 	a.ID = src.ID
+	a.AccountTypeID = src.AccountTypeID
 	a.Balance = src.Balance
 	a.CashBalance = src.CashBalance
 }
