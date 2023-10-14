@@ -197,9 +197,58 @@ func (im *Import) FetchOFX(session *Session) error {
 
 	im.Account.Institution.ID = im.Account.InstitutionID
 	db.First(&im.Account.Institution)
-	log.Printf("[MODEL] FETCH OFX FOR INSTITUTION (%s)",
-		   im.Account.Institution.Name)
-	return nil
+	lastCF := im.Account.lastCashFlow(false)
+	log.Printf("[MODEL] FETCH OFX FOR INSTITUTION(%s) AFTER(%s)",
+		   im.Account.Institution.Name, timeToString(&lastCF.Date))
+
+	client := im.Account.Institution.getClient()
+	uid,_ := ofxgo.RandomUID()
+	var query ofxgo.Request
+
+	im.setSignon(&query)
+	query.SetClientFields(client)
+
+	// Signup/AcctInfoRequest to get account number
+	acctInfoRequest := ofxgo.AcctInfoRequest{ TrnUID: *uid }
+	query.Signup = append(query.Signup, &acctInfoRequest)
+	resp, err := client.Request(&query)
+	if err != nil {
+		errStr := fmt.Sprintf("[MODEL] FETCH OFX: bad Signup/acctInfo response: %v",
+				      err)
+		return errors.New(errStr)
+	}
+	spewModel(resp)
+	query.Signup = nil
+
+	err = im.checkResponse(resp, false)
+	if err != nil {
+		errStr := fmt.Sprintf("[MODEL] FETCH OFX: Signup response error: %v", err)
+		return errors.New(errStr)
+	}
+
+	err = im.setStatementRequest(&query, uid, &lastCF.Date, resp)
+	if err != nil {
+		errStr := fmt.Sprintf("[MODEL] FETCH OFX: acctInfo error: %v",
+				      err)
+		return errors.New(errStr)
+	}
+	spewModel(query)
+
+	resp, err = client.Request(&query)
+	if err != nil {
+		errStr := fmt.Sprintf("[MODEL] FETCH OFX: bad stmtRequest response: %v",
+				      err)
+		return errors.New(errStr)
+	}
+	spewModel(resp)
+
+	err = im.checkResponse(resp, true)
+	if err != nil {
+		errStr := fmt.Sprintf("[MODEL] FETCH OFX: stmtRequest response error: %v",
+				      err)
+		return errors.New(errStr)
+	}
+	return im.ImportFromOFX(session, resp, &lastCF.Date)
 }
 
 func (im *Import) ImportFile(session *Session, importFile HttpFile) error {
@@ -341,13 +390,7 @@ func isReversedOFX(ofxTran []ofxgo.Transaction) bool {
 }
 
 func (im *Import) ImportFromQFX(session *Session, importFile HttpFile) error {
-	var ofxTran []ofxgo.Transaction
-	var entries []CashFlow
 	fileName := importFile.FileName
-	db := session.DebugDB
-	recordImport := true
-	count := 0
-	entered := 0
 
 	// Verify we have access to Account
 	if !im.Account.Verified {
@@ -363,28 +406,26 @@ func (im *Import) ImportFromQFX(session *Session, importFile HttpFile) error {
 		return errors.New(fmt.Sprintf("[MODEL] IMPORT [%s]: bad response: %v",
 				              fileName, err))
 	}
-	spewModel(ofxTran)
+	return im.ImportFromOFX(session, resp, nil)
+}
 
-	if len(resp.Bank) > 0 {
-		stmt, valid := resp.Bank[0].(*ofxgo.StatementResponse)
-		if valid {
-			ofxTran = stmt.BankTranList.Transactions
-			count = len(ofxTran)
-			entries = make([]CashFlow, count)
-		}
-	} else if len(resp.CreditCard) > 0 {
-		stmt, valid := resp.CreditCard[0].(*ofxgo.CCStatementResponse)
-		if valid {
-			ofxTran = stmt.BankTranList.Transactions
-			count = len(ofxTran)
-			entries = make([]CashFlow, count)
-		}
-	}
+func (im *Import) ImportFromOFX(session *Session, resp *ofxgo.Response, after *time.Time) error {
+	var ofxTran []ofxgo.Transaction
+	var entries []CashFlow
+	db := session.DebugDB
+	recordImport := true
+	count := 0
+	entered := 0
+
+	ofxTran = im.getOfxTransactions(resp)
+	count = len(ofxTran)
+	spewModel(ofxTran)
 
 	// write Import, we store ImportID in CashFlows
 	if recordImport && count > 0 {
 		var idx, idxIncrement int
 
+		entries = make([]CashFlow, count)
 		im.create(db)
 
 		if isReversedOFX(ofxTran) {
@@ -399,6 +440,9 @@ func (im *Import) ImportFromQFX(session *Session, importFile HttpFile) error {
 		for i := 0; i < count; i++ {
 			entries[i].makeCashFlowOFX(&ofxTran[idx])
 			idx = idx + idxIncrement
+			if after != nil && !entries[i].Date.After(*after) {
+				continue
+			}
 			entries[i].AccountID = im.Account.ID
 			entries[i].Account.cloneVerified(&im.Account)
 			entries[i].ImportID = im.ID
@@ -408,7 +452,7 @@ func (im *Import) ImportFromQFX(session *Session, importFile HttpFile) error {
 		}
 	}
 
-	log.Printf("[MODEL] IMPORT(%d) [%s] OFX TRANSACTIONS (ACCEPTED %d of %d)",
-		   im.ID, fileName, entered, count)
+	log.Printf("[MODEL] IMPORT(%d) OFX TRANSACTIONS (ACCEPTED %d of %d)",
+		   im.ID, entered, count)
 	return nil
 }

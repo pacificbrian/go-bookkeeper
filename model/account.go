@@ -28,6 +28,7 @@ type Account struct {
 	CashBalance decimal.Decimal
 	Portfolio SecurityValue `gorm:"-:all"`
 	Routing int `form:"account.Routing"`
+	OfxIndex uint `form:"account.OfxIndex"`
 	ClientUID string `form:"account.ClientUID"`
 	Name string `form:"account.Name"`
 	Number string `form:"account.Number"`
@@ -375,6 +376,21 @@ func (a *Account) SetAverageDailyBalance(session *Session) {
 
 func (a *Account) addScheduled(db *gorm.DB) {
 	db.Omit(clause.Associations).Model(a).Update("HasScheduled", 1)
+}
+
+func (a *Account) lastCashFlow(imported bool) *CashFlow {
+	var entry *CashFlow
+	db := getDbManager()
+	query := map[string]interface{}{"account_id": a.ID, "type": nil,
+					"repeat_interval_id": 0,
+					"transfer": false}
+	if (imported) {
+		db.Order("date desc").Where("import_id > 0").
+		   First(&entry, query)
+	} else {
+		db.Order("date desc").First(&entry, query)
+	}
+	return entry
 }
 
 func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
