@@ -28,10 +28,25 @@
 <label>Account Number</label>
 <input type="text" name="account.Number" value="{{account.Number}}"/>
 </fieldset>
+{% if is_edit && account.SupportsDownload(false) -%}
+<fieldset>
+<label>Routing Number</label>
+<input type="text" name="account.Routing" value="{{account.GetRouting()}}"/>
+</fieldset>
+<fieldset>
+<label>OFX: Client UID</label>
+<input type="text" name="account.ClientUID" value="{{account.ClientUID}}"/>
+</fieldset>
+<fieldset class="last">
+<label>OFX: Institution</label>
+{{ form_select_type(ofx_institutions, "account.institution_id", account.InstitutionID) }}
+</fieldset>
+{% else -%}
 <fieldset class="last">
 <label>Routing Number</label>
 <input type="text" name="account.Routing" value="{{account.GetRouting()}}"/>
 </fieldset>
+{% endif -%}
 <fieldset class="submit">
 <input type="submit" value="{{ button_text }}"/>
 </fieldset>

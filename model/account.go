@@ -22,11 +22,13 @@ type Account struct {
 	UserID uint `gorm:"not null"`
 	AccountTypeID uint `form:"account.account_type_id"`
 	CurrencyTypeID uint `form:"account.currency_type_id"`
+	InstitutionID uint `form:"account.institution_id"`
 	AverageBalance decimal.Decimal `gorm:"-:all"`
 	Balance decimal.Decimal
 	CashBalance decimal.Decimal
 	Portfolio SecurityValue `gorm:"-:all"`
 	Routing int `form:"account.Routing"`
+	ClientUID string `form:"account.ClientUID"`
 	Name string `form:"account.Name"`
 	Number string `form:"account.Number"`
 	HasScheduled bool
@@ -67,6 +69,11 @@ func (a *Account) IsInvestment() bool {
 	a.AccountType.ID = a.AccountTypeID
 	return a.AccountType.isCrypto() ||
 	       a.AccountType.isInvestment()
+}
+
+func (a *Account) SupportsDownload(requireID bool) bool {
+	a.AccountType.ID = a.AccountTypeID
+	return a.AccountType.supportsDownload()
 }
 
 func (a Account) PortfolioTotalReturn() decimal.Decimal {

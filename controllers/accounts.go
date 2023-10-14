@@ -181,7 +181,8 @@ func EditAccount(c echo.Context) error {
 				"is_edit": true,
 				"button_text": "Update Account",
 				"account_types": new(model.AccountType).List(db),
-				"currency_types": new(model.CurrencyType).List(db) }
+				"currency_types": new(model.CurrencyType).List(db),
+				"ofx_institutions": new(model.Institution).List() }
 	return c.Render(http.StatusOK, "accounts/edit.html", data)
 }
 

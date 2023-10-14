@@ -1,13 +1,13 @@
 -- +migrate Up
 
-INSERT INTO `account_types` ('id', 'name') VALUES
+INSERT INTO `account_types` (id, name) VALUES
   (1,'Cash'),(2,'Checking/Deposit'),(3,'Credit Card'),(4,'Investment'),
   (5,'Health Care'),(6,'Loan'),(7,'Asset'),(8,'Crypto'),(9,NULL);
 
-INSERT INTO `cash_flow_types` ('id', 'name') VALUES
+INSERT INTO `cash_flow_types` (id, name) VALUES
   (1,'Debit'),(2,'Credit'),(3,'Debit (Transfer)'),(4,'Credit (Transfer)');
 
-INSERT INTO `category_types` ('id', 'name') VALUES
+INSERT INTO `category_types` (id, name) VALUES
   (1,'Expense'),(2,'Income'),(3,'Additional Expense'),
   (4,'Uncommon Expense'), (5,'User Expense');
 
@@ -57,7 +57,7 @@ INSERT INTO `categories` VALUES
   (95,'Support',1,1,0),(96,'Wages:Retirement',2,1,0),
   (97,'Taxes:Advance Credits',2,0,0);
 
-INSERT INTO `currency_types` ('id', 'name', 'description') VALUES
+INSERT INTO `currency_types` (id, name, description) VALUES
   (1,'USD',NULL),(2,'AUD',NULL),(3,'BRL',NULL),(4,'CAD',NULL),(5,'CHF',NULL),
   (6,'EUR',NULL),(7,'GBP',NULL),(8,'JPY',NULL),(9,'NOK',NULL),(10,'NZD',NULL),
   (11,'SEK',NULL),(12,'XAU',NULL),(13,'XAG',NULL),(14,'ZAR',NULL);
@@ -83,7 +83,7 @@ INSERT INTO `trade_types` VALUES
   (5,'Dividend (Reinvest)'),(6,'Distribution (Reinvest)'),
   (7,'Shares In'),(8,'Shares Out'),(9,'Split');
 
-INSERT INTO `users` ('id', 'login') VALUES (1,'primary');
+INSERT INTO `users` (id, login) VALUES (1,'primary');
 
 INSERT INTO `tax_categories` VALUES
    (1,1,69,NULL),(2,1,70,NULL),(3,2,74,NULL),(4,93,51,NULL),

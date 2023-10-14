@@ -85,12 +85,6 @@ CREATE TABLE IF NOT EXISTS `imports` (
   `created_on` datetime DEFAULT NULL
 );
 
-CREATE TABLE IF NOT EXISTS `institutions` (
-  `id` integer PRIMARY KEY,
-  `name` varchar(255) DEFAULT NULL,
-  `client_uid` varchar(32) DEFAULT NULL
-);
-
 CREATE TABLE IF NOT EXISTS `ofx_accounts` (
   `id` integer PRIMARY KEY,
   `account_id` int(11) DEFAULT NULL,
@@ -410,7 +404,6 @@ DROP TABLE `category_types`;
 DROP TABLE `companies`;
 DROP TABLE `currency_types`;
 DROP TABLE `imports`;
-DROP TABLE `institutions`;
 DROP TABLE `ofx_accounts`;
 DROP TABLE `payees`;
 DROP TABLE `repeat_interval_types`;
