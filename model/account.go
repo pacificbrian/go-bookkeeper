@@ -38,6 +38,7 @@ type Account struct {
 	Session *Session `gorm:"-:all"`
 	AccountType AccountType
 	CurrencyType CurrencyType
+	Institution Institution
 	User User
 	CashFlows []CashFlow
 	Securities []Security
@@ -73,7 +74,8 @@ func (a *Account) IsInvestment() bool {
 
 func (a *Account) SupportsDownload(requireID bool) bool {
 	a.AccountType.ID = a.AccountTypeID
-	return a.AccountType.supportsDownload()
+	return a.AccountType.supportsDownload() &&
+	       (!requireID || a.InstitutionID > 0)
 }
 
 func (a Account) PortfolioTotalReturn() decimal.Decimal {

@@ -21,23 +21,29 @@ func CreateImportedCashFlows(c echo.Context) error {
 	if session == nil {
 		return redirectToLogin(c)
 	}
-
 	var importFile model.HttpFile
-	file, err := c.FormFile("filename")
-	if err == nil {
-		log.Printf("IMPORT CASHFLOWS (ACCOUNT:%d) (FILE:%s)", id, file.Filename)
-		importFile.FileName = file.Filename
-		importFile.FileData, err = file.Open()
-	}
-	if err != nil {
-		log.Println(err)
-		return c.NoContent(http.StatusNoContent)
-	}
-	defer importFile.FileData.Close()
+	var err error
 
 	entry := new(model.Import)
 	entry.AccountID = uint(id)
-	err = entry.ImportFile(session, importFile)
+	c.Bind(entry)
+	if (entry.Username != "" || entry.Password != "") {
+		log.Printf("IMPORT OFX TRANSACTIONS (ACCOUNT:%d)", id)
+		err = entry.FetchOFX(session)
+	} else {
+		file, err2 := c.FormFile("filename")
+		err = err2
+		if err == nil {
+			log.Printf("IMPORT TRANSACTIONS (ACCOUNT:%d) (FILE:%s)",
+				   id, file.Filename)
+			importFile.FileName = file.Filename
+			importFile.FileData, err = file.Open()
+			if (err == nil) {
+				defer importFile.FileData.Close()
+				err = entry.ImportFile(session, importFile)
+			}
+		}
+	}
 	if err != nil {
 		log.Println(err)
 		return c.NoContent(http.StatusNoContent)

@@ -8,10 +8,25 @@
 <table>
 <form method="POST" action="/accounts/{{account.ID}}/imported" enctype="multipart/form-data" accept-charset="UTF-8">
 <tr>
-<td><label for="dump_file"> Select File (QIF or QFX): </label></td>
+<td colspan=2><label for="dump_file"> Select File (QIF or QFX): </label></td>
 <td><input type="file" name="filename"/></td>
 <td><input type="submit" value="{{button_text}}"/></td>
 </form>
+
+{% if account.SupportsDownload(true) -%}
+<form method="POST" action="/accounts/{{account.ID}}/imported">
+<tr>
+<td colspan=2>Download Transactions (OFX):</td>
+<tr>
+<td>Username:</td>
+<td><input type="text" name="import.Username"/></td>
+<td><input type="submit" value="Download"/></td>
+<tr>
+<td>Password:</td>
+<td><input type="text" name="import.Password"/></td>
+<td></td>
+</form>
+{% endif -%}
 </table>
 
 {% if (imports|length > 0) -%}

@@ -26,6 +26,8 @@ type Import struct {
 	AccountID uint `gorm:"not null"`
 	CashFlowCount uint `gorm:"-:all"`
 	TradeCount uint `gorm:"-:all"`
+	Username string `gorm:"-:all" form:"import.Username"`
+	Password string `gorm:"-:all" form:"import.Password"`
 	CreatedOn time.Time
 	Account Account
 }
@@ -169,6 +171,35 @@ func (im *Import) create(db *gorm.DB) error {
 	im.CreatedOn = time.Now()
 	result := db.Omit(clause.Associations).Create(im)
 	return result.Error
+}
+
+func (im *Import) FetchOFX(session *Session) error {
+	if (im.Username == "") {
+		return errors.New("Invalid Username")
+	}
+	if (im.Password == "") {
+		return errors.New("Invalid Password")
+	}
+	db := session.DB
+
+	// Verify we have access to Account
+	if !im.Account.Verified {
+		im.Account.ID = im.AccountID
+		account := im.Account.Get(session, false)
+		if account == nil {
+			return errors.New("Permission Denied")
+		}
+	}
+
+	if im.Account.InstitutionID < 1 {
+		return errors.New("No OFX Institution")
+	}
+
+	im.Account.Institution.ID = im.Account.InstitutionID
+	db.First(&im.Account.Institution)
+	log.Printf("[MODEL] FETCH OFX FOR INSTITUTION (%s)",
+		   im.Account.Institution.Name)
+	return nil
 }
 
 func (im *Import) ImportFile(session *Session, importFile HttpFile) error {
