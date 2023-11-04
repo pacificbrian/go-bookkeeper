@@ -46,8 +46,9 @@ func (c *Company) Get(tryUpdate bool) *Company {
 	result := new(Company)
 	db := getDbManager()
 
-	// Where query will only look at non-primary-key fields
-	db.Where(c).First(result)
+	db.Where("name = ?", c.Name).
+	   Where("symbol = ?", c.Symbol).
+	   First(result)
 
 	if result.ID > 0 {
 		c = result
