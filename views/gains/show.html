@@ -51,6 +51,20 @@
 <td class="currency">{{ trade.Currency(g.GainPS) }}</td>
 </tr>
 {% endfor -%}
+{% if (gains|length > 1) -%}
+<tr>
+<td align ="left">
+<strong>Totals:</strong>
+</td>
+<td></td>
+<td></td>
+<td class="currency">{{ trade.Currency(totalAmount) }}</td>
+<td class="currency">{{ trade.Currency(totalBasis) }}</td>
+<td></td>
+<td class="currency">{{ trade.Currency(totalGain) }}</td>
+<td></td>
+</tr>
+{% endif -%}
 </table>
 </div>
 {% endif -%}

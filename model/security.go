@@ -518,7 +518,7 @@ func (s *Security) fixupTrades(db *gorm.DB, entries []Trade) {
 		if fixAdjustedBasis && !t.Closed && t.IsBuy() &&
 		    t.Basis.IsPositive() && t.AdjustedShares.IsZero() {
 			t.Account.cloneVerified(&s.Account)
-			gains := t.ListGains(db)
+			gains,_ := t.ListGains(db)
 			if len(gains) == 1 {
 				tg:= gains[0]
 				t.AdjustedShares = t.Shares.Sub(tg.Shares)

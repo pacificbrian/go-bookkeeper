@@ -30,17 +30,19 @@ type TradeGain struct {
 	BuyDate time.Time `gorm:"-:all"`
 }
 
-func (t *Trade) ListGains(db *gorm.DB) []TradeGain {
+func (t *Trade) ListGains(db *gorm.DB) ([]TradeGain, []decimal.Decimal) {
 	entries := []TradeGain{}
+	var totals []decimal.Decimal
 
 	if !t.Account.Verified || t.ID == 0 {
-		return entries
+		return entries, totals
 	}
 
 	if t.IsBuy() {
 		db.Where(&TradeGain{BuyID: t.ID}).Find(&entries)
 	} else if t.IsSell() {
 		db.Where(&TradeGain{SellID: t.ID}).Find(&entries)
+		totals = make([]decimal.Decimal, 3)
 		for i := 0; i < len(entries); i++ {
 			tg := &entries[i]
 			tg.postQueryInit(t)
@@ -51,12 +53,15 @@ func (t *Trade) ListGains(db *gorm.DB) []TradeGain {
 				db.Select("date").First(&buy, tg.BuyID)
 				tg.BuyDate = buy.Date
 			}
+			totals[0] = totals[0].Add(tg.Amount)
+			totals[1] = totals[1].Add(tg.Basis)
+			totals[2] = totals[2].Add(tg.Gain)
 		}
 	}
 	log.Printf("[MODEL] LIST ACCOUNT(%d) GAINS(%d:%d)",
 		   t.AccountID, t.TradeTypeID, len(entries))
 
-	return entries
+	return entries, totals
 }
 
 func (tg *TradeGain) postQueryInit(sold *Trade) {

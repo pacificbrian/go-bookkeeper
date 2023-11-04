@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"strconv"
 	"github.com/labstack/echo/v4"
+	"github.com/shopspring/decimal"
 	"github.com/pacificbrian/go-bookkeeper/helpers"
 	"github.com/pacificbrian/go-bookkeeper/model"
 )
@@ -65,15 +66,19 @@ func GetTradeGain(c echo.Context) error {
 		return c.JSON(http.StatusOK, entry)
 	} else {
 		var buys []model.TradeGain
+		var totals []decimal.Decimal
 		db := session.DB
 
 		if entry != nil && entry.IsSell() {
-			buys = entry.ListGains(db)
+			buys,totals = entry.ListGains(db)
 		}
 
 		data := map[string]any{ "account": &entry.Account,
 					"trade": entry,
-					"gains": buys }
+					"gains": buys,
+					"totalAmount": totals[0],
+					"totalBasis": totals[1],
+					"totalGain": totals[2] }
 		return c.Render(http.StatusOK, "gains/show.html", data)
 	}
 }
