@@ -62,6 +62,9 @@ func Reset() {
 }
 
 func DbManager() *gorm.DB {
+	if db == nil {
+		Init()
+	}
 	return db
 }
 
