@@ -209,8 +209,14 @@ func (account *Account) ListScheduled(session *Session, canRecordOnly bool) []Ca
 				     Preload("Payee").
 				     Where("repeat_interval_id > 0").
 				     Joins("RepeatInterval").Find(&entries, query)
-		for i := 0; i < len(entries); i++ {
-			repeat := &entries[i]
+	}
+
+	for i := 0; i < len(entries); i++ {
+		repeat := &entries[i]
+		if canRecordOnly {
+			repeat.Account.cloneVerified(account)
+			repeat.PreloadRepeat(db)
+		} else {
 			// for Preload access to Account.User.Cache
 			repeat.Account.cloneVerified(account)
 			// for #Show
@@ -520,7 +526,6 @@ func (a *Account) updateAccountScheduled(session *Session) {
 
 	for i := 0; i < len(scheduled); i++ {
 		repeat = &scheduled[i]
-		repeat.Account.cloneVerified(a)
 		total, err := repeat.tryInsertRepeatCashFlow()
 		if err == nil {
 			// update inside loop so cloneVerified carries Balance

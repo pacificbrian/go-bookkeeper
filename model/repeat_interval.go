@@ -105,8 +105,8 @@ func (r *RepeatInterval) advance(db *gorm.DB) int {
 		days = 0 // hit when looping until final Repeat
 	}
 
-	log.Printf("[MODEL] ADVANCE REPEAT_INTERVAL(%d) DAYS(%d) LEFT(%d)",
-		   r.ID, days, r.RepeatsLeft)
+	log.Printf("[MODEL] ADVANCE REPEAT_INTERVAL(%d) DAYS(%d) LEFT(%d, %t)",
+		   r.ID, days, r.RepeatsLeft, r.RepeatsLeftPtr != nil)
 	return days
 }
 
