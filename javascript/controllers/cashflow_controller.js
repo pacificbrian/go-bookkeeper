@@ -219,14 +219,19 @@ export default class extends Controller {
     console.log("Stimulus[CASHFLOW]: keyCode is ", event.keyCode)
 
     // get new value and hide input field
+    var stringMath = require('string-math')
     let inputAmount = event.currentTarget
+    let inputValue = String(inputAmount.value)
     let cashflowID = inputAmount.getAttribute('data-cashflow-id')
-    let newAmount = inputAmount.value
+    let newAmount = 0
     let adjustAmount = 0
     let tableIdx = -1
     inputAmount.hidden = 1
     inputAmount.blur()
 
+    // only digits, parens, and operators
+    inputValue = inputValue.replace(/[^\d.()*/+-]/g, '')
+    newAmount = stringMath(inputValue)
     if (send_amount) {
       console.log("Stimulus[CASHFLOW]: actionPutNewAmount", cashflowID, newAmount)
     }
@@ -244,14 +249,14 @@ export default class extends Controller {
           let amountStart = oldAmountHTML.search(/[$]/)
           let oldAmount = oldAmountHTML.slice(amountStart+1)
           // store adjust needed for Balance column
-          adjustAmount = parseFloat(newAmount) - parseFloat(oldAmount)
+          adjustAmount = newAmount - parseFloat(oldAmount)
 
           // test if c.Amount actually changed or not
           if (adjustAmount == 0) {
             send_amount = 0
           } else {
             // overwrite c.Amount
-            displayAmounts[i].innerHTML = "$"+(parseFloat(newAmount).toFixed(2))
+            displayAmounts[i].innerHTML = "$"+(newAmount.toFixed(2))
           }
         }
         displayAmounts[i].hidden = 0
@@ -263,7 +268,7 @@ export default class extends Controller {
       this.adjustBalances(tableIdx, adjustAmount)
 
       // add to RXJS stream processed with cashflowPut.pipe
-      this.cashflowPut$.next([cashflowID, "amount", newAmount]);
+      this.cashflowPut$.next([cashflowID, "amount", String(newAmount)]);
     }
   }
 }

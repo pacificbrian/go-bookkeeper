@@ -4,11 +4,12 @@
   "dependencies": {
     "@babel/core": "^7.19.3",
     "@babel/preset-env": "^7.19.4",
-    "@hotwired/stimulus": "^3.1.0",
+    "@hotwired/stimulus": "^3.2.2",
     "@hotwired/stimulus-webpack-helpers": "^1.0.1",
     "babel-loader": "^8.2.5",
     "rxjs": "^7.5.6",
     "stimulus-chartjs": "^5.0.0",
+    "string-math": "^1.2.2",
     "webpack": "^5.74.0",
     "webpack-cli": "^4.10.0"
   },
