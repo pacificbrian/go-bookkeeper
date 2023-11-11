@@ -86,6 +86,7 @@ func DeleteSecurity(c echo.Context) error {
 }
 
 func GetSecurity(c echo.Context) error {
+	debugParam, _ := strconv.Atoi(c.QueryParam("debug"))
 	accountID, _ := strconv.Atoi(c.Param("account_id"))
 	id, _ := strconv.Atoi(c.Param("id"))
 	session := getSession(c)
@@ -121,7 +122,8 @@ func GetSecurity(c echo.Context) error {
 					"account": account,
 					"date_helper": dh,
 					"trades": trades,
-					"trade_types": new(model.TradeType).List(db) }
+					"trade_types": new(model.TradeType).List(db),
+					"debug_shares": debugParam > 0 }
 		return c.Render(http.StatusOK, "securities/show.html", data)
 	}
 }

@@ -8,6 +8,9 @@
 <th>Type</th>
 <th>Date</th>
 <th>Shares</th>
+{% if debug_shares -%}
+<th>Sum</th>
+{% endif -%}
 <th>Price</th>
 <th>Basis</th>
 <th>Amount</th>
@@ -27,6 +30,9 @@
 {% endif -%}
 <td>{{ t.Date.Format("2006-01-02") }}</td>
 <td>{{ t.Shares }}</td>
+{% if debug_shares -%}
+<td>{{ t.SharesSum }}</td>
+{% endif -%}
 <td class="currency">{{ t.Currency(t.Price) }}</td>
 <td class="currency">{{ t.GetBasis() }}</td>
 <td class="currency">{{ t.Currency(t.Amount) }}</td>
@@ -40,14 +46,15 @@
 </td>
 <td>
 </td>
-<td>
-{{ security.Shares }}
-</td>
+<td>{{ security.Shares }}</td>
+{% if debug_shares -%}
+<td>{{ security.Shares }}</td>
+{% endif -%}
 <td class="currency">
 {{ security.Currency(security.BasisPrice()) }}
 </td>
 <td class="currency">
-{{ security.Currency(security.Basis) }}
+{{ security.Currency(security.BasisFromTrades) }}
 </td>
 <td>
 </td>

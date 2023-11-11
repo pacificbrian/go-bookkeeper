@@ -31,6 +31,7 @@ type Trade struct {
 	oldAmount decimal.Decimal `gorm:"-:all"`
 	Price decimal.Decimal
 	Shares decimal.Decimal
+	SharesSum decimal.Decimal `gorm:"-:all"`
 	// AdjustedShares is remaining unsold shares, split adjusted
 	AdjustedShares decimal.Decimal
 	// Basis is accumulated (used) basis from Sells (starts at 0)

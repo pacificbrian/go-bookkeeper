@@ -29,6 +29,7 @@ type Security struct {
 	SecurityTypeID uint `form:"security_type_id"`
 	AccountID uint `gorm:"not null"`
 	ImportName string `form:"security.ImportName"`
+	BasisFromTrades decimal.Decimal `gorm:"-:all"`
 	SecurityValue
 	lastQuoteUpdate time.Time
 	Account Account
@@ -502,13 +503,28 @@ func (s *Security) Update() error {
 func (s *Security) fixupTrades(db *gorm.DB, entries []Trade) {
 	fixSharesIn := false
 	fixAdjustedBasis := false
+	sharesSum := decimal.Zero
+
+	for i := 0; i < len(entries); i++ {
+		t := &entries[i]
+		if t.IsSell() || t.IsSharesOut() {
+			sharesSum = sharesSum.Sub(t.Shares)
+		        s.BasisFromTrades = s.BasisFromTrades.Sub(t.Basis)
+		} else if t.IsSplit() {
+			sharesSum = sharesSum.Mul(t.Shares)
+		} else {
+			sharesSum = sharesSum.Add(t.Shares)
+		        s.BasisFromTrades = s.BasisFromTrades.Add(t.Amount)
+		}
+		t.SharesSum = sharesSum
+	}
 
 	if !fixSharesIn && !fixAdjustedBasis {
 		return
 	}
 
 	for i := 0; i < len(entries); i++ {
-		t := entries[i]
+		t := &entries[i]
 
 		if fixSharesIn && t.IsSharesIn() {
 			db.Omit(clause.Associations).Model(t).
