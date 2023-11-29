@@ -23,6 +23,11 @@
 <tr/>
 <td>Return:</td>
 <td><b>{{ security.TotalReturn() }}%</b></td>
+<tr/>
+{% if security.HasFilings() -%}
+<td>Financials:</td>
+<td><b>{{ security.Company.NumFilings("") }}</b></td>
+{% endif -%}
 </table>
 
 {% if security.ChartsEnabled() -%}

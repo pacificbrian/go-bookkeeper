@@ -41,6 +41,7 @@ const (
 
 var SecurityBasisName = [3]string{"","FIFO","Average"}
 var SecurityTypeIsPriceFetchable = [21]bool{false,true,true,false,true}
+var SecurityTypeHasFilings = [21]bool{false,true}
 
 type SecurityBasisType struct {
 	Model

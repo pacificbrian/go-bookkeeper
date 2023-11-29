@@ -8,6 +8,14 @@ package model
 
 import (
 	"log"
+	"time"
+	"github.com/pacificbrian/edgar"
+)
+
+const (
+	FilingTypeUndefined string = ""
+	FilingTypeAnnual = "10-K"
+	FilingTypeQuarterly = "10-Q"
 )
 
 type Company struct {
@@ -18,6 +26,12 @@ type Company struct {
 	oldSymbol string `gorm:"-:all"`
 	// UserID only used from Security.Update
 	UserID uint `gorm:"-:all"`
+}
+
+var edgarHandle edgar.FilingFetcher
+
+func init() {
+	edgarHandle = edgar.NewFilingFetcher()
 }
 
 func (c *Company) sanitizeInputs() {
@@ -139,6 +153,55 @@ func (c *Company) Update() bool {
 	return true
 }
 
+func (c *Company) edgarFilings() edgar.CompanyFolder {
+	if c.Symbol == "" {
+		return nil
+	}
+	filings, err := edgarHandle.CompanyFolder(c.Symbol,
+						  FilingTypeAnnual,
+						  FilingTypeQuarterly)
+	if err != nil {
+		log.Printf("[MODEL] SET EDGAR FOLDER FAILED FOR (%s): %v",
+			   c.Symbol, err)
+	}
+	return filings
+}
+
+// Note to caller:
+//   convert floats to string with: strconv.FormatFloat(f.item(), 'f', -1, 64)
+func (c *Company) GetFiling(fType string, date time.Time) edgar.Filing {
+	filings := c.edgarFilings()
+	if filings == nil {
+		return nil
+	}
+
+	f, err := filings.Filing(edgar.FilingType(fType), date)
+	if err != nil {
+		log.Printf("[MODEL] GET EDGAR FILING FAILED FOR (%s) (%s, %s): %v",
+			   c.Symbol, fType, timeToString(&date), err)
+	}
+	return f
+}
+
+func (c *Company) GetFilingDates(fType string) []time.Time {
+	filings := c.edgarFilings()
+	if filings == nil {
+		return nil
+	}
+	return filings.AvailableFilings(edgar.FilingType(fType))
+}
+
+func (c *Company) HasFilings() bool {
+	return c.edgarFilings() != nil
+}
+
+func (c Company) NumFilings(fType string) int {
+	if fType == "" {
+		return len(c.GetFilingDates("10-Q")) +
+		       len(c.GetFilingDates("10-K"))
+	}
+	return len(c.GetFilingDates(fType))
+}
 
 // Find() for use with rails/ruby like REPL console (gomacro);
 // controllers should not expose this as are no access controls
@@ -146,6 +209,13 @@ func (*Company) Find(ID uint) *Company {
 	db := getDbManager()
 	c := new(Company)
 	db.First(&c, ID)
+	return c
+}
+
+func (*Company) FindBySymbol(symbol string) *Company {
+	db := getDbManager()
+	c := new(Company)
+	db.Where("symbol = ?", symbol).First(&c)
 	return c
 }
 

@@ -70,6 +70,11 @@ func (s Security) TotalReturn() decimal.Decimal {
 	return decimalToPercentage(simpleReturn)
 }
 
+func (s *Security) HasFilings() bool {
+	return SecurityTypeHasFilings[s.SecurityTypeID] &&
+	       s.Company.HasFilings()
+}
+
 func (*Security) sanitizeSecurityName(securityName string) string {
 	subName := strings.Split(securityName, "(")[0]
 	if subName != "" {
