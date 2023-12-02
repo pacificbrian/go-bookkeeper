@@ -263,14 +263,14 @@ func (im *Import) ImportFile(session *Session, importFile HttpFile) error {
 				      fileName))
 }
 
-func isReversedQIF(transactions []qif.Transaction) bool {
+func isReversedQIF(transactions []qif.Transaction, transactionType qif.TransactionType) bool {
 	count := len(transactions)
 	reversed := false
 
 	if count > 1 {
 		var dateStart, dateEnd time.Time
 
-		switch transactions[0].TransactionType() {
+		switch transactionType {
 		case qif.TransactionTypeBanking:
 			dateStart = transactions[0].(qif.BankingTransaction).Date()
 			dateEnd = transactions[count - 1].(qif.BankingTransaction).Date()
@@ -315,7 +315,7 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 		goto done
 	}
 
-	if isReversedQIF(transactions) {
+	if isReversedQIF(transactions, r.ReadTransactionType()) {
 		idx = count - 1
 		idxIncrement = -1
 	} else {
@@ -324,7 +324,7 @@ func (im *Import) ImportFromQIF(session *Session, importFile HttpFile) error {
 	}
 
 	// convert qif.Transactions to CashFlows or Trades
-	switch transactions[0].TransactionType() {
+	switch r.ReadTransactionType() {
 	case qif.TransactionTypeBanking:
 		cashflows := make([]CashFlow, count)
 
