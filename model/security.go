@@ -20,6 +20,8 @@ type SecurityValue struct {
 	Basis decimal.Decimal
 	Shares decimal.Decimal
 	Value decimal.Decimal
+	AccumulatedBasis decimal.Decimal
+	RetainedEarnings decimal.Decimal
 }
 
 type Security struct {
@@ -62,11 +64,28 @@ func (s Security) BasisPrice() decimal.Decimal {
 	}
 }
 
-func (s Security) TotalReturn() decimal.Decimal {
+func (s *Security) UnrealizedGain() decimal.Decimal {
 	if s.Basis.IsZero() {
 		return decimal.Zero
 	}
-	simpleReturn := s.Value.Sub(s.Basis).DivRound(s.Basis, 4)
+	return s.Value.Sub(s.Basis)
+}
+
+func (s Security) UnrealizedReturn() decimal.Decimal {
+	paperGains := s.UnrealizedGain()
+	if paperGains.IsZero() {
+		return decimal.Zero
+	}
+	simpleReturn := paperGains.DivRound(s.Basis, 4)
+	return decimalToPercentage(simpleReturn)
+}
+
+func (s Security) TotalReturn() decimal.Decimal {
+	if s.RetainedEarnings.IsZero() || s.AccumulatedBasis.IsZero() {
+		return s.UnrealizedReturn()
+	}
+	earned := s.RetainedEarnings.Add(s.UnrealizedGain())
+	simpleReturn := earned.DivRound(s.AccumulatedBasis, 4)
 	return decimalToPercentage(simpleReturn)
 }
 
@@ -98,16 +117,33 @@ func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 		price = trade.Price
 	}
 
+	// just for 'old' Securities in database
+	if s.AccumulatedBasis.IsZero() && !s.Basis.IsZero() {
+		s.AccumulatedBasis = s.Basis
+		updates["accumulated_basis"] = s.AccumulatedBasis
+	}
+
 	if trade.IsSell() {
 		s.Basis = s.Basis.Sub(trade.Basis)
+		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Amount)
 		s.Shares = s.Shares.Sub(trade.Shares)
 		updates["basis"] = s.Basis
+		updates["retained_earnings"] = s.RetainedEarnings
 		updates["shares"] = s.Shares
 	} else if trade.IsBuy() {
+		s.AccumulatedBasis = s.AccumulatedBasis.Add(trade.Amount)
 		s.Basis = s.Basis.Add(trade.Amount)
 		s.Shares = s.Shares.Add(trade.Shares)
+		updates["accumulated_basis"] = s.AccumulatedBasis
 		updates["basis"] = s.Basis
 		updates["shares"] = s.Shares
+		if trade.IsReinvest() {
+			s.RetainedEarnings = s.RetainedEarnings.Add(trade.Amount)
+			updates["retained_earnings"] = s.RetainedEarnings
+		}
+	} else if trade.IsCredit() {
+		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Amount)
+		updates["retained_earnings"] = s.RetainedEarnings
 	} else if trade.IsSharesIn() {
 		s.Shares = s.Shares.Add(trade.Shares)
 		updates["shares"] = s.Shares
@@ -140,17 +176,32 @@ func (s *Security) updateTrade(db *gorm.DB, trade *Trade) {
 	if trade.IsSell() {
 		s.Basis = s.Basis.Add(trade.oldBasis)
 		s.Basis = s.Basis.Sub(trade.Basis)
+		s.RetainedEarnings = s.RetainedEarnings.Sub(trade.oldAmount)
+		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Amount)
 		s.Shares = s.Shares.Add(trade.oldShares)
 		s.Shares = s.Shares.Sub(trade.Shares)
 		updates["basis"] = s.Basis
+		updates["retained_earnings"] = s.RetainedEarnings
 		updates["shares"] = s.Shares
 	} else if trade.IsBuy() {
+		s.AccumulatedBasis = s.AccumulatedBasis.Sub(trade.oldAmount)
+		s.AccumulatedBasis = s.AccumulatedBasis.Add(trade.Amount)
 		s.Basis = s.Basis.Sub(trade.oldAmount)
 		s.Basis = s.Basis.Add(trade.Amount)
 		s.Shares = s.Shares.Sub(trade.oldShares)
 		s.Shares = s.Shares.Add(trade.Shares)
+		updates["accumulated_basis"] = s.AccumulatedBasis
 		updates["basis"] = s.Basis
 		updates["shares"] = s.Shares
+		if trade.IsReinvest() {
+			s.RetainedEarnings = s.RetainedEarnings.Sub(trade.oldAmount)
+			s.RetainedEarnings = s.RetainedEarnings.Add(trade.Amount)
+			updates["retained_earnings"] = s.RetainedEarnings
+		}
+	} else if trade.IsCredit() {
+		s.RetainedEarnings = s.RetainedEarnings.Sub(trade.oldAmount)
+		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Amount)
+		updates["retained_earnings"] = s.RetainedEarnings
 	} else if trade.IsSharesIn() {
 		s.Shares = s.Shares.Sub(trade.oldShares)
 		s.Shares = s.Shares.Add(trade.Shares)
@@ -487,6 +538,11 @@ func (s *Security) Update() error {
 
 	s.sanitizeInputs()
 	spewModel(s)
+
+	// for 'old' Securities in database
+	if s.AccumulatedBasis.IsZero() {
+		s.AccumulatedBasis = s.Basis
+	}
 
 	s.Company.UserID = s.Account.UserID
 	updatedCompany = s.Company.Update()
