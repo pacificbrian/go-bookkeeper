@@ -4,8 +4,8 @@
 <th>Shares</th>
 <th>Price</th>
 <th>Avg. Price</th>
-<th>Value</th>
 <th>Basis</th>
+<th>Value</th>
 <th>Unrealized Return</th>
 <th>Total Return</th>
 <th></th>
@@ -17,8 +17,8 @@
 <td>{{ s.Shares }}</td>
 <td class="currency">{{ s.Currency(s.Price()) }}</td>
 <td class="currency">{{ s.Currency(s.BasisPrice()) }}</td>
-<td class="currency">{{ s.Currency(s.Value) }}</td>
 <td class="currency">{{ s.Currency(s.Basis) }}</td>
+<td class="currency">{{ s.Currency(s.Value) }}</td>
 <td class="percentage">{{ s.UnrealizedReturn() }}%</td>
 <td class="percentage">{{ s.TotalReturn() }}%</td>
 <td><a href=/accounts/{{account.ID}}/securities/{{s.ID}}>Info</a></td>
@@ -31,8 +31,8 @@
 <td></td>
 <td></td>
 <td></td>
-<td class="currency">{{ account.Currency(account.Portfolio.Value) }}</td>
 <td class="currency">{{ account.Currency(account.Portfolio.Basis) }}</td>
+<td class="currency">{{ account.Currency(account.Portfolio.Value) }}</td>
 <td class="percentage">{{ account.PortfolioTotalReturn() }}%</td>
 <td></td>
 <td></td>
