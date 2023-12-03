@@ -47,6 +47,7 @@ type Trade struct {
 	GainPS decimal.Decimal `gorm:"-:all"`
 	oldShares decimal.Decimal `gorm:"-:all"`
 	oldBasis decimal.Decimal `gorm:"-:all"`
+	Tainted bool
 	Closed bool
 	TradeType TradeType
 	Account Account

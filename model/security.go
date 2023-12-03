@@ -396,6 +396,23 @@ func (s *Security) LatestTradeBy(db *gorm.DB, tradeType uint) *Trade {
 	return entry
 }
 
+func (s *Security) ListTaintedTrades(db *gorm.DB, openOnly bool) []Trade {
+	entries := []Trade{}
+
+	if s.Account.Verified {
+		dbQuery := db.Order("date asc").Preload("TradeType")
+		if openOnly {
+			dbQuery = dbQuery.Where("closed = 0")
+		}
+		dbQuery.Where("tainted = 1").
+			Where(&Trade{SecurityID: s.ID}).
+			Find(&entries)
+	}
+	log.Printf("[MODEL] LIST TAINTED TRADES SECURITY(%d:%d)", s.ID, len(entries))
+
+	return entries
+}
+
 // Find Trades for Security
 // Security access already verified by caller
 func (s *Security) ListTradesBy(tradeType uint, openOnly bool) []Trade {
@@ -637,8 +654,10 @@ func (s *Security) Delete(session *Session) error {
 	return errors.New("Permission Denied")
 }
 
+// Tainted means there are (open) Buy Trades prior to one or more Sell trades
 func (s *Security) hasTaintedBuys() bool {
-	return false
+	db := getDbManager()
+	return len(s.ListTaintedTrades(db, true)) > 0
 }
 
 // Security access already verified with Get
