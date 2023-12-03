@@ -638,7 +638,7 @@ func (a *Account) Update() error {
 
 // Find() for use with rails/ruby like REPL console (gomacro);
 // controllers should not expose this as are no access controls
-func (*Account) Find(ID int) *Account {
+func (*Account) Find(ID uint) *Account {
 	db := getDbManager()
 	a := new(Account)
 	db.First(&a, ID)

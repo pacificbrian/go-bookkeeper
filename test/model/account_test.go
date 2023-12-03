@@ -9,13 +9,12 @@ package model_test
 import (
 	"testing"
 	"github.com/pacificbrian/go-bookkeeper/model"
+	"gotest.tools/v3/assert"
 )
 
 func TestCreateAccount(t *testing.T) {
 	a := new(model.Account)
 	a.Name = "Gopher Checking"
 	err := a.Create(defaultSession)
-	if err != nil {
-		t.Errorf("[TEST] ACCOUNT CREATE %v", err)
-	}
+	assert.NilError(t, err)
 }

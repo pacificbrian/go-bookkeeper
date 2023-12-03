@@ -11,6 +11,7 @@ import (
 	"time"
 	"github.com/shopspring/decimal"
 	"github.com/pacificbrian/go-bookkeeper/model"
+	"gotest.tools/v3/assert"
 )
 
 // for controller testing, consider to make echo.Context
@@ -37,18 +38,14 @@ func TestCreateCashFlow(t *testing.T) {
 	c.CategoryID = model.CategoryGetByName(c.CategoryName).ID
 
 	err := c.Create(defaultSession)
-	if err != nil {
-		t.Errorf("[TEST] CASHFLOW CREATE %v", err)
-	}
+	assert.NilError(t, err)
 	id := c.ID
 
 	verify := new(model.CashFlow)
 	verify.Model.ID = id
 	verify = verify.Get(defaultSession, true)
 	c.Amount = c.Amount.Abs() // because of edit=true above
-	if (!compareCashFlows(c, verify, true)) {
-		t.Fail()
-	}
+	assert.Assert(t, compareCashFlows(c, verify, true))
 }
 
 func TestUpdateCashFlow(t *testing.T) {
@@ -60,14 +57,10 @@ func TestUpdateCashFlow(t *testing.T) {
 	edit.Amount = decimal.NewFromInt32(45)
 
 	err := edit.Update()
-	if err != nil {
-		t.Errorf("[TEST] CASHFLOW UPDATE %v", err)
-	}
+	assert.NilError(t, err)
 
 	verify := new(model.CashFlow)
 	verify.Model.ID = uint(id)
 	verify = verify.Get(defaultSession, false)
-	if (!compareCashFlows(edit, verify, false)) {
-		t.Fail()
-	}
+	assert.Assert(t, compareCashFlows(edit, verify, false))
 }
