@@ -28,6 +28,7 @@ type Security struct {
 	Model
 	CompanyID uint `gorm:"not null"`
 	SecurityBasisTypeID uint `form:"security_basis_type_id"`
+	oldSecurityBasisTypeID uint `gorm:"-:all"`
 	SecurityTypeID uint `form:"security_type_id"`
 	AccountID uint `gorm:"not null"`
 	ImportName string `form:"security.ImportName"`
@@ -57,11 +58,18 @@ func (s Security) Price() decimal.Decimal {
 }
 
 func (s Security) BasisPrice() decimal.Decimal {
-	if s.Shares.Equal(decimal.Zero) {
+	if s.Shares.IsZero() {
 		return decimal.Zero
 	} else {
 		return s.Basis.DivRound(s.Shares, 2)
 	}
+}
+
+// if using average cost basis
+func (s *Security) gainBasis(soldShares decimal.Decimal) decimal.Decimal {
+	assert(s.Shares.GreaterThanOrEqual(soldShares),
+	       "gainBasis: Security Shares Corrupted")
+	return s.Basis.Div(s.Shares).Mul(soldShares).Round(2)
 }
 
 func (s *Security) UnrealizedGain() decimal.Decimal {
@@ -94,6 +102,13 @@ func (s *Security) HasFilings() bool {
 	       s.Company.HasFilings()
 }
 
+func (s *Security) clone(from *Security) {
+	s.ID = from.ID
+	s.Account.Verified = from.Account.Verified
+	s.SecurityBasisTypeID = from.SecurityBasisTypeID
+	s.SecurityValue = from.SecurityValue
+}
+
 func (*Security) sanitizeSecurityName(securityName string) string {
 	subName := strings.Split(securityName, "(")[0]
 	if subName != "" {
@@ -124,9 +139,16 @@ func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 	}
 
 	if trade.IsSell() {
-		s.Basis = s.Basis.Sub(trade.Basis)
-		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Gain)
+		// don't assert s.Basis as may trip on rounding issues
+		assert(s.Shares.GreaterThanOrEqual(trade.Shares),
+		       "addTrade: Security Shares Corrupted")
 		s.Shares = s.Shares.Sub(trade.Shares)
+		if s.Shares.IsZero() {
+			s.Basis = decimal.Zero
+		} else {
+			s.Basis = s.Basis.Sub(trade.Basis)
+		}
+		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Gain)
 		updates["basis"] = s.Basis
 		updates["retained_earnings"] = s.RetainedEarnings
 		updates["shares"] = s.Shares
@@ -508,6 +530,7 @@ func (s *Security) postQueryInit() bool {
 
 	s.Company.oldSymbol = s.Company.Symbol
 	s.Company.oldName = s.Company.Name
+	s.oldSecurityBasisTypeID = s.SecurityBasisTypeID
 	// updates s.Value (if have Shares) from latest Quote
 	return s.updateValue(debugValue)
 }
@@ -549,6 +572,10 @@ func (s *Security) Delete(session *Session) error {
 	return errors.New("Permission Denied")
 }
 
+func (s *Security) hasTaintedBuys() bool {
+	return false
+}
+
 // Security access already verified with Get
 func (s *Security) Update() error {
 	db := getDbManager()
@@ -564,6 +591,12 @@ func (s *Security) Update() error {
 	// for 'old' Securities in database
 	if s.AccumulatedBasis.IsZero() {
 		s.AccumulatedBasis = s.Basis
+	}
+
+	// verify safe to go AVGB -> FIFO
+	if s.oldSecurityBasisTypeID != s.SecurityBasisTypeID &&
+	   s.SecurityBasisTypeID == 1 && s.hasTaintedBuys() {
+		s.SecurityBasisTypeID = s.oldSecurityBasisTypeID
 	}
 
 	s.Company.UserID = s.Account.UserID

@@ -23,6 +23,7 @@ type TradeGain struct {
 	Shares decimal.Decimal
 	AdjustedShares decimal.Decimal // deprecated
 	Basis decimal.Decimal
+	BasisFIFO decimal.Decimal
 	BasisPS decimal.Decimal `gorm:"-:all"`
 	Amount decimal.Decimal `gorm:"-:all"`
 	Gain decimal.Decimal `gorm:"-:all"`
@@ -79,11 +80,8 @@ func (tg *TradeGain) recordGain(sell *Trade, buy *Trade,
 	tg.BuyID = buy.ID
 	tg.DaysHeld = durationDays(sell.Date.Sub(buy.Date))
 	tg.Shares = decimal.Min(maxShares, buyRemain)
-	tg.Basis = buy.Amount.Sub(buy.Basis)
-	if !buyRemain.Equal(tg.Shares) {
-		// must calculate using Basis per share
-		tg.Basis = tg.Basis.Div(buyRemain).Mul(tg.Shares).Round(2)
-	}
+	tg.Basis = buy.gainBasis(tg.Shares)
+	tg.BasisFIFO = buy.gainBasisFIFO(tg.Shares)
 	tg.postQueryInit(sell)
 	// [sell,buy].Basis is updated in caller
 
@@ -102,7 +100,10 @@ func (tg *TradeGain) Delete(session *Session) error {
 	if buy == nil {
 		return errors.New("Permission Denied")
 	}
-	buy.revertBasis(tg.Basis, tg.Shares)
+	if tg.BasisFIFO.IsZero() {
+		tg.BasisFIFO = tg.Basis
+	}
+	buy.revertBasis(tg.BasisFIFO, tg.Shares)
 
 	db.Delete(tg)
 	log.Printf("[MODEL] DELETE GAIN(%d) FOR BUY(%d)", tg.ID, buy.ID)

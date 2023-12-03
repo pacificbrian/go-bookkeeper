@@ -14,25 +14,30 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-func TestSellTrade(t *testing.T) {
-	tr := new(model.Trade)
-	tr.AccountID = 1
-	tr.Symbol = "GOOGL"
+func makeTrade(tr *model.Trade, symbol string, daysAgo int, price int32, shares int32) {
+	tr.Symbol = symbol
 	tr.TradeTypeID = model.Buy
 	tr.Date = time.Now()
-	tr.Date = tr.Date.AddDate(0, 0, -7)
-	tr.Amount = decimal.NewFromInt32(1250)
-	basis := tr.Amount
-	tr.Price = decimal.NewFromInt32(125)
-	tr.Shares = decimal.NewFromInt32(10)
+	tr.Date = tr.Date.AddDate(0, 0, daysAgo)
+	tr.Price = decimal.NewFromInt32(price)
+	tr.Shares = decimal.NewFromInt32(shares)
+	tr.Amount = tr.Shares.Mul(tr.Price)
+}
+
+func TestSellTrade(t *testing.T) {
+	basis := decimal.Zero
+	tr := new(model.Trade)
+	tr.AccountID = 1
 
 	// store Account balance before Trade
 	a := new(model.Account)
 	a = a.Find(tr.AccountID)
 	balance := a.CashBalance
 
+	makeTrade(tr, "GOOGL", -7, 125, 10)
 	err := tr.Create(defaultSession)
 	assert.NilError(t, err)
+	basis = basis.Add(tr.Amount)
 
 	// check Account balance after Trade
 	balance = balance.Sub(tr.Amount)
@@ -59,6 +64,67 @@ func TestSellTrade(t *testing.T) {
 	// check s.RetainedEarnings
 	s := new(model.Security)
 	s = s.Find(tr.SecurityID)
+	assert.Assert(t, s.Basis.IsZero())
+	assert.Assert(t, gain.Equal(s.RetainedEarnings))
+	assert.Assert(t, basis.Equal(s.AccumulatedBasis))
+}
+
+func TestSellTradeAverageBasis(t *testing.T) {
+	sharesHeld := decimal.Zero
+	basis := decimal.Zero
+
+	s := new(model.Security)
+	s.AccountID = 1
+	CreateMutualFund(t, s, "Gopher Growth Fund")
+
+	tr := new(model.Trade)
+	tr.AccountID = 1
+	tr.SecurityID = s.ID
+
+	// store Account balance before Trade
+	a := new(model.Account)
+	a = a.Find(tr.AccountID)
+	balance := a.CashBalance
+
+	makeTrade(tr, "", -14, 120, 10)
+	err := tr.Create(defaultSession)
+	assert.NilError(t, err)
+	basis = basis.Add(tr.Amount)
+	sharesHeld = sharesHeld.Add(tr.Shares)
+
+	makeTrade(tr, "", -7, 140, 10)
+	err = tr.Create(defaultSession)
+	assert.NilError(t, err)
+	basis = basis.Add(tr.Amount)
+	sharesHeld = sharesHeld.Add(tr.Shares)
+
+	// check Account balance after Trade
+	balance = balance.Sub(basis)
+	a = a.Find(tr.AccountID)
+	assert.Assert(t, balance.Equal(a.CashBalance))
+
+	tr.TradeTypeID = model.Sell
+	tr.Date = time.Now()
+	tr.Amount = decimal.NewFromInt32(1350)
+	tr.Price = decimal.NewFromInt32(135)
+	tr.Shares = decimal.NewFromInt32(10)
+
+	err = tr.Create(defaultSession)
+	assert.NilError(t, err)
+
+	// check Account balance after Trade
+	balance = balance.Add(tr.Amount)
+	a = a.Find(tr.AccountID)
+	assert.Assert(t, balance.Equal(a.CashBalance))
+
+	// is gain correct?
+	gainBasis := basis.Div(sharesHeld).Mul(tr.Shares).Round(2)
+	gain := tr.Amount.Sub(gainBasis)
+	assert.Assert(t, gain.Equal(tr.Gain))
+
+	// check s.RetainedEarnings
+	s = s.Find(tr.SecurityID)
+	assert.Assert(t, basis.Sub(gainBasis).Equal(s.Basis))
 	assert.Assert(t, gain.Equal(s.RetainedEarnings))
 	assert.Assert(t, basis.Equal(s.AccumulatedBasis))
 }

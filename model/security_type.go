@@ -57,6 +57,10 @@ func SecurityBasisTypeIsValid(SecurityBasisTypeID uint) bool {
 	return SecurityBasisTypeID > 0 && SecurityBasisTypeID <= BasisAverage
 }
 
+func SecurityBasisTypeIsAverage(basisTypeID uint) bool {
+	return (basisTypeID == BasisAverage)
+}
+
 func SecurityTypeIsValid(SecurityTypeID uint) bool {
 	return SecurityTypeID > 0 && SecurityTypeID <= Cryptocurrency
 }

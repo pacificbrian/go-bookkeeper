@@ -36,6 +36,9 @@ type Trade struct {
 	AdjustedShares decimal.Decimal
 	// Basis is accumulated (used) basis from Sells (starts at 0)
 	// for Buys: remaining Basis is: Amount - Basis
+	// (for AVGB, we still increment Buy specific (FIFO basis) in
+	//  the buy.Basis; for actual used (average) basis, this is in
+	//  the associated TradeGain.)
 	// for Sells: the Gain (Loss) then is: Amount - Basis
 	Basis decimal.Decimal
 	BasisPS decimal.Decimal `gorm:"-:all"`
@@ -91,6 +94,10 @@ func (t *Trade) IsSharesOut() bool {
 
 func (t *Trade) IsSplit() bool {
 	return TradeTypeIsSplit(t.TradeTypeID)
+}
+
+func (t *Trade) IsAverageCost() bool {
+	return SecurityBasisTypeIsAverage(t.Security.SecurityBasisTypeID)
 }
 
 func (t Trade) ViewIsSell() bool {
@@ -319,6 +326,24 @@ func (t *Trade) ListImportedCashFlows(im *Import) []CashFlow {
 	return t.listCashFlows(db, &im.Account, im.ID)
 }
 
+func (t *Trade) gainBasisFIFO(soldShares decimal.Decimal) decimal.Decimal {
+	sharesRemain := t.SharesRemaining()
+	basis := t.Amount.Sub(t.Basis)
+	if !sharesRemain.Equal(soldShares) {
+		// must calculate using Basis per share
+		basis = basis.Div(sharesRemain).Mul(soldShares).Round(2)
+	}
+	return basis
+}
+
+func (t *Trade) gainBasis(soldShares decimal.Decimal) decimal.Decimal {
+	if t.IsAverageCost() {
+		return t.Security.gainBasis(soldShares)
+	} else {
+		return t.gainBasisFIFO(soldShares)
+	}
+}
+
 func (t *Trade) revertBasis(basis decimal.Decimal, soldShares decimal.Decimal) {
 	db := getDbManager()
 	updates := make(map[string]interface{})
@@ -373,6 +398,7 @@ func (t *Trade) recordGain(activeBuys []Trade) {
 	tg := new(TradeGain)
 	for i := 0; sharesRemain.IsPositive(); i++ {
 		buy := &activeBuys[i]
+		buy.Security.clone(&t.Security)
 		tg.ID = 0
 		tg.recordGain(t, buy, sharesRemain, updateDB)
 		sharesRemain = sharesRemain.Sub(tg.Shares)
@@ -380,7 +406,7 @@ func (t *Trade) recordGain(activeBuys []Trade) {
 		sellGain = sellGain.Add(tg.Gain)
 
 		// update Basis in Buy
-		buy.updateBasis(tg.Basis, tg.Shares)
+		buy.updateBasis(tg.BasisFIFO, tg.Shares)
 	}
 
 	// update Sell
@@ -488,6 +514,7 @@ func (t *Trade) insertTrade(db *gorm.DB, security *Security) error {
 	}
 
 	if t.IsSell() {
+		t.Security.clone(security)
 		t.recordGain(activeBuys)
 	} else if t.IsSplit() {
 		t.recordSplit(activeBuys)
