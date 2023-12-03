@@ -413,6 +413,16 @@ func (s *Security) validateTrade(db *gorm.DB, trade *Trade) ([]Trade, error) {
 	return nil, nil
 }
 
+func (s *Security) validateInputs() error {
+	if !SecurityBasisTypeIsValid(s.SecurityBasisTypeID) {
+		return errors.New("Invalid Security Basis Type")
+	}
+	if !SecurityTypeIsValid(s.SecurityTypeID) {
+		return errors.New("Invalid Security Type")
+	}
+	return nil
+}
+
 func (s *Security) init() {
 	s.SecurityTypeID = 1 // Default is Stock
 	s.SecurityBasisTypeID = 1 // Default is FIFO
@@ -420,22 +430,29 @@ func (s *Security) init() {
 
 func (s *Security) create(session *Session, useDefaults bool) error {
 	db := session.DB
-	// Verify we have access to Account
-	s.Account.ID = s.AccountID
 	if useDefaults {
 		s.init()
 	}
+
+	// Verify we have access to Account
+	s.Account.ID = s.AccountID
 	account := s.Account.Get(session, false)
-	if account != nil {
-		spewModel(s)
-		result := db.Omit(clause.Associations).Create(s)
-		log.Printf("[MODEL] CREATE SECURITY(%d) ACCOUNT(%d)", s.ID, s.AccountID)
-		if result.Error != nil {
-			log.Fatal(result.Error)
-		}
-		return result.Error
+	if account == nil {
+		return errors.New("Permission Denied")
 	}
-	return errors.New("Permission Denied")
+
+	err := s.validateInputs()
+	if err != nil {
+		return err
+	}
+	spewModel(s)
+
+	result := db.Omit(clause.Associations).Create(s)
+	log.Printf("[MODEL] CREATE SECURITY(%d) ACCOUNT(%d)", s.ID, s.AccountID)
+	if result.Error != nil {
+		log.Fatal(result.Error)
+	}
+	return result.Error
 }
 
 func (s *Security) Create(session *Session) error {
@@ -447,8 +464,9 @@ func (s *Security) Create(session *Session) error {
 	} else if existing.ID != 0 {
 		return errors.New("Security Already Exists")
 	}
-
 	s.CompanyID = existing.CompanyID
+
+	s.ID = 0
 	return s.create(session, false)
 }
 
@@ -537,6 +555,10 @@ func (s *Security) Update() error {
 	updatedCompany := false
 
 	s.sanitizeInputs()
+	err := s.validateInputs()
+	if err != nil {
+		return err
+	}
 	spewModel(s)
 
 	// for 'old' Securities in database
@@ -552,7 +574,7 @@ func (s *Security) Update() error {
 	}
 
 	result := db.Omit(clause.Associations).Save(s)
-	err := result.Error
+	err = result.Error
 	if err != nil {
 		return err
 	}

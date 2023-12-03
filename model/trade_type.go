@@ -58,6 +58,10 @@ var TradeTypeQueryDesc = [9]string{"",
 				   "",
 				   ""}
 
+func TradeTypeIsValid(TradeTypeID uint) bool {
+	return TradeTypeID > 0 && TradeTypeID <= Split
+}
+
 func TradeTypeIsBuy(TradeTypeID uint) bool {
 	return (TradeTypeID == Buy)
 }

@@ -428,7 +428,9 @@ func (t *Trade) validateInputs() error {
 	// ensure monetary amounts are 2 decimal places
 	t.Amount = t.Amount.Round(2)
 
-	if t.IsSell() || t.IsBuy() {
+	if !TradeTypeIsValid(t.TradeTypeID) {
+		return errors.New("Invalid Trade Type")
+	} else if t.IsSell() || t.IsBuy() {
 		if t.Amount.IsZero() || t.Price.IsZero() || t.Shares.IsZero() {
 			return errors.New("Invalid Trade Entered (Buy/Sell)")
 		}
@@ -465,7 +467,6 @@ func (t *Trade) insertTrade(db *gorm.DB, security *Security) error {
 	}
 	t.AccountID = security.AccountID
 
-	spewModel(t)
 	err = t.validateInputs()
 	if err == nil && (t.IsSell() || t.IsSplit()) {
 		activeBuys, err = security.validateTrade(db, t)
@@ -473,6 +474,7 @@ func (t *Trade) insertTrade(db *gorm.DB, security *Security) error {
 	if err != nil {
 		return err
 	}
+	spewModel(t)
 
 	result := db.Omit(clause.Associations).Create(t)
 	log.Printf("[MODEL] CREATE TRADE(%d) SECURITY(%d) ACCOUNT(%d) TYPE(%d)",
@@ -511,6 +513,7 @@ func (t *Trade) Create(session *Session) error {
 	if security == nil {
 		return errors.New("Permission Denied")
 	}
+	t.ID = 0
 	t.setDefaults()
 	return t.insertTrade(db, security)
 }
@@ -656,13 +659,13 @@ func (t *Trade) Update() error {
 		return errors.New("!Account.Verified")
 	}
 
-	spewModel(t)
 	err = t.validateInputs()
 	if err != nil {
 		return err
 	}
-	isSimple := t.isSimpleUpdate()
+	spewModel(t)
 
+	isSimple := t.isSimpleUpdate()
 	if isSimple {
 		// (Price, Date) only, no validation needed
 		// Though, some risk (with Date) that Trades are now reordered

@@ -53,6 +53,14 @@ type SecurityType struct {
 	Name string `form:"security_type.Name"`
 }
 
+func SecurityBasisTypeIsValid(SecurityBasisTypeID uint) bool {
+	return SecurityBasisTypeID > 0 && SecurityBasisTypeID <= BasisAverage
+}
+
+func SecurityTypeIsValid(SecurityTypeID uint) bool {
+	return SecurityTypeID > 0 && SecurityTypeID <= Cryptocurrency
+}
+
 func (*SecurityBasisType) List(db *gorm.DB) []SecurityBasisType {
 	// need userCache lookup
 	entries := []SecurityBasisType{}
