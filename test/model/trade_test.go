@@ -55,4 +55,10 @@ func TestSellTrade(t *testing.T) {
 	// is gain correct?
 	gain := tr.Amount.Sub(basis)
 	assert.Assert(t, gain.Equal(tr.Gain))
+
+	// check s.RetainedEarnings
+	s := new(model.Security)
+	s = s.Find(tr.SecurityID)
+	assert.Assert(t, gain.Equal(s.RetainedEarnings))
+	assert.Assert(t, basis.Equal(s.AccumulatedBasis))
 }

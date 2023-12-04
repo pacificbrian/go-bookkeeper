@@ -125,7 +125,7 @@ func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 
 	if trade.IsSell() {
 		s.Basis = s.Basis.Sub(trade.Basis)
-		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Amount)
+		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Gain)
 		s.Shares = s.Shares.Sub(trade.Shares)
 		updates["basis"] = s.Basis
 		updates["retained_earnings"] = s.RetainedEarnings
@@ -176,8 +176,8 @@ func (s *Security) updateTrade(db *gorm.DB, trade *Trade) {
 	if trade.IsSell() {
 		s.Basis = s.Basis.Add(trade.oldBasis)
 		s.Basis = s.Basis.Sub(trade.Basis)
-		s.RetainedEarnings = s.RetainedEarnings.Sub(trade.oldAmount)
-		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Amount)
+		s.RetainedEarnings = s.RetainedEarnings.Sub(trade.oldGain)
+		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Gain)
 		s.Shares = s.Shares.Add(trade.oldShares)
 		s.Shares = s.Shares.Sub(trade.Shares)
 		updates["basis"] = s.Basis

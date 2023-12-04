@@ -84,6 +84,7 @@ func (tg *TradeGain) recordGain(sell *Trade, buy *Trade,
 		// must calculate using Basis per share
 		tg.Basis = tg.Basis.Div(buyRemain).Mul(tg.Shares).Round(2)
 	}
+	tg.postQueryInit(sell)
 	// [sell,buy].Basis is updated in caller
 
 	if updateDB {

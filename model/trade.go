@@ -40,6 +40,7 @@ type Trade struct {
 	Basis decimal.Decimal
 	BasisPS decimal.Decimal `gorm:"-:all"`
 	Gain decimal.Decimal `gorm:"-:all"`
+	oldGain decimal.Decimal `gorm:"-:all"`
 	GainPS decimal.Decimal `gorm:"-:all"`
 	oldShares decimal.Decimal `gorm:"-:all"`
 	oldBasis decimal.Decimal `gorm:"-:all"`
@@ -365,6 +366,7 @@ func (t *Trade) updateBasis(basis decimal.Decimal, soldShares decimal.Decimal) {
 // t is Sell trade and was already tested to be Valid
 func (t *Trade) recordGain(activeBuys []Trade) {
 	sellBasis := decimal.Zero
+	sellGain := decimal.Zero
 	sharesRemain := t.Shares
 	updateDB := true
 
@@ -375,6 +377,7 @@ func (t *Trade) recordGain(activeBuys []Trade) {
 		tg.recordGain(t, buy, sharesRemain, updateDB)
 		sharesRemain = sharesRemain.Sub(tg.Shares)
 		sellBasis = sellBasis.Add(tg.Basis)
+		sellGain = sellGain.Add(tg.Gain)
 
 		// update Basis in Buy
 		buy.updateBasis(tg.Basis, tg.Shares)
@@ -382,6 +385,7 @@ func (t *Trade) recordGain(activeBuys []Trade) {
 
 	// update Sell
 	t.updateBasis(sellBasis, t.Shares)
+	t.Gain = sellGain
 }
 
 // t is Split trade and was already tested to be Valid
@@ -543,6 +547,7 @@ func (t *Trade) postQueryInit() {
 	} else if t.IsCredit() {
 		t.Gain = t.Amount
 	}
+	t.oldGain = t.Gain
 }
 
 // Edit, Delete, Update use Get
