@@ -26,6 +26,7 @@ type Model struct {
 
 const timeFormatCompare string = "2006-01-02 15:04:05 -0700"
 const timeFormatPrint string = "2006-01-02 15:04:05"
+const dateFormatPrint string = "2006-01-02"
 
 var useSpew bool = false
 
@@ -112,6 +113,10 @@ func durationDays(d time.Duration) int32 {
 
 func timeToString(dx *time.Time) string {
 	return dx.Format(timeFormatPrint)
+}
+
+func dateToString(dx *time.Time) string {
+	return dx.Format(dateFormatPrint)
 }
 
 func yearToDate(year int) time.Time {

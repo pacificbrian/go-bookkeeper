@@ -15,6 +15,7 @@ type GlobalConfiguration struct {
 	UpdateAccountsOnLogin bool
 	// booleans must default to false, see cleanenv #61,#82
 	EnableSecurityCharts bool `toml:"enable_security_charts"`
+	EnableSecurityFilings bool `toml:"enable_security_filings"`
 	DisableAutoTaxes bool `toml:"disable_auto_taxes"`
 	DisableSessions bool `toml:"disable_sessions"`
 	DisableUpdateAccountsOnLogin bool `toml:"disable_update_accounts_on_login"`

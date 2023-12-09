@@ -95,6 +95,10 @@ func Init(staticFS *embed.FS, viewFS *embed.FS) *echo.Echo {
 	e.POST("/payees/:id", controllers.UpdatePayee)
 	e.DELETE("/payees/:id", controllers.DeletePayee)
 
+	// Company
+	//e.GET("/companies", controllers.ListCompanies)
+	e.GET("/companies/:company_id/financials", controllers.GetCompanyFinancials)
+
 	// Security
 	e.GET("/accounts/:account_id/securities/:id", controllers.GetSecurity) // Show
 	e.GET("/accounts/:account_id/securities/new", controllers.NewSecurity)

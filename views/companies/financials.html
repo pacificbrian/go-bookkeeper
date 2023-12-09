@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="listing">
+<h2>{{ company.GetName() }} {{ filingViewName }}</h2>
+
+<table class="standard">
+<tr>
+<th align="left">Date Filed</th>
+{% for filing in filings -%}
+<td align="right">{{ company.GetFilingDate(filing) }}</td>
+{% endfor -%}
+</tr>
+{% for itemName in filingItemNames -%}
+<tr class="earnings">
+<th align="left">{{ itemName }}</th>
+{% for filing in filings -%}
+<td>{{ company.GetFilingItemString(filing, itemName) }}</td>
+{% endfor -%}
+</tr>
+{% endfor -%}
+</table>
+</div>
+
+{% endblock -%}
