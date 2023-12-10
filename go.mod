@@ -9,7 +9,7 @@ require (
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/labstack/echo/v4 v4.9.0
 	github.com/mayowa/echo-pongo2 v1.1.4
-	github.com/pacificbrian/edgar v0.2.0
+	github.com/pacificbrian/edgar v0.2.1
 	github.com/pacificbrian/qif v1.1.2
 	github.com/piquette/finance-go v1.1.1-0.20230807033903-430a57233430
 	github.com/rubenv/sql-migrate v1.2.0
@@ -17,6 +17,7 @@ require (
 	github.com/spazzymoto/echo-scs-session v1.0.0
 	github.com/spf13/pflag v1.0.5
 	golang.org/x/crypto v0.16.0
+	golang.org/x/text v0.14.0
 	gorm.io/driver/mysql v1.3.4
 	gorm.io/driver/sqlite v1.3.6
 	gorm.io/gorm v1.23.8
@@ -45,7 +46,6 @@ require (
 	github.com/valyala/fasttemplate v1.2.1 // indirect
 	golang.org/x/net v0.19.0 // indirect
 	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	olympos.io/encoding/edn v0.0.0-20201019073823-d3554ca0b0a3 // indirect

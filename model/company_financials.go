@@ -7,10 +7,12 @@
 package model
 
 import (
+	"golang.org/x/text/language"
+	"golang.org/x/text/message"
 	"log"
+	"math"
 	"time"
 	"github.com/pacificbrian/edgar"
-	"github.com/shopspring/decimal"
 	"github.com/pacificbrian/go-bookkeeper/config"
 )
 
@@ -205,13 +207,31 @@ func (c *Company) GetFilingItem(f FilingData, item string) float64 {
 }
 
 func (c *Company) GetFilingItemString(f FilingData, item string) string {
-	data := c.GetFilingItem(f, item)
-	strData := decimal.NewFromFloat(data).StringFixed(0)
+	p := message.NewPrinter(language.English)
+	applyScaling := true
+	suffix := ""
+
+	data := int64(math.Round(c.GetFilingItem(f, item)))
+	if applyScaling {
+		switch f.ScaleMoney() {
+		case 1000000000:
+			data = data / f.ScaleMoney()
+			suffix = " B"
+		case 1000000:
+			data = data / f.ScaleMoney()
+			suffix = " M"
+		case 1000:
+			data = data / f.ScaleMoney()
+			suffix = " K"
+		}
+	}
+
+	strData := p.Sprintf("%d", data) // add commas
 	switch item {
 	case ConsolidatedFilingItemKeys[BasicShares]:
 		fallthrough
 	case ConsolidatedFilingItemKeys[DilutedShares]:
-		return strData
+		return strData + suffix
 	}
-	return "$" + strData
+	return "$" + strData + suffix
 }
