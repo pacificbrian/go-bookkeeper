@@ -128,7 +128,7 @@ func (p *Payee) ListCashFlows(account *Account) []CashFlow {
 	return entries
 }
 
-func payeeGetByName(session *Session, name string, importing bool) (error, *Payee) {
+func (p *Payee) getByName(session *Session, importing bool) (error, *Payee) {
 	u := session.GetUser()
 	if u == nil {
 		return errors.New("Permission Denied"), nil
@@ -137,22 +137,23 @@ func payeeGetByName(session *Session, name string, importing bool) (error, *Paye
 	created := false
 
 	payee := new(Payee)
-	payee.Name = name
+	payee.Name = p.Name
 	payee.UserID = u.ID
 	// need Where because these are not primary keys
 	db.Where(&payee).First(&payee)
 
 	if importing && payee.SkipOnImport {
 		log.Printf("[MODEL] GET PAYEE(%d) BY NAME(%s) SKIP(1)",
-			   payee.ID, name)
+			   payee.ID, payee.Name)
 		return errors.New("Payee has SkipOnImport"), nil
 	} else if payee.ID == 0 {
+		payee.Address = p.Address
 		db.Omit(clause.Associations).Create(payee)
 		spewModel(payee)
 		created = true
 	}
 	log.Printf("[MODEL] GET PAYEE(%d) BY NAME(%s) NEW(%t)",
-		   payee.ID, name, created)
+		   payee.ID, payee.Name, created)
 
 	return nil, payee
 }

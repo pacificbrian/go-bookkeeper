@@ -33,14 +33,25 @@
 <label>Routing Number</label>
 <input type="text" name="account.Routing" value="{{account.GetRouting()}}"/>
 </fieldset>
-<fieldset>
-<label>OFX: Client UID</label>
-<input type="text" name="account.ClientUID" value="{{account.ClientUID}}"/>
-</fieldset>
+{% if account.InstitutionID == 0 -%}
 <fieldset class="last">
 <label>OFX: Institution</label>
 {{ form_select_type(ofx_institutions, "account.institution_id", account.InstitutionID) }}
 </fieldset>
+{% else -%}
+<fieldset>
+<label>OFX: Institution</label>
+{{ form_select_type(ofx_institutions, "account.institution_id", account.InstitutionID) }}
+</fieldset>
+<fieldset>
+<label>OFX: Account Index (if Multiple Accounts)</label>
+<input type="text" name="account.OfxIndex" value="{{account.OfxIndex}}"/>
+</fieldset>
+<fieldset class="last">
+<label>OFX: Client UID</label>
+<input type="text" name="account.ClientUID" value="{{account.ClientUID}}"/>
+</fieldset>
+{% endif -%}
 {% else -%}
 <fieldset class="last">
 <label>Routing Number</label>

@@ -32,6 +32,8 @@ type Import struct {
 	Account Account
 }
 
+var payeeNameLength int = 22
+
 // i.Account must be preloaded
 func (i *Import) HaveAccessPermission(session *Session) bool {
 	u := session.GetUser()
@@ -122,22 +124,34 @@ func dateFromOFX(ofxTran *ofxgo.Transaction) time.Time {
 }
 
 func (c *CashFlow) makeCashFlowOFX(ofxTran *ofxgo.Transaction) {
+	globals := config.GlobalConfig()
+
 	c.Date = dateFromOFX(ofxTran)
 	c.setDefaults() // needs c.Date
-	c.Transnum = strings.TrimSpace(string(ofxTran.FiTID))
-	c.PayeeName = strings.TrimSpace(string(ofxTran.Name))
 	TrnAmt, _ := ofxTran.TrnAmt.Float64()
 	c.Amount = decimal.NewFromFloatWithExponent(TrnAmt, -2)
+
+	tranName := string(ofxTran.Name)
+	if globals.LimitImportPayeeNameLength &&
+	   len(tranName) > payeeNameLength+1 && tranName[payeeNameLength] == ' ' {
+		c.Payee.Name = strings.TrimSpace(tranName[0:payeeNameLength+1])
+		c.Payee.Address = strings.TrimSpace(tranName[payeeNameLength+1:])
+	} else {
+		c.Payee.Name = strings.TrimSpace(tranName)
+	}
+	c.PayeeName = c.Payee.Name
 	c.Memo = strings.TrimSpace(string(ofxTran.Memo))
+	c.Transnum = strings.TrimSpace(string(ofxTran.FiTID))
 }
 
 func (c *CashFlow) makeCashFlowQIF(qifTran qif.BankingTransaction) {
 	c.Date = qifTran.Date()
 	c.setDefaults() // needs c.Date
-	c.Transnum = strings.TrimSpace(qifTran.Num())
-	c.PayeeName = strings.TrimSpace(qifTran.Payee())
 	c.Amount = qifTran.AmountDecimal()
+	c.Payee.Name = strings.TrimSpace(qifTran.Payee())
+	c.PayeeName = c.Payee.Name
 	c.Memo = strings.TrimSpace(qifTran.Memo())
+	c.Transnum = strings.TrimSpace(qifTran.Num())
 }
 
 func (t *Trade) applyTradeFixups(memo string) {
@@ -198,8 +212,9 @@ func (im *Import) FetchOFX(session *Session) error {
 	im.Account.Institution.ID = im.Account.InstitutionID
 	db.First(&im.Account.Institution)
 	lastCF := im.Account.lastCashFlow(false)
-	log.Printf("[MODEL] FETCH OFX FOR INSTITUTION(%s) AFTER(%s)",
-		   im.Account.Institution.Name, timeToString(&lastCF.Date))
+	log.Printf("[MODEL] FETCH OFX FOR INSTITUTION(%s:%d) AFTER(%s)",
+		   im.Account.Institution.Name, im.Account.OfxIndex,
+		   timeToString(&lastCF.Date))
 
 	client := im.Account.Institution.getClient()
 	uid,_ := ofxgo.RandomUID()

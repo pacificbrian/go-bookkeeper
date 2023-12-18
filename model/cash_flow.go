@@ -610,7 +610,8 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB, importing bool) (error, *C
 
 		if !c.Split && c.PayeeName != "" {
 			// creates Payee if none exists
-			err, p := payeeGetByName(c.getSession(), c.PayeeName, importing)
+			c.Payee.Name = c.PayeeName
+			err, p := c.Payee.getByName(c.getSession(), importing)
 			if err != nil {
 				return err, nil
 			}
