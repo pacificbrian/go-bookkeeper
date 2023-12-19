@@ -74,11 +74,11 @@ func (*Payee) List(session *Session, account *Account) []Payee {
 		   Where("account_id = ?", account.ID).
 		   Distinct().Pluck("payee_id", &payee_ids)
 
-		db.Order("id asc").Preload("Category").
+		db.Order("name asc").Preload("Category").
 		   Find(&entries, payee_ids)
 	} else {
 		// Find Payees for CurrentUser()
-		db.Preload("Category").
+		db.Order("name asc").Preload("Category").
 		   Where(&Payee{UserID: u.ID}).Find(&entries)
 	}
 	return entries
