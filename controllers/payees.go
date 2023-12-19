@@ -24,6 +24,15 @@ func getAccount(session *model.Session, id uint) *model.Account {
 	return account
 }
 
+func redirectToPayee(c echo.Context, id int, account_id int) error {
+	if account_id > 0 {
+		return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/accounts/%d/payees/%d",
+								   account_id, id))
+	} else {
+		return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/payees/%d", id))
+	}
+}
+
 // For http.Status, see:
 // https://go.dev/src/net/http/status.go
 
@@ -115,12 +124,14 @@ func GetPayee(c echo.Context) error {
 		if account_id == 0 || account != nil {
 			cash_flows = entry.ListCashFlows(account)
 		}
+		duplicate_payees := entry.GetDuplicates()
 		data := map[string]any{ "payee": entry,
 					"account": account,
 					"disallow_cashflow_delete": true,
 					"no_cashflow_balance": true,
 					"with_cashflow_account": true,
 					"cash_flows": cash_flows,
+					"duplicate_payees": duplicate_payees,
 					"categories": new(model.Category).List(session.DB) }
 		return c.Render(http.StatusOK, "payees/show.html", data)
 	}
@@ -128,9 +139,13 @@ func GetPayee(c echo.Context) error {
 
 func UpdatePayee(c echo.Context) error {
 	id, _ := strconv.Atoi(c.Param("id"))
+	account_id, _ := strconv.Atoi(c.Param("account_id"))
 	session := getSession(c)
 	if session == nil {
 		return redirectToLogin(c)
+	}
+	if id == 0 {
+		return redirectToPayee(c, id, account_id)
 	}
 	log.Printf("UPDATE PAYEE(%d)", id)
 
@@ -143,10 +158,37 @@ func UpdatePayee(c echo.Context) error {
 
 	c.Bind(entry)
 	entry.Update()
-	return c.Redirect(http.StatusSeeOther, fmt.Sprintf("/payees/%d", id))
+	return redirectToPayee(c, id, account_id)
+}
+
+func MergePayee(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	account_id, _ := strconv.Atoi(c.Param("account_id"))
+	merge_id, _ := strconv.Atoi(c.FormValue("payee.merge_id"))
+	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	if id == 0 || merge_id == 0 {
+		return redirectToPayee(c, id, account_id)
+	}
+	log.Printf("MERGE PAYEE(%d) WITH(%d)", id, merge_id)
+
+	entry := new(model.Payee)
+	entry.ID = uint(id)
+	entry = entry.Get(session)
+	merge := new(model.Payee)
+	merge.ID = uint(merge_id)
+	merge = merge.Get(session)
+	if entry == nil || merge == nil {
+		return c.NoContent(http.StatusUnauthorized)
+	}
+
+	return redirectToPayee(c, id, account_id)
 }
 
 func EditPayee(c echo.Context) error {
+	// TODO account_id
 	id, _ := strconv.Atoi(c.Param("id"))
 	session := getSession(c)
 	if session == nil {

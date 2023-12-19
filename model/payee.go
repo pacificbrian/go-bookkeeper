@@ -8,6 +8,7 @@ package model
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"gorm.io/gorm/clause"
 )
@@ -156,6 +157,18 @@ func (p *Payee) getByName(session *Session, importing bool) (error, *Payee) {
 		   payee.ID, payee.Name, created)
 
 	return nil, payee
+}
+
+func (p *Payee) GetDuplicates() []Payee {
+	entries := []Payee{}
+
+	db := getDbManager()
+	wildcardName := fmt.Sprintf("%s%%", p.Name)
+	db.Order("name asc").Where("user_id = ?", p.UserID).
+	   Where("name LIKE ?", wildcardName).
+	   Where("id != ?", p.ID).
+	   Find(&entries)
+	return entries
 }
 
 func (p *Payee) Create(session *Session) error {
