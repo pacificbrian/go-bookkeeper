@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"github.com/labstack/echo/v4"
 	"github.com/pacificbrian/go-bookkeeper/model"
 )
@@ -172,17 +173,25 @@ func MergePayee(c echo.Context) error {
 	if id == 0 || merge_id == 0 {
 		return redirectToPayee(c, id, account_id)
 	}
-	log.Printf("MERGE PAYEE(%d) WITH(%d)", id, merge_id)
+
+	action := c.FormValue("submit")
+	hasAll := strings.Contains(action, "All")
+	log.Printf("MERGE PAYEE(%d) WITH(%d) ALL(%t)", id, merge_id, hasAll)
 
 	entry := new(model.Payee)
 	entry.ID = uint(id)
 	entry = entry.Get(session)
 	merge := new(model.Payee)
-	merge.ID = uint(merge_id)
-	merge = merge.Get(session)
-	if entry == nil || merge == nil {
+	if !hasAll {
+		merge.ID = uint(merge_id)
+		merge = merge.Get(session)
+	}
+
+	account := getAccount(session, uint(account_id))
+	if entry == nil || merge == nil || account == nil {
 		return c.NoContent(http.StatusUnauthorized)
 	}
+	entry.Merge(merge, account)
 
 	return redirectToPayee(c, id, account_id)
 }

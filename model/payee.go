@@ -19,7 +19,6 @@ type Payee struct {
 	CategoryID uint `form:"payee.category_id"`
 	Name string `form:"payee.Name"`
 	Address string `form:"payee.Address"`
-	ImportName string `form:"payee.ImportName"`
 	SkipOnImport bool `form:"payee.SkipOnImport"`
 	Verified bool `gorm:"-:all"`
 	User User
@@ -29,7 +28,6 @@ type Payee struct {
 func (p *Payee) sanitizeInputs() {
 	sanitizeString(&p.Name)
 	sanitizeString(&p.Address)
-	sanitizeString(&p.ImportName)
 }
 
 // for Bind() and setting from input/checkboxes */
@@ -85,16 +83,16 @@ func (*Payee) List(session *Session, account *Account) []Payee {
 	return entries
 }
 
+// used with InUse counts, so should include ScheduledCashFlows
 func (p *Payee) countCashFlows(account *Account) uint {
 	var count int64 = 0
 
 	db := getDbManager()
 	query := map[string]interface{}{"payee_id": p.ID, "transfer": false}
 	if account != nil && account.ID > 0 {
-	   query["account_id"] = account.ID
+		query["account_id"] = account.ID
 	}
 	db.Model(&CashFlow{}).
-	   Where("(type != ? OR type IS NULL)", "RCashFlow"). // not Repeats
 	   Where("NOT (split_from > 0 AND split = 0)"). // not HasSplits
 	   Where("user_id = ?", p.UserID).Where(query).
 	   Joins("Account").Count(&count)
@@ -104,7 +102,7 @@ func (p *Payee) countCashFlows(account *Account) uint {
 	return uint(count)
 }
 
-func (p *Payee) ListCashFlows(account *Account) []CashFlow {
+func (p *Payee) listCashFlows(account *Account, getSplits bool) []CashFlow {
 	var entries []CashFlow
 
 	if !p.Verified {
@@ -114,19 +112,29 @@ func (p *Payee) ListCashFlows(account *Account) []CashFlow {
 	db := getDbManager()
 	query := map[string]interface{}{"payee_id": p.ID, "transfer": false}
 	if account != nil && account.ID > 0 {
-	   query["account_id"] = account.ID
+		query["account_id"] = account.ID
 	}
-	db.Order("date desc").Preload("Payee").Preload("Category").
-	   Where("(type != ? OR type IS NULL)", "RCashFlow"). // not Repeats
-	   Where("NOT (split_from > 0 AND split = 0)"). // not HasSplits
-	   Where("user_id = ?", p.UserID).
-	   Joins("Account").Find(&entries, query)
+
+	dbQuery := db.Order("date desc").Preload("Payee").Preload("Category")
+	if getSplits {
+		dbQuery = dbQuery.
+		   Where("(type != ? OR type IS NULL)", "RCashFlow"). // not Repeats
+		   Where("NOT (split_from > 0 AND split = 0)") // not HasSplits
+	} else {
+		dbQuery = dbQuery.Where("type IS NULL") // no Repeats or Splits
+	}
+	dbQuery.Where("user_id = ?", p.UserID).
+		Joins("Account").Find(&entries, query)
 	log.Printf("[MODEL] LIST CASHFLOWS PAYEE(%d:%d)", p.ID, len(entries))
 
 	for i := 0; i < len(entries); i++ {
 		entries[i].Preload(db)
 	}
 	return entries
+}
+
+func (p *Payee) ListCashFlows(account *Account) []CashFlow {
+	return p.listCashFlows(account, true)
 }
 
 func (p *Payee) getByName(session *Session, importing bool) (error, *Payee) {
@@ -162,6 +170,10 @@ func (p *Payee) getByName(session *Session, importing bool) (error, *Payee) {
 func (p *Payee) GetDuplicates() []Payee {
 	entries := []Payee{}
 
+	if !p.Verified {
+		return entries
+	}
+
 	db := getDbManager()
 	wildcardName := fmt.Sprintf("%s%%", p.Name)
 	db.Order("name asc").Where("user_id = ?", p.UserID).
@@ -169,6 +181,35 @@ func (p *Payee) GetDuplicates() []Payee {
 	   Where("id != ?", p.ID).
 	   Find(&entries)
 	return entries
+}
+
+func (p *Payee) Merge(toMerge *Payee, account *Account) error {
+	if toMerge.ID != 0 {
+		log.Printf("[MODEL] MERGE PAYEE(%d) WITH(%d)",
+			   p.ID, toMerge.ID)
+		// get CashFlows (no Scheduled or Splits)
+		cashflows := toMerge.listCashFlows(account, false)
+		for i := 0; i < len(cashflows); i++ {
+			c := &cashflows[i]
+			c.postQueryInit(true)
+			// ensure c.Update path uses c.PayeeID (no lookup)
+			c.PayeeName = ""
+			c.PayeeID = p.ID
+			c.Account.setSession(p.User.Session)
+			c.Update()
+		}
+		// will verify Payee is unused
+		toMerge.Delete(p.User.Session)
+	} else {
+		mergeList := p.GetDuplicates()
+		log.Printf("[MODEL] MERGE PAYEE(%d) MANY(%d)",
+			   p.ID, len(mergeList))
+		for _, m := range mergeList {
+			m.Verified = p.Verified
+			p.Merge(&m, account)
+		}
+	}
+	return nil
 }
 
 func (p *Payee) Create(session *Session) error {
@@ -189,6 +230,9 @@ func (p *Payee) Create(session *Session) error {
 func (p *Payee) HaveAccessPermission(session *Session) bool {
 	u := session.GetUser()
 	p.Verified = !(u == nil || u.ID != p.UserID)
+	if p.Verified {
+		p.User = *u
+	}
 	return p.Verified
 }
 
@@ -196,7 +240,7 @@ func (p *Payee) HaveAccessPermission(session *Session) bool {
 func (p *Payee) Get(session *Session) *Payee {
 	db := session.DB
 	if p.ID > 0 {
-		db.Preload("User").First(&p)
+		db.First(&p)
 	}
 	// Verify we have access to Payee
 	if !p.HaveAccessPermission(session) {
