@@ -139,6 +139,8 @@ func (c *CashFlow) makeCashFlowOFX(ofxTran *ofxgo.Transaction) {
 	} else {
 		c.Payee.Name = strings.TrimSpace(tranName)
 	}
+
+	c.Payee.Name = trimAlphanumericTag(&c.Payee.Name)
 	c.PayeeName = c.Payee.Name
 	c.Memo = strings.TrimSpace(string(ofxTran.Memo))
 	c.Transnum = strings.TrimSpace(string(ofxTran.FiTID))
@@ -148,7 +150,9 @@ func (c *CashFlow) makeCashFlowQIF(qifTran qif.BankingTransaction) {
 	c.Date = qifTran.Date()
 	c.setDefaults() // needs c.Date
 	c.Amount = qifTran.AmountDecimal()
+
 	c.Payee.Name = strings.TrimSpace(qifTran.Payee())
+	c.Payee.Name = trimAlphanumericTag(&c.Payee.Name)
 	c.PayeeName = c.Payee.Name
 	c.Memo = strings.TrimSpace(qifTran.Memo())
 	c.Transnum = strings.TrimSpace(qifTran.Num())

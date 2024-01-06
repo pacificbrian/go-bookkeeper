@@ -10,6 +10,7 @@ import (
 	"log"
 	"mime/multipart"
 	"time"
+	"regexp"
 	"strings"
 	"github.com/davecgh/go-spew/spew"
 	"github.com/shopspring/decimal"
@@ -121,4 +122,37 @@ func dateToString(dx *time.Time) string {
 
 func yearToDate(year int) time.Time {
 	return time.Date(year, 1, 1, 0, 0, 0, 0, time.Local)
+}
+
+/* trim alphanumeric tag in inputName of: name*tag */
+func trimAlphanumericTag(inputName *string) string {
+	splits := strings.Split(*inputName, "*")
+	if len(splits) != 2 {
+		return *inputName
+	}
+
+	name := splits[0]
+	/* too strict... */
+	if false && strings.HasSuffix(name, " ") {
+		return *inputName
+	}
+
+	tag := splits[1]
+	match := !strings.Contains(tag, " ")
+	if match {
+		/* is alphanumeric? */
+		match,_ = regexp.MatchString(`^[a-zA-Z0-9]+$`, tag)
+	}
+	if match {
+		/* is not alpha-only or numeric-only */
+		match,_ = regexp.MatchString(`[a-zA-Z]`, tag)
+		if match {
+			/* prefer at least 2 numeric values */
+			match,_ = regexp.MatchString(`[0-9][a-zA-Z]*[0-9]`, tag)
+		}
+	}
+	if match {
+		return name
+	}
+	return *inputName
 }
