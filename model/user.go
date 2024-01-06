@@ -9,6 +9,7 @@ package model
 import (
 	"errors"
 	"log"
+	"sync"
 	"github.com/pacificbrian/go-bookkeeper/config"
 	gormdb "github.com/pacificbrian/go-bookkeeper/db"
 	"github.com/shopspring/decimal"
@@ -25,6 +26,7 @@ type UserCache struct {
 	AccountBalances map[uint]decimal.Decimal
 	AccountNames map[uint]string
 	CategoryNames map[uint]string
+	mutex sync.Mutex
 }
 
 type UserSettings struct {
@@ -65,13 +67,20 @@ func (u *User) Cache() *UserCache {
 }
 
 func (u *User) cacheAccountBalance(a *Account) {
-	u.Cache().AccountBalances[a.ID] = a.Balance
+	uc := u.Cache()
+	uc.mutex.Lock()
+	uc.AccountBalances[a.ID] = a.Balance
+	uc.mutex.Unlock()
 }
 
-func (u *User) updateAccountBalance(a *Account) {
-	if !u.Cache().AccountBalances[a.ID].IsZero() {
-		u.Cache().AccountBalances[a.ID] = a.Balance
+func (u *User) updateAccountBalance(a *Account, update decimal.Decimal) {
+	uc := u.Cache()
+	uc.mutex.Lock()
+	if !uc.AccountBalances[a.ID].IsZero() {
+		balance := uc.AccountBalances[a.ID].Add(update)
+		uc.AccountBalances[a.ID] = balance
 	}
+	uc.mutex.Unlock()
 }
 
 func (u *User) cacheAccountName(a *Account) {
@@ -110,6 +119,7 @@ func (uc *UserCache) init() {
 	uc.AccountBalances = map[uint]decimal.Decimal{}
 	uc.AccountNames = map[uint]string{}
 	uc.CategoryNames = map[uint]string{}
+	uc.mutex = sync.Mutex{}
 }
 
 func (u *User) initSettings() {

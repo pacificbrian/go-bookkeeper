@@ -417,7 +417,7 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 	// If we didn't have accurate Balance, these will be unused in caller.
 	a.Balance = a.Balance.Add(adjustAmount)
 	a.CashBalance = a.CashBalance.Add(adjustAmount)
-	a.User.updateAccountBalance(a)
+	a.User.updateAccountBalance(a, adjustAmount)
 
 	if c.oldAmount.IsZero() || oldCashBalance.IsZero() {
 		// This case intended to handle when we don't know if we have
