@@ -1234,7 +1234,8 @@ func (c *CashFlow) Put(session *Session, request map[string]interface{}) error {
 	}
 
 	jrequest, _ := json.Marshal(request)
-	log.Printf("[MODEL] PUT CASHFLOW(%d) %s", c.ID, jrequest)
+	log.Printf("[MODEL] PUT CASHFLOW(%d: %f) %s",
+		   c.ID, c.oldAmount.InexactFloat64(), jrequest)
 
 	if request["apply"] != nil {
 		delete(request, "apply")
