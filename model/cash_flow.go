@@ -402,7 +402,7 @@ func (c *CashFlow) ListSplit(db *gorm.DB) ([]CashFlow, string) {
 		for i := 0; i < len(entries); i++ {
 			split := &entries[i]
 			// sets CashFlowType, old values, PairID (Transfers)
-			split.postQueryInit()
+			split.postQueryInit(false)
 			split.Account.cloneVerified(&c.Account)
 			split.Preload(db)
 			total = total.Add(split.Amount)
@@ -494,7 +494,7 @@ func (c *CashFlow) applyCashFlowType() {
 
 // set CashFlowType to be correct, and backup some values used to
 // optimize out unneeded database updates
-func (c *CashFlow) postQueryInit() {
+func (c *CashFlow) postQueryInit(forEdit bool) {
 	c.oldAmount = c.Amount
 	c.oldDate = c.Date
 	c.oldPayeeID = c.PayeeID
@@ -505,6 +505,11 @@ func (c *CashFlow) postQueryInit() {
 		// ScheduledCashFlows don't have Pairs, so unused in that case
 		c.PairID = c.CategoryID // Peer Cashflow (Transfers)
 		c.CategoryID = 0
+	}
+	if forEdit {
+		// #Edit wants Amount to be always positive;
+		// upon #Update, sanitizeInputs will reverse this
+		c.Amount = c.Amount.Abs()
 	}
 }
 
@@ -1005,7 +1010,7 @@ func (repeat *CashFlow) tryInsertRepeatCashFlow() (decimal.Decimal, error) {
 			// For Splits, this happens in ListSplit and we don't want
 			// to call again here as would reset modified split.Amount
 			// before we call updateSplits.
-			repeat.postQueryInit()
+			repeat.postQueryInit(false)
 
 			// logic here requires repeat.Account.Balance
 			applied := repeat.applyRate(db)
@@ -1140,15 +1145,11 @@ func (c *CashFlow) Get(session *Session, edit bool) *CashFlow {
 	}
 
 	// sets CashFlowType, old values, PairID (Transfers)
-	c.postQueryInit()
+	c.postQueryInit(edit)
 
 	if edit {
 		// some Preloads done above at start of Get()
 		c.Preload(db)
-
-		// #Edit wants Amount to be always positive; safe to
-		// modify here because Delete doen't use, and Update overwrites
-		c.Amount = c.Amount.Abs()
 	} else {
 		if c.IsScheduled() {
 			c.PreloadRepeat(db)
@@ -1351,7 +1352,10 @@ func (*CashFlow) Find(ID uint) *CashFlow {
 	db := getDbManager()
 	c := new(CashFlow)
 	db.First(&c, ID)
-	c.postQueryInit()
+	c.Account.Verified = true
+	c.postQueryInit(false)
+	// clear CashFlowTypeID, otherwise would require Amount.Abs()
+	c.CashFlowTypeID = 0
 	return c
 }
 
