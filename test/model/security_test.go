@@ -60,3 +60,31 @@ func TestCreateSecurityFromTrade(t *testing.T) {
 	err := tr.Create(defaultSession)
 	assert.NilError(t, err)
 }
+
+func TestMoveSecurity(t *testing.T) {
+	a := model.GetAccountByName(defaultSession, "Gopher Financial")
+	assert.Assert(t, a != nil)
+	aBalance := a.Balance
+
+	b := model.GetAccountByName(defaultSession, "Gopher Investments")
+	assert.Assert(t, b != nil)
+	bBalance := b.Balance
+
+	company := new(model.Company)
+	company.Symbol = "BRK-B"
+	security,_ := a.GetSecurity(defaultSession, company)
+	assert.Assert(t, security != nil)
+	assert.Assert(t, security.ID != 0)
+
+	security.ChangeAccount(defaultSession, b.Name)
+	security = security.Find(security.ID)
+	assert.Equal(t, security.AccountID, b.ID)
+	aBalance = aBalance.Sub(security.Value)
+	bBalance = bBalance.Add(security.Value)
+
+	// get Accounts again which will refresh Balance from UserCache
+	a = model.GetAccountByName(defaultSession, "Gopher Financial")
+	b = model.GetAccountByName(defaultSession, "Gopher Investments")
+	assert.Assert(t, a.Balance.Equal(aBalance))
+	assert.Assert(t, b.Balance.Equal(bBalance))
+}

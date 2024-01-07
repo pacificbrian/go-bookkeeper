@@ -534,6 +534,12 @@ func (s *Security) postQueryInit() bool {
 	s.Company.oldSymbol = s.Company.Symbol
 	s.Company.oldName = s.Company.Name
 	s.oldSecurityBasisTypeID = s.SecurityBasisTypeID
+
+	// update s.Account.Balance to cached value
+	if s.Account.ID > 0 {
+		s.Account.postQueryInit()
+	}
+
 	// updates s.Value (if have Shares) from latest Quote
 	return s.updateValue(debugValue)
 }
@@ -622,6 +628,9 @@ func (s *Security) Update() error {
 func (s *Security) ChangeAccount(session *Session, name string) *Account {
 	a := GetAccountByName(session, name)
 	if a != nil {
+		if !a.IsInvestment() {
+			return nil
+		}
 		s.AccountID = a.ID
 
 		db := session.DB
@@ -629,6 +638,14 @@ func (s *Security) ChangeAccount(session *Session, name string) *Account {
 		   Update("account_id", a.ID)
 		log.Printf("[MODEL] UPDATE SECURITY(%d:%s) MOVED TO(%d)",
 			   s.ID, s.Company.Symbol, a.ID)
+
+		// update cached Account.Balances to reflect Move
+		if !s.Value.IsZero() {
+			s.Account.Balance = s.Account.Balance.Sub(s.Value)
+			a.User.cacheAccountBalance(&s.Account)
+			a.Balance = a.Balance.Add(s.Value)
+			a.User.cacheAccountBalance(a)
+		}
 	}
 	return a
 }

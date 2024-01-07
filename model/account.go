@@ -245,6 +245,7 @@ func (u *User) getAccount(name string) *Account {
 	if a.ID == 0 || !a.HaveAccessPermission(u.Session) {
 		return nil
 	}
+	a.postQueryInit()
 	return a
 }
 
@@ -272,6 +273,7 @@ func (a *Account) GetSecurity(session *Session, company *Company) (*Security, er
 		// need Where because these are not primary keys
 		db.Preload("Account").
 		   Where(&security).First(&security)
+		security.Company = *c
 	}
 	log.Printf("[MODEL] ACCOUNT(%d) COMPANY(%d) GET SECURITY(%d)",
 		   a.ID, c.ID, security.ID)
