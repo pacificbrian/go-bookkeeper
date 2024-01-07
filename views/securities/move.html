@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="edit">
+<h2>Transfer Security to other Existing Account</h2>
+
+{% if security -%}
+<form method="POST" action="/securities/{{security.ID}}/move">
+<fieldset>
+<table>
+<tr/>
+<td>Account Name:</td>
+<td>{{security.Account.Name}}</td>
+<tr/>
+<td>Symbol:</td>
+<td>{{security.Company.Symbol}}</td>
+<tr/>
+<td>Name:</td>
+<td>{{security.Company.Name}}</td>
+<tr/>
+<td>New Account Name:</td>
+<td><input type="text" name="account.Name" value="{{security.Account.Name}}"/></td>
+</table>
+</fieldset>
+<fieldset class="submit">
+<p>
+<input type="submit" value="Move Security"/>
+</p>
+</fieldset>
+</form>
+{% endif -%}
+</div>
+
+<ul id="footmenu">
+<li><a href=/accounts/{{security.AccountID}}/securities/{{security.ID}}>Back To Security</a></li>
+<li><a href=/securities/{{security.ID}}/edit>Edit Security</a></li>
+</ul>
+
+{% endblock -%}

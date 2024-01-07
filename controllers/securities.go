@@ -191,3 +191,43 @@ func EditSecurity(c echo.Context) error {
 				"security_types": new(model.SecurityType).List(session.DB) }
 	return c.Render(http.StatusOK, "securities/edit.html", data)
 }
+
+func MoveSecurity(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	newAccountName := ""
+
+	isPost := (c.Request().Method == "POST")
+	if isPost {
+		newAccountName = c.FormValue("account.Name")
+		log.Printf("MOVE SECURITY(%d) GET POST(%s)", id, newAccountName)
+	} else {
+		log.Printf("MOVE SECURITY(%d) GET", id)
+	}
+
+	entry := new(model.Security)
+	entry.ID = uint(id)
+	entry = entry.Get(session)
+	if isPost && entry == nil {
+		return c.NoContent(http.StatusUnauthorized)
+	}
+
+	if !isPost {
+		// GET
+		data := map[string]any{ "security": entry }
+		return c.Render(http.StatusOK, "securities/move.html", data)
+	}
+
+	// POST
+	a := entry.ChangeAccount(session, newAccountName)
+	if a == nil {
+		return c.Redirect(http.StatusSeeOther,
+				  fmt.Sprintf("/securities/%d/move", id))
+	} else {
+		return c.Redirect(http.StatusSeeOther,
+				  fmt.Sprintf("/accounts/%d/securities/%d", a.ID, id))
+	}
+}

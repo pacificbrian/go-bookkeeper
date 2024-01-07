@@ -616,6 +616,20 @@ func (s *Security) Update() error {
 	return nil
 }
 
+func (s *Security) ChangeAccount(session *Session, name string) *Account {
+	a := accountGetByName(session, name)
+	if a != nil {
+		s.AccountID = a.ID
+
+		db := session.DB
+		db.Omit(clause.Associations).Model(s).
+		   Update("account_id", a.ID)
+		log.Printf("[MODEL] UPDATE SECURITY(%d:%s) MOVED TO(%d)",
+			   s.ID, s.Company.Symbol, a.ID)
+	}
+	return a
+}
+
 func (s *Security) fixupTrades(db *gorm.DB, entries []Trade) {
 	fixSharesIn := false
 	fixAdjustedBasis := false

@@ -108,6 +108,8 @@ func Init(staticFS *embed.FS, viewFS *embed.FS) *echo.Echo {
 	e.POST("/accounts/:account_id/securities", controllers.CreateSecurity)
 	e.GET("/securities/:id/edit", controllers.EditSecurity)
 	e.POST("/securities/:id", controllers.UpdateSecurity)
+	e.GET("/securities/:id/move", controllers.MoveSecurity)
+	e.POST("/securities/:id/move", controllers.MoveSecurity)
 
 	// Trade
 	e.POST("/accounts/:account_id/trades", controllers.CreateTrade)
