@@ -462,6 +462,9 @@ func (s *Security) create(session *Session, useDefaults bool) error {
 	if account == nil {
 		return errors.New("Permission Denied")
 	}
+	if !account.IsInvestment() {
+		return errors.New("Invalid Account")
+	}
 
 	err := s.validateInputs()
 	if err != nil {
@@ -617,7 +620,7 @@ func (s *Security) Update() error {
 }
 
 func (s *Security) ChangeAccount(session *Session, name string) *Account {
-	a := accountGetByName(session, name)
+	a := GetAccountByName(session, name)
 	if a != nil {
 		s.AccountID = a.ID
 
@@ -684,6 +687,8 @@ func (*Security) Find(ID uint) *Security {
 	db := getDbManager()
 	s := new(Security)
 	db.First(&s, ID)
+	s.Account.Verified = true
+	s.postQueryInit()
 	return s
 }
 

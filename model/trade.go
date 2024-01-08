@@ -756,6 +756,7 @@ func (*Trade) Find(ID uint) *Trade {
 	db := getDbManager()
 	t := new(Trade)
 	db.First(&t, ID)
+	t.Account.Verified = true
 	t.postQueryInit()
 	return t
 }

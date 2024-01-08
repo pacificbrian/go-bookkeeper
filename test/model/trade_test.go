@@ -25,14 +25,14 @@ func makeTrade(tr *model.Trade, symbol string, daysAgo int, price int32, shares 
 }
 
 func TestSellTrade(t *testing.T) {
-	basis := decimal.Zero
-	tr := new(model.Trade)
-	tr.AccountID = 1
-
+	a := model.GetAccountByName(defaultSession, "Gopher Investments")
+	assert.Assert(t, a != nil)
 	// store Account balance before Trade
-	a := new(model.Account)
-	a = a.Find(tr.AccountID)
 	balance := a.CashBalance
+	basis := decimal.Zero
+
+	tr := new(model.Trade)
+	tr.AccountID = a.ID
 
 	makeTrade(tr, "GOOGL", -7, 125, 10)
 	err := tr.Create(defaultSession)
@@ -70,21 +70,20 @@ func TestSellTrade(t *testing.T) {
 }
 
 func TestSellTradeAverageBasis(t *testing.T) {
+	a := model.GetAccountByName(defaultSession, "Gopher Financial")
+	assert.Assert(t, a != nil)
+	// store Account balance before Trade
+	balance := a.CashBalance
 	sharesHeld := decimal.Zero
 	basis := decimal.Zero
 
 	s := new(model.Security)
-	s.AccountID = 1
+	s.AccountID = a.ID
 	CreateMutualFund(t, s, "Gopher Growth Fund")
 
 	tr := new(model.Trade)
-	tr.AccountID = 1
+	tr.AccountID = a.ID
 	tr.SecurityID = s.ID
-
-	// store Account balance before Trade
-	a := new(model.Account)
-	a = a.Find(tr.AccountID)
-	balance := a.CashBalance
 
 	makeTrade(tr, "", -14, 120, 10)
 	err := tr.Create(defaultSession)

@@ -577,7 +577,7 @@ func (c *CashFlow) prepareInsertCashFlow(db *gorm.DB, importing bool) (error, *C
 		var a *Account
 
 		if c.PayeeName != "" {
-			a = accountGetByName(c.getSession(), c.PayeeName)
+			a = GetAccountByName(c.getSession(), c.PayeeName)
 		} else if c.PayeeID > 0 {
 			// retrieve Account for scheduled CashFlows
 			a = new(Account)

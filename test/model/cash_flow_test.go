@@ -28,8 +28,11 @@ func compareCashFlows(a *model.CashFlow, b *model.CashFlow, haveNames bool) bool
 }
 
 func TestCreateCashFlow(t *testing.T) {
+	a := model.GetAccountByName(defaultSession, "Gopher Checking")
+	assert.Assert(t, a != nil)
+
 	c := new(model.CashFlow)
-	c.AccountID = 1
+	c.AccountID = a.ID
 	c.Date = time.Now()
 	c.PayeeName = "Gopher Construction"
 	c.CashFlowTypeID = model.Debit

@@ -232,25 +232,29 @@ func (account *Account) ListScheduled(session *Session, canRecordOnly bool) []Ca
 	return entries
 }
 
-func accountGetByName(session *Session, name string) *Account {
-	db := session.DB
-	u := session.GetUser()
-	if u == nil {
-		return nil
-	}
-
+func (u *User) getAccount(name string) *Account {
 	a := new(Account)
 	a.Name = name
 	a.UserID = u.ID
 	if a.Name != "" {
 		// need Where because these are not primary keys
+		db := getDbManager()
 		db.Where(&a).First(&a)
 	}
 
-	if a.ID == 0 || !a.HaveAccessPermission(session) {
+	if a.ID == 0 || !a.HaveAccessPermission(u.Session) {
 		return nil
 	}
 	return a
+}
+
+func GetAccountByName(session *Session, name string) *Account {
+	u := session.GetUser()
+	if u == nil {
+		return nil
+	}
+
+	return u.getAccount(name)
 }
 
 func (a *Account) GetSecurity(session *Session, company *Company) (*Security, error) {
@@ -642,6 +646,7 @@ func (*Account) Find(ID uint) *Account {
 	db := getDbManager()
 	a := new(Account)
 	db.First(&a, ID)
+	a.Verified = true
 	return a
 }
 
