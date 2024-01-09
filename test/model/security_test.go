@@ -31,6 +31,10 @@ func TestCreateSecurity(t *testing.T) {
 	s.Company.Symbol = "GOAIX"
 	err := CreateMutualFund(t, s, "Gopher AI Fund")
 	assert.NilError(t, err)
+
+	// should be able to fetch Security by Symbol only
+	s1,_ := a.GetSecurityBySymbol(defaultSession, s.Company.Symbol)
+	assert.Equal(t, s.ID, s1.ID)
 }
 
 func TestCreateSecurityNegative(t *testing.T) {
@@ -70,9 +74,7 @@ func TestMoveSecurity(t *testing.T) {
 	assert.Assert(t, b != nil)
 	bBalance := b.Balance
 
-	company := new(model.Company)
-	company.Symbol = "BRK-B"
-	security,_ := a.GetSecurity(defaultSession, company)
+	security,_ := a.GetSecurityBySymbol(defaultSession, "BRK-B")
 	assert.Assert(t, security != nil)
 	assert.Assert(t, security.ID != 0)
 

@@ -258,31 +258,74 @@ func GetAccountByName(session *Session, name string) *Account {
 	return u.getAccount(name)
 }
 
+// This will find a Company that must match both Company.Name and
+// Company.Symbol. If such Company doesn't exist, one is created.
 func (a *Account) GetSecurity(session *Session, company *Company) (*Security, error) {
-	security := new(Security)
-	db := session.DB
-
-	c := company.Get(false)
+	c := company.Create(false)
 	if c == nil {
 		return nil, errors.New("Invalid Request")
 	}
+
+	security := new(Security)
 	security.CompanyID = c.ID
 	security.AccountID = a.ID
+	if a.ID > 0 {
+		db := session.DB
 
-	if security.AccountID > 0 {
 		// need Where because these are not primary keys
 		db.Preload("Account").
 		   Where(&security).First(&security)
-		security.Company = *c
 	}
-	log.Printf("[MODEL] ACCOUNT(%d) COMPANY(%d) GET SECURITY(%d)",
-		   a.ID, c.ID, security.ID)
 
 	if security.ID > 0 {
+		log.Printf("[MODEL] ACCOUNT(%d) COMPANY(%d) GET SECURITY(%d)",
+			   a.ID, c.ID, security.ID)
+
 		// verify Account
 		if !security.HaveAccessPermission(session) {
 			return nil, errors.New("Permission Denied")
 		}
+		security.Company = *c
+		security.postQueryInit()
+	}
+
+	// return Security if not found, so CompanyID can be reused
+	return security, nil
+}
+
+// This version will find a Company that matches Company.Symbol regardless of
+// Company.Name. If no such Company, one is created with Company.Name = "".
+func (a *Account) GetSecurityBySymbol(session *Session, symbol string) (*Security, error) {
+	security := new(Security)
+	security.AccountID = a.ID
+	if a.ID > 0 {
+		db := session.DB
+
+		// need Where because these are not primary keys
+		db.Preload("Account").
+		   Where("symbol = ?", symbol).
+		   Where(&Security{AccountID: a.ID}).
+		   Joins("Company").First(&security)
+	}
+
+	if security.ID > 0 {
+		log.Printf("[MODEL] ACCOUNT(%d) SYMBOL(%s) GET SECURITY(%d)",
+			   a.ID, symbol, security.ID)
+
+		// verify Account
+		if !security.HaveAccessPermission(session) {
+			return nil, errors.New("Permission Denied")
+		}
+		security.postQueryInit()
+	} else {
+		// create Company if doesn't exist
+		c := new(Company)
+		c.Symbol = symbol
+		c = c.Create(false)
+		if c == nil {
+			return nil, errors.New("Invalid Request")
+		}
+		security.CompanyID = c.ID
 	}
 
 	// return Security if not found, so CompanyID can be reused

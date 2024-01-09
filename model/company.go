@@ -33,13 +33,7 @@ func (c Company) GetName() string {
 }
 
 // Query if Company already exists and return.
-// If non-existent, create one. But if this is an Update, first
-// try to update the calling object Company first if only attached
-// to one Security.
-// XXX Possibly should disallow multiple Companies for same Symbol.
-// Or in future have defined set of fixed Companies if ever consider
-// to add support for financial statements.
-func (c *Company) Get(tryUpdate bool) *Company {
+func (c *Company) Get() *Company {
 	if c.Name == "" && c.Symbol == "" {
 		return nil
 	}
@@ -51,14 +45,48 @@ func (c *Company) Get(tryUpdate bool) *Company {
 	   First(result)
 
 	if result.ID > 0 {
-		c = result
 		log.Printf("[MODEL] FOUND EXISTING COMPANY(%d)", c.ID)
+	}
+	return result
+}
+
+// Query if Companies already exists and return them.
+// XXX Possibly should disallow multiple Companies for same Symbol.
+func (c *Company) GetBySymbol() []Company {
+	if c.Symbol == "" {
+		return nil
+	}
+	results := []Company{}
+	db := getDbManager()
+	db.Where("symbol = ?", c.Symbol).Find(&results)
+
+	if len(results) > 0 {
+		log.Printf("[MODEL] FOUND EXISTING COMPANIES(%d) FOR(%s)", c.ID)
+	}
+	return results
+}
+
+// Query if Company already exists and return.
+// If non-existent, create one. But if this is an Update, first
+// try to update the calling object Company first if only attached
+// to one Security.
+// XXX Possibly should disallow multiple Companies for same Symbol.
+// Or in future have defined set of fixed Companies if ever consider
+// to add support for financial statements.
+func (c *Company) Create(isUpdate bool) *Company {
+	result := c.Get()
+	if result == nil {
+		return nil
+	} else if result.ID > 0 {
+		c = result
 	} else {
+		db := getDbManager()
+
 		// Before creating new Company, test if can just update the
 		// calling object Company if only has one Security (assumed to
 		// be the Security being updated). Racy! Maybe need the Save()
 		// to be in a hook attached to the Find().
-		if c.ID > 0 && tryUpdate {
+		if c.ID > 0 && isUpdate {
 			var numSecurities int64
 
 			db.Model(&Security{}).Where(&Security{CompanyID: c.ID}).
@@ -131,7 +159,7 @@ func (c *Company) Update() bool {
 		return false
 	}
 
-	newCompany := c.Get(true)
+	newCompany := c.Create(true)
 	if newCompany == nil {
 		return false
 	}

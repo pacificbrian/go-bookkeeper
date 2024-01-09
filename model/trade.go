@@ -433,13 +433,11 @@ func (t *Trade) securityGetBySymbol(session *Session) *Security {
 	var security *Security
 
 	if t.Symbol != "" {
-		company := new(Company)
-		company.Symbol = t.Symbol
 		a := &t.Account
 		a.ID = t.AccountID
 
 		// verifies Account
-		security,_ = a.GetSecurity(session, company)
+		security,_ = a.GetSecurityBySymbol(session, t.Symbol)
 		if security == nil {
 			return nil
 		} else if security.ID == 0 {
