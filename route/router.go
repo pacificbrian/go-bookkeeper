@@ -96,6 +96,8 @@ func Init(staticFS *embed.FS, viewFS *embed.FS) *echo.Echo {
 	e.POST("/accounts/:account_id/payees/:id", controllers.UpdatePayee)
 	e.POST("/payees/:id/merge", controllers.MergePayee)
 	e.POST("/accounts/:account_id/payees/:id/merge", controllers.MergePayee)
+	e.POST("/payees/:id/category", controllers.PayeeSetCategory)
+	e.POST("/accounts/:account_id/payees/:id/category", controllers.PayeeSetCategory)
 	e.DELETE("/payees/:id", controllers.DeletePayee)
 
 	// Company

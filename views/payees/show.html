@@ -18,9 +18,9 @@
 
 <h3>Update Payee Category</h3>
 {% if account && account.ID > 0 -%}
-<form method="POST" action="/accounts/{{ account.ID }}/payees/{{ payee.ID }}">
+<form method="POST" action="/accounts/{{ account.ID }}/payees/{{ payee.ID }}/category">
 {% else -%}
-<form method="POST" action="/payees/{{ payee.ID }}">
+<form method="POST" action="/payees/{{ payee.ID }}/category">
 {% endif -%}
 <fieldset class="last">
 <label>Default Category</label>

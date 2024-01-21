@@ -196,6 +196,34 @@ func MergePayee(c echo.Context) error {
 	return redirectToPayee(c, id, account_id)
 }
 
+func PayeeSetCategory(c echo.Context) error {
+	id, _ := strconv.Atoi(c.Param("id"))
+	account_id, _ := strconv.Atoi(c.Param("account_id"))
+	category_id, _ := strconv.Atoi(c.FormValue("payee.category_id"))
+	session := getSession(c)
+	if session == nil {
+		return redirectToLogin(c)
+	}
+	if id == 0 || category_id == 0 {
+		return redirectToPayee(c, id, account_id)
+	}
+
+	action := c.FormValue("submit")
+	hasAll := strings.Contains(action, "All")
+	log.Printf("PAYEE(%d) SET_CATEGORY(%d) ALL(%t)", id, category_id, hasAll)
+
+	entry := new(model.Payee)
+	entry.ID = uint(id)
+	entry = entry.Get(session)
+	account := getAccount(session, uint(account_id))
+	if entry == nil || account == nil {
+		return c.NoContent(http.StatusUnauthorized)
+	}
+	//entry.SetCategory(account, category_id, hasAll)
+
+	return redirectToPayee(c, id, account_id)
+}
+
 func EditPayee(c echo.Context) error {
 	// TODO account_id
 	id, _ := strconv.Atoi(c.Param("id"))
