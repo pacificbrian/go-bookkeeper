@@ -73,14 +73,28 @@ func (u *User) cacheAccountBalance(a *Account) {
 	uc.mutex.Unlock()
 }
 
-func (u *User) updateAccountBalance(a *Account, update decimal.Decimal) {
+func (u *User) writeAccountBalance(a *Account, update decimal.Decimal, force bool) decimal.Decimal {
 	uc := u.Cache()
+
 	uc.mutex.Lock()
-	if !uc.AccountBalances[a.ID].IsZero() {
-		balance := uc.AccountBalances[a.ID].Add(update)
+	balance, valid := u.lookupAccountBalance(a.ID)
+	if !valid && force {
+		balance = a.Balance
+	}
+	if valid || force {
+		balance = balance.Add(update)
 		uc.AccountBalances[a.ID] = balance
 	}
 	uc.mutex.Unlock()
+	return balance
+}
+
+func (u *User) insertAccountBalance(a *Account, update decimal.Decimal) decimal.Decimal {
+	return u.writeAccountBalance(a, update, true)
+}
+
+func (u *User) updateAccountBalance(a *Account, update decimal.Decimal) decimal.Decimal {
+	return u.writeAccountBalance(a, update, false)
 }
 
 func (u *User) cacheAccountName(a *Account) {
@@ -99,8 +113,9 @@ func (u *User) cacheCategoryName(c *Category) {
 	log.Printf("[CACHE] ADD CATEGORY(%d: %s)", c.ID, c.Name)
 }
 
-func (u *User) lookupAccountBalance(id uint) decimal.Decimal {
-	return u.Cache().AccountBalances[id]
+func (u *User) lookupAccountBalance(id uint) (decimal.Decimal, bool) {
+	v, valid := u.Cache().AccountBalances[id]
+	return v, valid
 }
 
 func (u *User) lookupAccountName(id uint) string {

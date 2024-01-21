@@ -57,12 +57,19 @@ func TestCreateSecurityFromTrade(t *testing.T) {
 	tr.Symbol = "BRK-B"
 	tr.TradeTypeID = model.Buy
 	tr.Date = time.Now()
-	tr.Amount = decimal.NewFromInt32(1600)
 	tr.Price = decimal.NewFromInt32(320)
 	tr.Shares = decimal.NewFromInt32(5)
+	value := tr.Price.Mul(tr.Shares)
+	tr.Amount = value
 
 	err := tr.Create(defaultSession)
 	assert.NilError(t, err)
+
+	a = model.GetAccountByName(defaultSession, "Gopher Financial")
+	aCashBalance := decimal.Zero.Sub(value)
+	aBalance := a.CashBalance.Add(value)
+	assert.Assert(t, a.CashBalance.Equal(aCashBalance))
+	assert.Assert(t, a.Balance.Equal(aBalance))
 }
 
 func TestMoveSecurity(t *testing.T) {

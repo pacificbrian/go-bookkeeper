@@ -113,8 +113,8 @@ func updateAccounts(accounts []Account, session *Session) {
 }
 
 func (a *Account) postQueryInit() {
-	balance := a.User.lookupAccountBalance(a.ID)
-	if !balance.IsZero() {
+	balance, valid := a.User.lookupAccountBalance(a.ID)
+	if valid {
 		a.Balance = balance
 	}
 }
@@ -467,6 +467,7 @@ func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
 	a.Balance = a.Balance.Add(adjustAmount)
 	a.CashBalance = a.CashBalance.Add(adjustAmount)
 	a.User.updateAccountBalance(a, adjustAmount)
+	// TODO: should be fine to discard cached Balance as written below
 
 	if c.oldAmount.IsZero() || oldCashBalance.IsZero() {
 		// This case intended to handle when we don't know if we have

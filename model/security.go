@@ -124,7 +124,8 @@ func (s *Security) setValue(price decimal.Decimal) decimal.Decimal {
 
 func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 	updates := make(map[string]interface{})
-	price := s.Price()
+	sPrice := s.Price()
+	price := sPrice
 
 	// if trade.Date is newer than last time we pushed a Quote to database,
 	// use given Price, else use Price computed above
@@ -138,6 +139,7 @@ func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 		updates["accumulated_basis"] = s.AccumulatedBasis
 	}
 
+	a := &s.Account
 	if trade.IsSell() {
 		// don't assert s.Basis as may trip on rounding issues
 		assert(s.Shares.GreaterThanOrEqual(trade.Shares),
@@ -152,6 +154,9 @@ func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 		updates["basis"] = s.Basis
 		updates["retained_earnings"] = s.RetainedEarnings
 		updates["shares"] = s.Shares
+		// keep cached AccountBalance accurate (if set), don't use
+		// trade.Amount, but use sPrice, as determines Security Value
+		a.Balance = a.User.insertAccountBalance(a, sPrice.Mul(trade.Shares).Neg())
 	} else if trade.IsBuy() {
 		s.AccumulatedBasis = s.AccumulatedBasis.Add(trade.Amount)
 		s.Basis = s.Basis.Add(trade.Amount)
@@ -163,6 +168,8 @@ func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 			s.RetainedEarnings = s.RetainedEarnings.Add(trade.Amount)
 			updates["retained_earnings"] = s.RetainedEarnings
 		}
+		// keep cached AccountBalance accurate (if set)
+		a.Balance = a.User.insertAccountBalance(a, price.Mul(trade.Shares))
 	} else if trade.IsCredit() {
 		s.RetainedEarnings = s.RetainedEarnings.Add(trade.Amount)
 		updates["retained_earnings"] = s.RetainedEarnings
