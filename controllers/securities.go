@@ -28,13 +28,9 @@ func ListSecurities(c echo.Context) error {
 	log.Println("LIST SECURITIES")
 	get_json := false
 
-	// need flag for all or open
-	openOnly := false
-
-	var entries []model.Security
 	entry := new(model.Security)
 	entry.AccountID = uint(account_id)
-	entries = entry.List(session, nil, openOnly)
+	entries := []model.Security{}
 
 	if get_json {
 		return c.JSON(http.StatusOK, entries)

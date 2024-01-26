@@ -113,7 +113,7 @@ func GetAccount(c echo.Context) error {
 		if entry != nil {
 			// List will order returned results
 			if entry.IsInvestment() {
-				securities = new(model.Security).List(session, entry, all == 0)
+				securities = entry.ListSecurities(session, all == 0)
 				cashflows = new(model.Trade).ListCashFlows(db, entry)
 				tradeTypes = new(model.TradeType).List(db)
 				entry.TotalPortfolio(securities)

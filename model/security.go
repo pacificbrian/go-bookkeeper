@@ -315,22 +315,16 @@ func (a *Account) getOpenSecurities(async bool) {
 	a.getSecurities(true, async)
 }
 
-// with account argument, Account access already verified by caller
-func (s *Security) List(session *Session, account *Account, openPositions bool) []Security {
-	entries := []Security{}
-	if account == nil {
-		// Verify we have access to Account
-		s.Account.ID = s.AccountID
-		account = s.Account.Get(session, false)
-		if account == nil  {
-			return entries
-		}
+// Account access already verified by caller
+func (a *Account) ListSecurities(session *Session, openPositions bool) []Security {
+	if !a.Verified {
+		return []Security{}
 	}
-	account.getSecurities(openPositions, true)
 
-	log.Printf("[MODEL] LIST SECURITIES ACCOUNT(%d:%d)", account.ID,
-		   len(account.Securities))
-	return account.Securities
+	a.getSecurities(openPositions, true)
+	log.Printf("[MODEL] LIST SECURITIES ACCOUNT(%d:%d)", a.ID,
+		   len(a.Securities))
+	return a.Securities
 }
 
 // Find only most recent Trade for Security
