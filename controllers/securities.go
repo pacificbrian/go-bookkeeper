@@ -112,7 +112,7 @@ func GetSecurity(c echo.Context) error {
 
 		if entry != nil {
 			account = &entry.Account
-			trades = entry.ListTrades(db)
+			trades = entry.ListTrades()
 		}
 
 		dh := new(helpers.DateHelper)

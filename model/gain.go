@@ -11,7 +11,6 @@ import (
 	"log"
 	"time"
 	"github.com/shopspring/decimal"
-	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
 
@@ -31,7 +30,8 @@ type TradeGain struct {
 	BuyDate time.Time `gorm:"-:all"`
 }
 
-func (t *Trade) ListGains(db *gorm.DB) ([]TradeGain, []decimal.Decimal) {
+func (t *Trade) ListGains() ([]TradeGain, []decimal.Decimal) {
+	db := getDbManager()
 	entries := []TradeGain{}
 	var totals []decimal.Decimal
 

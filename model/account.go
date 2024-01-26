@@ -448,7 +448,9 @@ func (a *Account) lastCashFlow(imported bool) *CashFlow {
 	return entry
 }
 
-func (a *Account) updateBalance(db *gorm.DB, c *CashFlow) {
+func (a *Account) updateBalance(c *CashFlow) {
+	db := getDbManager()
+
 	// catastrophic if we end up here without a.Verified
 	assert(a.Verified, "Unexpected: Account.Verified Unset!")
 	assert(a.ID > 0, "Unexpected: Account.ID Unset!")

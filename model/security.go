@@ -122,7 +122,8 @@ func (s *Security) setValue(price decimal.Decimal) decimal.Decimal {
 	return s.Value
 }
 
-func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
+func (s *Security) addTrade(trade *Trade) {
+	db := getDbManager()
 	updates := make(map[string]interface{})
 	sPrice := s.Price()
 	price := sPrice
@@ -198,7 +199,8 @@ func (s *Security) addTrade(db *gorm.DB, trade *Trade) {
 		   s.ID, trade.ID, trade.TradeTypeID)
 }
 
-func (s *Security) updateTrade(db *gorm.DB, trade *Trade) {
+func (s *Security) updateTrade(trade *Trade) {
+	db := getDbManager()
 	updates := make(map[string]interface{})
 	price := s.Price()
 
@@ -350,8 +352,9 @@ func (s *Security) LatestTradeBy(db *gorm.DB, tradeType uint) *Trade {
 
 // Find Trades for Security
 // Security access already verified by caller
-func (s *Security) ListTradesBy(db *gorm.DB, tradeType uint, openOnly bool) []Trade {
+func (s *Security) ListTradesBy(tradeType uint, openOnly bool) []Trade {
 	entries := []Trade{}
+	db := getDbManager()
 
 	if s.Account.Verified {
 		dbQuery := db.Order("date asc").Preload("TradeType")
@@ -370,26 +373,26 @@ func (s *Security) ListTradesBy(db *gorm.DB, tradeType uint, openOnly bool) []Tr
 	return entries
 }
 
-func (s *Security) ListTrades(db *gorm.DB) []Trade {
-	return s.ListTradesBy(db, 0, false)
+func (s *Security) ListTrades() []Trade {
+	return s.ListTradesBy(0, false)
 }
 
-func (s *Security) computeShares(db *gorm.DB) decimal.Decimal {
+func (s *Security) computeShares() decimal.Decimal {
 	var shares decimal.Decimal
 	var sharesInOut decimal.Decimal
 	includeInOut := true
 
-	activeBuys := s.ListTradesBy(db, Buy, true)
+	activeBuys := s.ListTradesBy(Buy, true)
 	for i := 0; i < len(activeBuys); i++ {
 		shares = shares.Add(activeBuys[i].SharesRemaining())
 	}
 
 	if includeInOut {
-		trades := s.ListTradesBy(db, SharesIn, true)
+		trades := s.ListTradesBy(SharesIn, true)
 		for i := 0; i < len(trades); i++ {
 			sharesInOut = sharesInOut.Add(trades[i].Shares)
 		}
-		trades = s.ListTradesBy(db, SharesOut, false)
+		trades = s.ListTradesBy(SharesOut, false)
 		for i := 0; i < len(trades); i++ {
 			sharesInOut = sharesInOut.Sub(trades[i].Shares)
 		}
@@ -398,10 +401,10 @@ func (s *Security) computeShares(db *gorm.DB) decimal.Decimal {
 	return shares.Add(sharesInOut)
 }
 
-func (s *Security) validateSell(db *gorm.DB, trade *Trade) ([]Trade, error) {
+func (s *Security) validateSell(trade *Trade) ([]Trade, error) {
 	var buyShares decimal.Decimal
 
-	activeBuys := s.ListTradesBy(db, Buy, true)
+	activeBuys := s.ListTradesBy(Buy, true)
 	if len(activeBuys) == 0 {
 		return nil, errors.New("Invalid Sell Trade (No Shares)")
 	}
@@ -420,20 +423,20 @@ func (s *Security) validateSell(db *gorm.DB, trade *Trade) ([]Trade, error) {
 }
 
 // TODO validate there are no Sells or Splits on/after trade.Date
-func (s *Security) validateSplit(db *gorm.DB, trade *Trade) error {
+func (s *Security) validateSplit(trade *Trade) error {
 	return nil
 }
 
-func (s *Security) validateTrade(db *gorm.DB, trade *Trade) ([]Trade, error) {
+func (s *Security) validateTrade(trade *Trade) ([]Trade, error) {
 	if trade.IsSell() {
-		return s.validateSell(db, trade)
+		return s.validateSell(trade)
 	} else if trade.IsSplit() {
-		err := s.validateSplit(db, trade)
+		err := s.validateSplit(trade)
 		if err != nil {
 			return nil, err
 		}
 
-		activeBuys := s.ListTradesBy(db, Buy, true)
+		activeBuys := s.ListTradesBy(Buy, true)
 		if len(activeBuys) == 0 {
 			return nil, errors.New("Ignoring Split (No Shares)")
 		}
@@ -553,10 +556,10 @@ func (s *Security) postQueryInit() bool {
 
 // controllers(Get, Edit, Delete, Update) use Get
 func (s *Security) Get(session *Session) *Security {
-	db := session.DB
 	debugShares := false
 
 	if s.ID > 0 {
+		db := session.DB
 		db.Preload("SecurityType").Preload("Company").
 		   Preload("Account").First(&s)
 	}
@@ -569,7 +572,7 @@ func (s *Security) Get(session *Session) *Security {
 	if debugShares {
 		log.Printf("[MODEL] GET SECURITY(%d:%s) SHARES(%f:%f)",
 			   s.ID, s.Company.Symbol, s.Shares.InexactFloat64(),
-			   s.computeShares(db).InexactFloat64())
+			   s.computeShares().InexactFloat64())
 	} else {
 		log.Printf("[MODEL] GET SECURITY(%d:%s)", s.ID, s.Company.Symbol)
 	}
@@ -691,7 +694,7 @@ func (s *Security) fixupTrades(db *gorm.DB, entries []Trade) {
 		if fixAdjustedBasis && !t.Closed && t.IsBuy() &&
 		    t.Basis.IsPositive() && t.AdjustedShares.IsZero() {
 			t.Account.cloneVerified(&s.Account)
-			gains,_ := t.ListGains(db)
+			gains,_ := t.ListGains()
 			if len(gains) == 1 {
 				tg:= gains[0]
 				t.AdjustedShares = t.Shares.Sub(tg.Shares)

@@ -497,7 +497,7 @@ func (t *Trade) insertTrade(db *gorm.DB, security *Security) error {
 
 	err = t.validateInputs()
 	if err == nil && (t.IsSell() || t.IsSplit()) {
-		activeBuys, err = security.validateTrade(db, t)
+		activeBuys, err = security.validateTrade(t)
 	}
 	if err != nil {
 		return err
@@ -517,10 +517,10 @@ func (t *Trade) insertTrade(db *gorm.DB, security *Security) error {
 	} else if t.IsSplit() {
 		t.recordSplit(activeBuys)
 	}
-	security.addTrade(db, t)
+	security.addTrade(t)
 	c := t.toCashFlow(false)
 	if c != nil {
-		security.Account.updateBalance(db, c)
+		security.Account.updateBalance(c)
 	}
 	return nil
 }
@@ -601,7 +601,8 @@ func (t *Trade) Get(session *Session) *Trade {
 	return t
 }
 
-func (t *Trade) reverseGain(db *gorm.DB, isDelete bool) error {
+func (t *Trade) reverseGain(isDelete bool) error {
+	db := getDbManager()
 	sellBasis := decimal.Zero
 	entries := []TradeGain{}
 
@@ -629,14 +630,15 @@ func (t *Trade) reverseGain(db *gorm.DB, isDelete bool) error {
 }
 
 // TODO
-func (t *Trade) reverseSplit(db *gorm.DB) ([]Trade, error) {
-	err := t.Security.validateSplit(db, t)
+func (t *Trade) reverseSplit() ([]Trade, error) {
+	err := t.Security.validateSplit(t)
 	return nil, err
 }
 
 func (t *Trade) Delete(session *Session) error {
 	var err error
-	db := session.DB
+	db := getDbManager()
+
 	// Verify we have access to Trade
 	t = t.Get(session)
 	if t == nil {
@@ -648,11 +650,11 @@ func (t *Trade) Delete(session *Session) error {
 	t.Shares = decimal.Zero
 
 	if t.IsSell() {
-		err = t.reverseGain(db, true)
+		err = t.reverseGain(true)
 	} else if t.IsBuy() && !t.oldBasis.IsZero() {
 		err = errors.New("Don't yet support Delete of Partially Sold Buy Trades!")
 	} else if t.IsSplit() {
-		_, err = t.reverseSplit(db)
+		_, err = t.reverseSplit()
 		err = errors.New("Don't yet support Delete of Splits!")
 		// set Shares to 1 for reversing Split in updateTrade
 		t.Shares = decimal.NewFromInt32(1)
@@ -662,10 +664,10 @@ func (t *Trade) Delete(session *Session) error {
 		return err
 	}
 
-	t.Security.updateTrade(db, t)
+	t.Security.updateTrade(t)
 	c := t.toCashFlow(false)
 	if c != nil {
-		t.Account.updateBalance(db, c)
+		t.Account.updateBalance(c)
 	}
 	spewModel(t)
 	db.Delete(t)
@@ -702,16 +704,16 @@ func (t *Trade) Update() error {
 		// and Split or TradeGain is now wrong...
 		logSimple = " (SIMPLE)"
 	} else if t.IsSell() {
-		err = t.reverseGain(db, false)
+		err = t.reverseGain(false)
 		if err == nil {
-			activeBuys, err = t.Security.validateTrade(db, t)
+			activeBuys, err = t.Security.validateTrade(t)
 		}
 	} else if t.IsBuy() && !t.oldBasis.IsZero() {
 		err = errors.New("Don't yet support Updating of Partially Sold Buy Trades!")
 	} else if t.IsBuy() && !t.oldShares.Equal(t.AdjustedShares) {
 		err = errors.New("Don't yet support Updating of Buy Trades affected by Splits!")
 	} else if t.IsSplit() {
-		activeBuys, err = t.reverseSplit(db)
+		activeBuys, err = t.reverseSplit()
 		err = errors.New("Don't yet support Updating of Splits!")
 	} else if t.IsBuy() {
 		// this becomes more complicated when/if removing above error cases
@@ -731,10 +733,10 @@ func (t *Trade) Update() error {
 			t.recordSplit(activeBuys)
 		}
 
-		t.Security.updateTrade(db, t)
+		t.Security.updateTrade(t)
 		c := t.toCashFlow(false)
 		if c != nil {
-			t.Account.updateBalance(db, c)
+			t.Account.updateBalance(c)
 		}
 	}
 	if err == nil {

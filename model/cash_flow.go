@@ -655,7 +655,7 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB, importing bool) error {
 	} else {
 		log.Printf("[MODEL] CREATE %s CASHFLOW(%d)", c.Type, c.ID)
 		spewModel(c)
-		c.Account.updateBalance(db, c)
+		c.Account.updateBalance(c)
 	}
 
 	// Create pair CashFlow if have one (Transfers)
@@ -674,7 +674,7 @@ func (c *CashFlow) insertCashFlow(db *gorm.DB, importing bool) error {
 		log.Printf("[MODEL] CREATE PAIR CASHFLOW(%d)", pair.ID)
 
 		pair.Account.ID = pair.AccountID
-		pair.Account.updateBalance(db, pair)
+		pair.Account.updateBalance(pair)
 	}
 
 	return err
@@ -1203,7 +1203,7 @@ func (c *CashFlow) delete(db *gorm.DB) {
 		c.Account.ID = c.AccountID
 		c.Amount = decimal.Zero
 		// UpdateBalance will subtract c.oldAmount
-		c.Account.updateBalance(db, c)
+		c.Account.updateBalance(c)
 	}
 }
 
@@ -1252,14 +1252,14 @@ func (c *CashFlow) Put(session *Session, request map[string]interface{}) error {
 				pair.pairFrom(c)
 				pair.Amount = c.Amount.Neg()
 				pair.Account.ID = pair.AccountID
-				pair.Account.updateBalance(db, pair)
+				pair.Account.updateBalance(pair)
 
 				// change type in map for db.Update to succeed
 				request["amount"] = pair.Amount
 				db.Omit(clause.Associations).Model(pair).Updates(request)
 			}
 
-			c.Account.updateBalance(db, c)
+			c.Account.updateBalance(c)
 			// change type in map for db.Update to succeed
 			request["amount"] = c.Amount
 		}
@@ -1298,7 +1298,7 @@ func (c *CashFlow) Update() error {
 		} else {
 			log.Printf("[MODEL] UPDATE CASHFLOW(%d)", c.ID)
 			spewModel(c)
-			c.Account.updateBalance(db, c)
+			c.Account.updateBalance(c)
 			if c.HasSplits() {
 				c.updateSplits(db, c.splitUpdateMap())
 				// above also updates Pair.Date (Transfers)
@@ -1331,13 +1331,13 @@ func (c *CashFlow) Update() error {
 					newAccountUpdateAmount := pair.Amount
 					pair.Amount = decimal.Zero
 					pair.Account.ID = pair.oldAccountID
-					pair.Account.updateBalance(db, pair)
+					pair.Account.updateBalance(pair)
 
 					pair.oldAmount = decimal.Zero
 					pair.Amount = newAccountUpdateAmount
 				}
 				pair.Account.ID = pair.AccountID
-				pair.Account.updateBalance(db, pair)
+				pair.Account.updateBalance(pair)
 			}
 		}
 	}

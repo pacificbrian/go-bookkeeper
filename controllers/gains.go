@@ -67,10 +67,9 @@ func GetTradeGain(c echo.Context) error {
 	} else {
 		var buys []model.TradeGain
 		var totals []decimal.Decimal
-		db := session.DB
 
 		if entry != nil && entry.IsSell() {
-			buys,totals = entry.ListGains(db)
+			buys,totals = entry.ListGains()
 		}
 
 		data := map[string]any{ "account": &entry.Account,
