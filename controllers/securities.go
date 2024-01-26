@@ -20,23 +20,32 @@ import (
 // https://go.dev/src/net/http/status.go
 
 func ListSecurities(c echo.Context) error {
-	account_id, _ := strconv.Atoi(c.Param("account_id"))
+	all, _ := strconv.Atoi(c.QueryParam("all"))
 	session := getSession(c)
 	if session == nil {
 		return redirectToLogin(c)
 	}
-	log.Println("LIST SECURITIES")
 	get_json := false
 
-	entry := new(model.Security)
-	entry.AccountID = uint(account_id)
-	entries := []model.Security{}
+	account := new(model.Account)
+	entries := new(model.Security).List(session, all == 0)
+	log.Printf("LIST SECURITIES(%d) ALL(%d)", len(entries), all)
 
 	if get_json {
 		return c.JSON(http.StatusOK, entries)
 	} else {
+		var cashflows []model.CashFlow
+
+		account.TotalPortfolio(entries)
+
+		dh := new(helpers.DateHelper)
+		dh.Init()
+
 		data := map[string]any{ "securities": entries,
-					"account": &entry.Account }
+					"account": account,
+					"date_helper": dh,
+					"cash_flows": cashflows,
+					"allSecurities": all > 0 }
 		return c.Render(http.StatusOK, "securities/index.html", data)
 	}
 }

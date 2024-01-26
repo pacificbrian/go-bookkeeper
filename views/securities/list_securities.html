@@ -1,4 +1,7 @@
 <table class="standard">
+{% if account && account.ID == 0 -%}
+<th>Account</td>
+{% endif -%}
 <th>Company Name</th>
 <th>Symbol</th>
 <th>Shares</th>
@@ -12,6 +15,9 @@
 {% for s in securities -%}
 {% if allSecurities || s.Shares.IsPositive() -%}
 <tr>
+{% if account && account.ID == 0 -%}
+<td>{{ s.Account.Name }}</td>
+{% endif -%}
 <td>{{ s.Company.Name }}</td>
 <td>{{ s.Company.Symbol }}</td>
 <td>{{ s.Shares }}</td>
@@ -21,12 +27,16 @@
 <td class="currency">{{ s.Currency(s.Value) }}</td>
 <td class="percentage">{{ s.UnrealizedReturn() }}%</td>
 <td class="percentage">{{ s.TotalReturn() }}%</td>
-<td><a href=/accounts/{{account.ID}}/securities/{{s.ID}}>Info</a></td>
+<td><a href=/accounts/{{s.AccountID}}/securities/{{s.ID}}>Info</a></td>
 </tr>
 {% endif -%}
 {% endfor -%}
+{% if account -%}
 <tr>
 <td><b>Total:</b></td>
+{% if account && account.ID == 0 -%}
+<td></td>
+{% endif -%}
 <td></td>
 <td></td>
 <td></td>
@@ -37,4 +47,5 @@
 <td></td>
 <td></td>
 </tr>
+{% endif -%}
 </table>

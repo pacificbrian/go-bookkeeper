@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+{% block content -%}
+
+<div class="show">
+<h3>Securities Held</h3>
+<div id="securities">
+{% include "securities/list_securities.html" -%}
+</div>
+
+{% if (cash_flows|length > 0) -%}
+<p>
+<h3>Transaction Ledger</h3>
+<div id="cash_flows">
+{% include "cash_flows/list_cash_flows.html" -%}
+</div>
+{% endif -%}
+
+</div>
+
+<ul id="footmenu">
+{% if allSecurities -%}
+<li><a href=/securities>Open Securities</a></li>
+{% else -%}
+<li><a href=/securities?all=1>All Securities</a></li>
+{% endif -%}
+<li><a href=/securities/new>New Security</a></li>
+<li><a href=/years/{{date_helper.Year()}}/gains>Trade Gains</a></li>
+</ul>
+{% endblock -%}

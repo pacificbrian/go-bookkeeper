@@ -103,7 +103,8 @@ func Init(staticFS *embed.FS, viewFS *embed.FS) *echo.Echo {
 	e.GET("/companies/:company_id/financials", controllers.GetCompanyFinancials)
 
 	// Security
-	e.GET("/accounts/:account_id/securities/:id", controllers.GetSecurity) // Show
+	e.GET("/securities", controllers.ListSecurities)
+	e.GET("/accounts/:account_id/securities/:id", controllers.GetSecurity)
 	e.GET("/accounts/:account_id/securities/new", controllers.NewSecurity)
 	e.POST("/accounts/:account_id/securities", controllers.CreateSecurity)
 	e.GET("/securities/:id/edit", controllers.EditSecurity)

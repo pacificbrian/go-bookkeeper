@@ -272,40 +272,50 @@ func updateSecurities(securities *[]Security) {
 	}
 }
 
-// update Security.Values and update Account.Balance from cached Quotes
-func (a *Account) getSecurities(openPositions bool, async bool) {
+func postQuerySecurities(securities *[]Security, async bool) bool {
 	updated := false
+
+	if async {
+		// initiate background fetching of Security Quotes
+		go updateSecurities(securities)
+	} else {
+		updateSecurities(securities)
+	}
+
+	for i := 0; i < len(*securities); i++ {
+		s := &(*securities)[i]
+		updated = s.postQueryInit() || updated
+	}
+
+	return updated
+}
+
+// Find Securities for Account, updating Security.Values and update
+// Account.Balance from cached Quotes
+func (a *Account) getSecurities(openPositions bool, async bool) {
 	db := getDbManager()
 	if !a.Verified || !a.IsInvestment() {
 		return
 	}
 
-	// Find Securities for Account
 	if (openPositions) {
-		db.Order("Company.Symbol").
+		db.Order("Company.Name").Order("Company.Symbol").
 		   Where("shares > 0 AND account_id = ?", a.ID).
 		   Joins("Company").
 		   Find(&a.Securities)
 	} else {
-		db.Order("Company.Symbol").
+		db.Order("Company.Name").Order("Company.Symbol").
 		   Where(&Security{AccountID: a.ID}).
 		   Joins("Company").
 		   Find(&a.Securities)
 	}
 
-	if async {
-		// initiate background fetching of Security Quotes
-		go updateSecurities(&a.Securities)
-	} else {
-		log.Printf("[MODEL] GET SECURITIES ACCOUNT(%d:%d)", a.ID,
-			   len(a.Securities))
-		updateSecurities(&a.Securities)
-	}
-
 	for i := 0; i < len(a.Securities); i++ {
 		entry := &a.Securities[i]
-		updated = entry.postQueryInit() || updated
+		entry.Account.Name = a.Name
 	}
+
+	updated := postQuerySecurities(&a.Securities, async)
 	if updated {
 		a.updateValue(true)
 	}
@@ -313,6 +323,8 @@ func (a *Account) getSecurities(openPositions bool, async bool) {
 
 func (a *Account) getOpenSecurities(async bool) {
 	a.getSecurities(true, async)
+	log.Printf("[MODEL] GET OPEN SECURITIES ACCOUNT(%d:%d) ASYNC(%t)", a.ID,
+		   len(a.Securities), async)
 }
 
 // Account access already verified by caller
@@ -325,6 +337,46 @@ func (a *Account) ListSecurities(session *Session, openPositions bool) []Securit
 	log.Printf("[MODEL] LIST SECURITIES ACCOUNT(%d:%d)", a.ID,
 		   len(a.Securities))
 	return a.Securities
+}
+
+// Find Securities for User Accounts, updating Security.Values
+func (u *User) getSecurities(openPositions bool, async bool) []Security {
+	db := getDbManager()
+	entries := []Security{}
+
+	if (openPositions) {
+		db.Order("Account.Name").
+		   Order("Company.Name").Order("Company.Symbol").
+		   Where("shares > 0 AND user_id = ?", u.ID).
+		   Where("hidden IS NOT true").
+		   Joins("Company").
+		   Joins("Account").
+		   Find(&entries)
+	} else {
+		db.Order("Account.Name").
+		   Order("Company.Name").Order("Company.Symbol").
+		   Where("user_id = ?", u.ID).
+		   Where("hidden IS NOT true").
+		   Joins("Company").
+		   Joins("Account").
+		   Find(&entries)
+	}
+
+	postQuerySecurities(&entries, async)
+	return entries
+}
+
+// get Securities for session.User
+func (s *Security) List(session *Session, openPositions bool) []Security {
+	u := session.GetUser()
+	if u == nil {
+		return []Security{}
+	}
+
+	entries := u.getSecurities(openPositions, true)
+	log.Printf("[MODEL] LIST SECURITIES USER(%d:%d)", u.ID,
+		   len(entries))
+	return entries
 }
 
 // Find only most recent Trade for Security
@@ -540,7 +592,7 @@ func (s *Security) postQueryInit() bool {
 	s.oldSecurityBasisTypeID = s.SecurityBasisTypeID
 
 	// update s.Account.Balance to cached value
-	if s.Account.ID > 0 {
+	if s.Account.ID > 0 && s.Account.Verified {
 		s.Account.postQueryInit()
 	}
 
