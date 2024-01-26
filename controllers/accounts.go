@@ -25,7 +25,7 @@ import (
 // Need Input Validation after Bind
 
 func ListAccounts(c echo.Context) error {
-	allParam, _ := strconv.Atoi(c.QueryParam("all"))
+	filterParam := c.QueryParam("filter")
 	debugParam, _ := strconv.Atoi(c.QueryParam("debug"))
 	session := getSession(c)
 	if session == nil {
@@ -34,7 +34,17 @@ func ListAccounts(c echo.Context) error {
 	log.Println("LIST ACCOUNTS")
 	get_json := false
 
-	entries := model.ListAccounts(session, allParam > 0)
+	filter := 0
+	switch filterParam {
+	case "all":
+		filter = 1
+	case "active":
+		filter = -1
+	case "none":
+	default:
+		filter = 0
+	}
+	entries := model.ListAccounts(session, filter)
 
 	dh := new(helpers.DateHelper)
 	dh.Init()

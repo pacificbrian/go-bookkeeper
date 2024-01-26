@@ -119,23 +119,30 @@ func (a *Account) postQueryInit() {
 	}
 }
 
-func List(session *Session, all bool) []Account {
+func List(session *Session, filter int) []Account {
 	db := session.DB
 	u := session.GetUser()
 	entries := []Account{}
 	hidden_clause := ""
+	active_clause := ""
 	if u == nil {
 		return entries
 	}
 
-	if !all {
-		hidden_clause = "(hidden = 0 OR hidden IS NULL)"
+	if filter < 1 {
+		// !all
+		hidden_clause = "(hidden IS NOT true)"
+	}
+	if filter < 0 {
+		// active
+		active_clause = "(balance != 0)"
 	}
 
 	// Find Accounts for CurrentUser()
 	db.Preload("AccountType").
 	   Order("account_type_id").Order("Name").
 	   Where(hidden_clause).
+	   Where(active_clause).
 	   Where(&Account{UserID: u.ID}).Find(&entries)
 	log.Printf("[MODEL] LIST ACCOUNTS(%d)", len(entries))
 
@@ -149,10 +156,10 @@ func List(session *Session, all bool) []Account {
 	return entries
 }
 
-func ListAccounts(session *Session, all bool) []Account {
+func ListAccounts(session *Session, filter int) []Account {
 	globals := config.GlobalConfig()
 
-	entries := List(session, all)
+	entries := List(session, filter)
 	if entries != nil {
 		if globals.UpdateAccountsOnLogin {
 			go updateAccounts(entries, session)

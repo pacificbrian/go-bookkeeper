@@ -20,12 +20,20 @@ import (
 // https://go.dev/src/net/http/status.go
 
 func ListSecurities(c echo.Context) error {
-	all, _ := strconv.Atoi(c.QueryParam("all"))
+	filterParam := c.QueryParam("filter")
 	session := getSession(c)
 	if session == nil {
 		return redirectToLogin(c)
 	}
 	get_json := false
+	var all int
+
+	switch filterParam {
+	case "all":
+		all = 1
+	default:
+		all = 0
+	}
 
 	account := new(model.Account)
 	entries := new(model.Security).List(session, all == 0)
