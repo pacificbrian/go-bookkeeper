@@ -16,7 +16,7 @@
 {% if allSecurities || s.Shares.IsPositive() -%}
 <tr>
 {% if account && account.ID == 0 -%}
-<td>{{ s.Account.Name }}</td>
+<td><a href=/accounts/{{s.AccountID}}>{{ s.Account.Name }}</a></td>
 {% endif -%}
 <td>{{ s.Company.Name }}</td>
 <td>{{ s.Company.Symbol }}</td>

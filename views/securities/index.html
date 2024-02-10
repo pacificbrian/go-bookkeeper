@@ -23,7 +23,7 @@
 {% else -%}
 <li><a href=/securities?all=1>All Securities</a></li>
 {% endif -%}
-<li><a href=/securities/new>New Security</a></li>
-<li><a href=/years/{{date_helper.Year()}}/gains>Trade Gains</a></li>
+<li><a href=/years/{{date_helper.Year()}}/gains>Current Year Gains</a></li>
+<li><a href=/years/{{date_helper.Year() - 1}}/gains>Last Year Gains</a></li>
 </ul>
 {% endblock -%}
