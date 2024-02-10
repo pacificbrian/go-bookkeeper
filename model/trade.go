@@ -635,6 +635,28 @@ func (t *Trade) reverseSplit() ([]Trade, error) {
 	return nil, err
 }
 
+func (t *Trade) updateGains() {
+	db := getDbManager()
+	entries := []TradeGain{}
+
+	duration := t.Date.Sub(t.oldDate)
+	days := int32(duration.Hours()) / 24
+
+	if !t.IsSell() || days == 0 {
+		return
+	}
+
+	// Find Gains for Trade, update DaysHeld
+	db.Where(&TradeGain{SellID: t.ID}).Find(&entries)
+	for i := 0; i < len(entries); i++ {
+		tg := &entries[i]
+		tg.updateDaysHeld(days)
+	}
+
+	log.Printf("[MODEL] UPDATE TRADE(%d) DAYS(%d) FOR %d GAINS",
+		   t.ID, days, len(entries))
+}
+
 func (t *Trade) Delete(session *Session) error {
 	var err error
 	db := getDbManager()
@@ -703,6 +725,10 @@ func (t *Trade) Update() error {
 		// Though, some risk (with Date) that Trades are now reordered
 		// and Split or TradeGain is now wrong...
 		logSimple = " (SIMPLE)"
+		if t.IsSell() {
+			// if Date changed, update TradeGains.DaysHeld
+			t.updateGains()
+		}
 	} else if t.IsSell() {
 		err = t.reverseGain(false)
 		if err == nil {

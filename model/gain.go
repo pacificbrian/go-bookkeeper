@@ -91,6 +91,15 @@ func (tg *TradeGain) recordGain(sell *Trade, buy *Trade,
 	}
 }
 
+func (tg *TradeGain) updateDaysHeld(days int32) {
+	db := getDbManager()
+	updates := make(map[string]interface{})
+
+	tg.DaysHeld += days
+	updates["days_held"] = tg.DaysHeld
+	db.Omit(clause.Associations).Model(tg).Updates(updates)
+}
+
 func (tg *TradeGain) Delete(session *Session) error {
 	db := getDbManager()
 

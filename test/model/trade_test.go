@@ -14,11 +14,11 @@ import (
 	"gotest.tools/v3/assert"
 )
 
-func makeTrade(tr *model.Trade, symbol string, daysAgo int, price int32, shares int32) {
+func makeTrade(tr *model.Trade, symbol string, daysAdd int, price int32, shares int32) {
 	tr.Symbol = symbol
 	tr.TradeTypeID = model.Buy
 	tr.Date = time.Now()
-	tr.Date = tr.Date.AddDate(0, 0, daysAgo)
+	tr.Date = tr.Date.AddDate(0, 0, daysAdd)
 	tr.Price = decimal.NewFromInt32(price)
 	tr.Shares = decimal.NewFromInt32(shares)
 	tr.Amount = tr.Shares.Mul(tr.Price)
@@ -34,7 +34,8 @@ func TestSellTrade(t *testing.T) {
 	tr := new(model.Trade)
 	tr.AccountID = a.ID
 
-	makeTrade(tr, "GOOGL", -7, 125, 10)
+	var held int = 7
+	makeTrade(tr, "GOOGL", -held, 125, 10)
 	err := tr.Create(defaultSession)
 	assert.NilError(t, err)
 	basis = basis.Add(tr.Amount)
@@ -67,6 +68,18 @@ func TestSellTrade(t *testing.T) {
 	assert.Assert(t, s.Basis.IsZero())
 	assert.Assert(t, gain.Equal(s.RetainedEarnings))
 	assert.Assert(t, basis.Equal(s.AccumulatedBasis))
+
+	// test can update Sell Trade Date
+	sell := tr.Find(tr.ID)
+	sell.Date = sell.Date.AddDate(0, 0, 2)
+	err = sell.Update()
+	assert.NilError(t, err)
+	held += 2
+
+	tg := new(model.TradeGain)
+	gains := tg.FindForSale(sell.ID)
+	assert.Assert(t, len(gains) == 1)
+	assert.Equal(t, int(gains[0].DaysHeld), held)
 }
 
 func TestSellTradeAverageBasis(t *testing.T) {
