@@ -975,13 +975,19 @@ func (repeat *CashFlow) advance(db *gorm.DB, updateDB bool) (bool, int) {
 	return time.Now().After(repeat.Date), days
 }
 
+func (c *CashFlow) isValidSplit() bool {
+	return c.Split && !c.Amount.IsZero()
+}
+
 func (c CashFlow) insertRepeatSplits(splits []CashFlow, ch chan uint) {
 	count := <- ch
 	log.Printf("[MODEL] APPLYING REPEAT SPLITS (%d)", count)
 	for i := 0; i < len(splits); i++ {
 		split := &splits[i]
 		split.SplitFrom = c.ID
-		split.tryInsertRepeatCashFlow()
+		if split.isValidSplit() {
+			split.tryInsertRepeatCashFlow()
+		}
 	}
 	ch <- count + 1
 }
