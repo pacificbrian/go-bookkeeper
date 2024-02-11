@@ -43,6 +43,8 @@ func ListTaxes(c echo.Context) error {
 		db := session.DB
 		entry := new(model.TaxEntry)
 		entries := new(model.TaxEntry).List(session, year)
+
+		entry.DateYear = year
 		data := map[string]any{ "tax_returns": returns,
 					"tax_entries": entries,
 					"date_helper": dh,

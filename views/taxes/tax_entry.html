@@ -1,9 +1,9 @@
 <fieldset>
 <label>Tax Year</label>
 {% if isEdit -%}
-<input type="text" name="year" value="{{entry.DateYear}}" readonly/>
+<input type="text" name="year" value="{{entry.DateYear}}"/>
 {% else -%}
-{{ form_year_select(date_helper) }}
+<input type="text" name="year" value="{{entry.DateYear}}" readonly/>
 {% endif-%}
 {{ form_select_type(tax_regions, "tax_region_id", entry.TaxRegionID) }}
 </fieldset>
