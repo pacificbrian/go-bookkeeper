@@ -107,6 +107,8 @@ func PutCashFlow(c echo.Context) error {
 	putRequest := make(map[string]interface{})
 	putRequest[kv.Key] = kv.Value
 
+	return c.NoContent(http.StatusUnauthorized)
+
 	// Put will verify if have CashFlow access
 	if entry.Put(session, putRequest) != nil {
 		return c.NoContent(http.StatusUnauthorized)

@@ -32,12 +32,13 @@ export default class extends Controller {
             method: 'DELETE',
             url: '/cash_flows/'+cashflowID,
             responseType: 'json',
-          });
+          }).catch( err => console.log(err));
         }),
         map((response) => {
           return response.response;
         })
       )
+      .catch( err => console.log(err))
       .subscribe((response) => {
         console.log(response)
       })
@@ -59,6 +60,10 @@ export default class extends Controller {
           });
         }),
         map((response) => {
+          //c.NoContent(http.StatusUnauthorized)
+          //c.NoContent(http.StatusAccepted)
+          console.log("RXJS[CASHFLOW] response:", response.response);
+          //alert("in Map Response!")
           return response.response;
         })
       )
@@ -80,7 +85,7 @@ export default class extends Controller {
     console.log("Stimulus[CASHFLOW]: actionApply", cashflowID)
     event.preventDefault()
     // add to RXJS stream processed with cashflowPut.pipe above
-    this.cashflowPut$.next([cashflowID, "apply", "1"]);
+    let resp = this.cashflowPut$.next([cashflowID, "apply", "1"]);
   }
 
   adjustBalances(tableIdx, adjustAmount) {
