@@ -1,6 +1,8 @@
 module github.com/pacificbrian/go-bookkeeper
 
-go 1.18
+go 1.21
+
+toolchain go1.22.0
 
 require (
 	github.com/aclindsa/ofxgo v0.1.3

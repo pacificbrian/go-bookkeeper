@@ -6,6 +6,7 @@
 TODO
 *.lock
 node_modules/
+tags
 yarn-error.log
 public/javascript/*.js
 public/javascript/*.txt
