@@ -589,8 +589,8 @@ func (t *Trade) Get(session *Session) *Trade {
 		return nil
 	}
 
-	// This is safe and will only set NULL fields to default values;
-	// Cannot seem to use GORM hook as NULL value would already be 
+	// This is safe and will only set NULL fields to default values.
+	// Cannot seem to use GORM hook as NULL value would already be
 	// converted to 0. (This is for working with old database).
 	t.setDefaults()
 	// need another query if AdjustedShares is NULL and Basis is set

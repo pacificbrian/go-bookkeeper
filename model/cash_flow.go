@@ -436,7 +436,7 @@ func (u *User) listTaxCategory(db *gorm.DB, year int, taxCat *TaxCategory,
 				//entries = append(entries, *c)
 				a.setSession(u.Session)
 				entries = a.mergeCashFlows(db, entries, a.CashFlows,
-                                                           0, false, true)
+							   0, false, true)
 			}
 		}
 	}

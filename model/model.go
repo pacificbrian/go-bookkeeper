@@ -22,7 +22,7 @@ type HttpFile struct {
 }
 
 type Model struct {
-        ID        uint `gorm:"primaryKey"`
+	ID uint `gorm:"primaryKey"`
 }
 
 const timeFormatCompare string = "2006-01-02 15:04:05 -0700"
