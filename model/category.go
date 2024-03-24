@@ -38,6 +38,10 @@ func (c *Category) IsInterestIncome() bool {
 	return (c.ID == 74)
 }
 
+func (c *Category) IsValid() bool {
+	return (c.ID >= 1 && c.ID <= 97)
+}
+
 func (c *Category) LoanPI() bool {
 	return (c.IsInterest() || c.IsMortgageInterest())
 }

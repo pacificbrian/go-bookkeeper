@@ -183,6 +183,29 @@ func (p *Payee) GetDuplicates() []Payee {
 	return entries
 }
 
+func (p *Payee) SetCategory(account *Account, categoryID uint, toAll bool) error {
+	cat := new(Category)
+	cat.ID = categoryID
+	if !cat.IsValid() {
+		return errors.New("Invalid Category")
+	}
+
+	cashflows := p.ListCashFlows(account)
+	for i := 0; i < len(cashflows); i++ {
+		c := &cashflows[i]
+		if toAll || (c.CategoryID == 1) {
+			c.postQueryInit(true)
+			c.CategoryID = categoryID
+			// ensure c.Update uses c.PayeeID (no lookup)
+			c.PayeeName = ""
+			c.PayeeID = p.ID
+			c.Account.setSession(p.User.Session)
+			c.Update()
+		}
+	}
+	return nil
+}
+
 func (p *Payee) Merge(toMerge *Payee, account *Account) error {
 	if toMerge.ID != 0 {
 		log.Printf("[MODEL] MERGE PAYEE(%d) WITH(%d)",
@@ -192,7 +215,7 @@ func (p *Payee) Merge(toMerge *Payee, account *Account) error {
 		for i := 0; i < len(cashflows); i++ {
 			c := &cashflows[i]
 			c.postQueryInit(true)
-			// ensure c.Update path uses c.PayeeID (no lookup)
+			// ensure c.Update uses c.PayeeID (no lookup)
 			c.PayeeName = ""
 			c.PayeeID = p.ID
 			c.Account.setSession(p.User.Session)
